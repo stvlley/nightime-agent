@@ -87,11 +87,11 @@ public web portal. Both read/write the same Supabase data.
 
 ## Phased plan
 
-### Phase 0 — Foundation & cleanup  _(no infra, no cost)_
+### Phase 0 — Foundation & cleanup  _(no infra, no cost)_ ✅ DONE (commit d6981db)
 - [x] git init + recovery-point commit
-- [ ] Remove dead duplicate interface block from `app/_layout.tsx`
-- [ ] Fix identity naming (package.json + app.json → `nightime-agent`)
-- [ ] Note type-convergence plan (database.ts + booking.ts canonical; retire index.ts in Phase 1)
+- [x] Remove dead duplicate interface block from `app/_layout.tsx`
+- [x] Fix identity naming (package.json + app.json → `nightime-agent`)
+- [x] Note type-convergence plan (database.ts + booking.ts canonical; retired index.ts in Phase 1)
 
 ### Phase 1 — Wire provider UI to real data  _(remote Supabase, free; no Docker)_
 - [x] Replace mock arrays (inbox, dashboard stats, calendar) with live Supabase reads (commit 103f041)
@@ -99,7 +99,7 @@ public web portal. Both read/write the same Supabase data.
 - [x] Make `ai-settings` FAQ editor persist to the `faq` table (commit 4f3a91c)
 - [x] Retire dead `types/index.ts` (commit 4f3a91c)
 
-### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_ ✅ DONE (commit 8f9e8a2)
+### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_ ✅ DONE (commits 23784ad, d9bd5d4, 59e5546)
 - [x] profiles public fields: slug (unique+format), display_name, headline, bio,
       avatar_url, location_label, published, age_gate_required
 - [x] Public read via VIEW `public_provider_profiles` (column-subset), NOT a row policy
@@ -109,6 +109,10 @@ public web portal. Both read/write the same Supabase data.
 - [x] bookings payment columns (all nullable; no checkout)
 - [x] Keyed by provider id; seed publishes provider + services + availability
 - [x] Database TS types updated; typecheck passes; RLS verified anon pos+neg
+- [x] Hotfix (59e5546): services/availability public-read RLS now tests the VIEW, not
+  the profiles table (the old EXISTS-on-profiles ran as anon and was blocked by
+  profiles' own owner-only RLS, so it never matched). Demo-mode profiles in
+  hooks/useAuth.ts filled in for the new non-optional portal columns.
 - **Gotcha for later phases:** apply migrations via the SESSION pooler (port 5432),
   NOT the transaction pooler (6543 in DATABASE_URL) — 6543 breaks the Supabase CLI's
   prepared statements ("prepared statement already exists"). Use
