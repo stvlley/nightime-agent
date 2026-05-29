@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,25 +8,54 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  MessageSquare, 
-  Calendar, 
-  Bot, 
-  TrendingUp, 
-  Users, 
+import {
+  MessageSquare,
+  Calendar,
+  Bot,
+  TrendingUp,
+  Users,
   Clock,
   Smartphone,
   Mail
 } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { statsService, DashboardStats } from '@/lib/data';
+
+const DEMO_STATS: DashboardStats = {
+  messagesToday: 47,
+  bookingsThisWeek: 12,
+  aiResponsesToday: 31,
+  responseRate: 94,
+};
 
 export default function HomeScreen() {
+  const { user, isSupabaseConfigured } = useAuth();
   const [aiEnabled, setAiEnabled] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>(
+    isSupabaseConfigured ? { messagesToday: 0, bookingsThisWeek: 0, aiResponsesToday: 0, responseRate: 0 } : DEMO_STATS
+  );
 
-  const stats = [
-    { label: 'Messages Today', value: '47', icon: MessageSquare, color: '#10b981' },
-    { label: 'Bookings This Week', value: '12', icon: Calendar, color: '#3b82f6' },
-    { label: 'AI Responses', value: '31', icon: Bot, color: '#8b5cf6' },
-    { label: 'Response Rate', value: '94%', icon: TrendingUp, color: '#f59e0b' },
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return;
+    let active = true;
+    statsService
+      .getDashboardStats(user.id)
+      .then((s) => {
+        if (active) setStats(s);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id, isSupabaseConfigured]);
+
+  const greetingName = (isSupabaseConfigured && user?.profile?.business_name) || 'Sarah';
+
+  const statCards = [
+    { label: 'Messages Today', value: String(stats.messagesToday), icon: MessageSquare, color: '#10b981' },
+    { label: 'Bookings This Week', value: String(stats.bookingsThisWeek), icon: Calendar, color: '#3b82f6' },
+    { label: 'AI Responses', value: String(stats.aiResponsesToday), icon: Bot, color: '#8b5cf6' },
+    { label: 'Response Rate', value: `${stats.responseRate}%`, icon: TrendingUp, color: '#f59e0b' },
   ];
 
   const connectedPlatforms = [
@@ -40,7 +69,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Good morning, Sarah!</Text>
+          <Text style={styles.greeting}>Good morning, {greetingName}!</Text>
           <Text style={styles.subtitle}>{"Here's your business overview"}</Text>
         </View>
 
@@ -64,7 +93,7 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>{"Today's Stats"}</Text>
           <View style={styles.statsGrid}>
-            {stats.map((stat, index) => {
+            {statCards.map((stat, index) => {
               const IconComponent = stat.icon;
               return (
                 <View key={index} style={styles.statCard}>

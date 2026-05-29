@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,61 +6,111 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Bot, User, Calendar, Phone } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { threadService } from '@/lib/data';
 
-interface Conversation {
+interface InboxItem {
   id: string;
   clientName: string;
   lastMessage: string;
   timestamp: string;
   type: 'ai' | 'manual' | 'booking' | 'voice';
-  platform: 'whatsapp' | 'sms' | 'email' | 'telegram';
+  platform: string;
   unread: boolean;
 }
 
-export default function InboxScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
+// Shown only in demo mode (no Supabase env configured), so the public web
+// demo keeps its populated look.
+const DEMO_CONVERSATIONS: InboxItem[] = [
+  {
+    id: '1',
+    clientName: 'John Smith',
+    lastMessage: 'Thank you for the session today, feeling much better!',
+    timestamp: '2 min ago',
+    type: 'manual',
+    platform: 'whatsapp',
+    unread: false,
+  },
+  {
+    id: '2',
+    clientName: 'Sarah Wilson',
+    lastMessage: 'AI: Our next available slot is tomorrow at 3 PM.',
+    timestamp: '15 min ago',
+    type: 'ai',
+    platform: 'sms',
+    unread: true,
+  },
+  {
+    id: '3',
+    clientName: 'Mike Johnson',
+    lastMessage: 'Booking confirmed for Thursday 2 PM',
+    timestamp: '1 hour ago',
+    type: 'booking',
+    platform: 'email',
+    unread: false,
+  },
+  {
+    id: '4',
+    clientName: 'Emma Davis',
+    lastMessage: 'Voice call: Asking about availability this week',
+    timestamp: '2 hours ago',
+    type: 'voice',
+    platform: 'sms',
+    unread: true,
+  },
+];
 
-  const conversations: Conversation[] = [
-    {
-      id: '1',
-      clientName: 'John Smith',
-      lastMessage: 'Thank you for the session today, feeling much better!',
-      timestamp: '2 min ago',
-      type: 'manual',
-      platform: 'whatsapp',
-      unread: false,
-    },
-    {
-      id: '2',
-      clientName: 'Sarah Wilson',
-      lastMessage: 'AI: Our next available slot is tomorrow at 3 PM.',
-      timestamp: '15 min ago',
-      type: 'ai',
-      platform: 'sms',
-      unread: true,
-    },
-    {
-      id: '3',
-      clientName: 'Mike Johnson',
-      lastMessage: 'Booking confirmed for Thursday 2 PM',
-      timestamp: '1 hour ago',
-      type: 'booking',
-      platform: 'email',
-      unread: false,
-    },
-    {
-      id: '4',
-      clientName: 'Emma Davis',
-      lastMessage: 'Voice call: Asking about availability this week',
-      timestamp: '2 hours ago',
-      type: 'voice',
-      platform: 'sms',
-      unread: true,
-    },
-  ];
+function relativeTime(iso: string | null): string {
+  if (!iso) return '';
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const d = Math.round(hr / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+export default function InboxScreen() {
+  const { user, isSupabaseConfigured } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [conversations, setConversations] = useState<InboxItem[]>(
+    isSupabaseConfigured ? [] : DEMO_CONVERSATIONS
+  );
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return;
+    let active = true;
+    setLoading(true);
+    threadService
+      .listForInbox(user.id)
+      .then((rows) => {
+        if (!active) return;
+        setConversations(
+          rows.map((t) => ({
+            id: t.id,
+            clientName: t.clientHandle,
+            lastMessage: t.lastMessage,
+            timestamp: relativeTime(t.lastActivityAt),
+            type: t.kind,
+            platform: t.channel,
+            unread: t.unread,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, isSupabaseConfigured]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -122,7 +172,12 @@ export default function InboxScreen() {
       </View>
 
       <ScrollView style={styles.conversationList}>
-        {filteredConversations.map((conversation) => (
+        {loading ? (
+          <ActivityIndicator style={styles.loader} color="#4f46e5" />
+        ) : filteredConversations.length === 0 ? (
+          <Text style={styles.emptyText}>No conversations yet.</Text>
+        ) : (
+          filteredConversations.map((conversation) => (
           <TouchableOpacity
             key={conversation.id}
             style={[
@@ -162,7 +217,8 @@ export default function InboxScreen() {
             
             {conversation.unread && <View style={styles.unreadIndicator} />}
           </TouchableOpacity>
-        ))}
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -204,6 +260,15 @@ const styles = StyleSheet.create({
   conversationList: {
     flex: 1,
     padding: 16,
+  },
+  loader: {
+    marginTop: 48,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9ca3af',
+    marginTop: 48,
+    fontSize: 15,
   },
   conversationCard: {
     backgroundColor: 'white',

@@ -35,3 +35,8 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 .vercel
+
+# Override a global ~/.gitignore_global rule that excludes `lib/`.
+# This project keeps source in lib/ (Supabase client, data layer), so re-include it.
+!lib/
+!lib/**

@@ -1,20 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
   Clock,
   User,
   Calendar as CalendarIcon
 } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { bookingService } from '@/lib/data';
 
 interface Appointment {
   id: string;
@@ -22,38 +25,90 @@ interface Appointment {
   service: string;
   time: string;
   duration: string;
-  status: 'confirmed' | 'pending' | 'cancelled';
+  status: string;
+  startISO: string | null;
+}
+
+// Demo-mode fallback (no Supabase env): keeps the public web demo populated.
+const DEMO_APPOINTMENTS: Appointment[] = [
+  { id: '1', clientName: 'John Smith', service: 'Deep Tissue Massage', time: '10:00 AM', duration: '90 min', status: 'confirmed', startISO: null },
+  { id: '2', clientName: 'Sarah Wilson', service: 'Swedish Massage', time: '2:00 PM', duration: '60 min', status: 'pending', startISO: null },
+  { id: '3', clientName: 'Mike Johnson', service: 'Sports Massage', time: '4:30 PM', duration: '75 min', status: 'confirmed', startISO: null },
+];
+
+function channelLabel(channel: string): string {
+  switch (channel) {
+    case 'whatsapp': return 'WhatsApp session';
+    case 'telegram': return 'Telegram session';
+    case 'email': return 'Email session';
+    case 'gv': return 'Call session';
+    default: return 'Session';
+  }
+}
+
+function formatTime(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function isToday(iso: string | null): boolean {
+  if (!iso) return true; // demo rows have no date; always show
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
 }
 
 export default function CalendarScreen() {
+  const { user, isSupabaseConfigured } = useAuth();
   const [selectedDate] = useState(new Date());
+  const [appointments, setAppointments] = useState<Appointment[]>(
+    isSupabaseConfigured ? [] : DEMO_APPOINTMENTS
+  );
+  const [loading, setLoading] = useState(isSupabaseConfigured);
 
-  const appointments: Appointment[] = [
-    {
-      id: '1',
-      clientName: 'John Smith',
-      service: 'Deep Tissue Massage',
-      time: '10:00 AM',
-      duration: '90 min',
-      status: 'confirmed',
-    },
-    {
-      id: '2',
-      clientName: 'Sarah Wilson',
-      service: 'Swedish Massage',
-      time: '2:00 PM',
-      duration: '60 min',
-      status: 'pending',
-    },
-    {
-      id: '3',
-      clientName: 'Mike Johnson',
-      service: 'Sports Massage',
-      time: '4:30 PM',
-      duration: '75 min',
-      status: 'confirmed',
-    },
-  ];
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return;
+    let active = true;
+    setLoading(true);
+    bookingService
+      .listUpcoming(user.id)
+      .then((rows) => {
+        if (!active) return;
+        setAppointments(
+          rows.map((b) => ({
+            id: b.id,
+            clientName: b.clientHandle,
+            service: channelLabel(b.channel),
+            time: formatTime(b.start),
+            duration: b.durationMinutes ? `${b.durationMinutes} min` : '',
+            status: b.status,
+            startISO: b.start,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, isSupabaseConfigured]);
+
+  const todaysAppointments = appointments.filter((a) => isToday(a.startISO));
+  const totalMinutes = todaysAppointments.reduce((sum, a) => {
+    const n = parseInt(a.duration, 10);
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const uniqueClients = new Set(todaysAppointments.map((a) => a.clientName)).size;
 
   const timeSlots = [
     '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
@@ -64,10 +119,13 @@ export default function CalendarScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
+      case 'completed':
         return '#10b981';
       case 'pending':
+      case 'tentative':
         return '#f59e0b';
       case 'cancelled':
+      case 'no_show':
         return '#ef4444';
       default:
         return '#6b7280';
@@ -108,28 +166,37 @@ export default function CalendarScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <CalendarIcon size={20} color="#3b82f6" />
-            <Text style={styles.summaryText}>3 appointments today</Text>
+            <Text style={styles.summaryText}>
+              {todaysAppointments.length} appointment{todaysAppointments.length === 1 ? '' : 's'} today
+            </Text>
           </View>
           <View style={styles.summaryItem}>
             <Clock size={20} color="#10b981" />
-            <Text style={styles.summaryText}>225 minutes booked</Text>
+            <Text style={styles.summaryText}>{totalMinutes} minutes booked</Text>
           </View>
           <View style={styles.summaryItem}>
             <User size={20} color="#8b5cf6" />
-            <Text style={styles.summaryText}>3 clients scheduled</Text>
+            <Text style={styles.summaryText}>
+              {uniqueClients} client{uniqueClients === 1 ? '' : 's'} scheduled
+            </Text>
           </View>
         </View>
 
         <View style={styles.appointmentsContainer}>
           <Text style={styles.sectionTitle}>{"Today's Schedule"}</Text>
-          
-          {appointments.map((appointment) => (
+
+          {loading ? (
+            <ActivityIndicator style={styles.loader} color="#4f46e5" />
+          ) : todaysAppointments.length === 0 ? (
+            <Text style={styles.emptyText}>No appointments scheduled today.</Text>
+          ) : (
+            todaysAppointments.map((appointment) => (
             <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
               <View style={styles.appointmentTime}>
                 <Text style={styles.timeText}>{appointment.time}</Text>
                 <Text style={styles.durationText}>{appointment.duration}</Text>
               </View>
-              
+
               <View style={styles.appointmentDetails}>
                 <View style={styles.appointmentHeader}>
                   <Text style={styles.clientName}>{appointment.clientName}</Text>
@@ -148,14 +215,15 @@ export default function CalendarScreen() {
                 <Text style={styles.serviceText}>{appointment.service}</Text>
               </View>
             </TouchableOpacity>
-          ))}
+            ))
+          )}
         </View>
 
         <View style={styles.availabilityContainer}>
           <Text style={styles.sectionTitle}>Available Time Slots</Text>
           <View style={styles.timeSlotGrid}>
             {timeSlots.map((slot, index) => {
-              const isBooked = appointments.some(apt => apt.time === slot);
+              const isBooked = todaysAppointments.some(apt => apt.time === slot);
               return (
                 <TouchableOpacity
                   key={index}
@@ -256,6 +324,14 @@ const styles = StyleSheet.create({
   },
   appointmentsContainer: {
     margin: 16,
+  },
+  loader: {
+    marginTop: 32,
+  },
+  emptyText: {
+    color: '#9ca3af',
+    fontSize: 15,
+    paddingVertical: 16,
   },
   sectionTitle: {
     fontSize: 20,
