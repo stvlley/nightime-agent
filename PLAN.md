@@ -99,12 +99,20 @@ public web portal. Both read/write the same Supabase data.
 - [x] Make `ai-settings` FAQ editor persist to the `faq` table (commit 4f3a91c)
 - [x] Retire dead `types/index.ts` (commit 4f3a91c)
 
-### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_
-- [ ] Add provider/profile public fields: slug, display name, bio, services+prices,
-      published flag, (optional) age-gate ack
-- [ ] Public-read RLS for PUBLISHED profiles only; keep all else private
-- [ ] Booking table: allow a nullable payment/deposit record (no checkout yet)
-- [ ] Multi-tenant-ready: everything keyed by provider id; single provider seeded now
+### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_ ✅ DONE (commit 8f9e8a2)
+- [x] profiles public fields: slug (unique+format), display_name, headline, bio,
+      avatar_url, location_label, published, age_gate_required
+- [x] Public read via VIEW `public_provider_profiles` (column-subset), NOT a row policy
+      on profiles — avoids leaking private columns. anon granted the view only.
+- [x] services + availability relational tables; public-read RLS (active rows of
+      published providers only)
+- [x] bookings payment columns (all nullable; no checkout)
+- [x] Keyed by provider id; seed publishes provider + services + availability
+- [x] Database TS types updated; typecheck passes; RLS verified anon pos+neg
+- **Gotcha for later phases:** apply migrations via the SESSION pooler (port 5432),
+  NOT the transaction pooler (6543 in DATABASE_URL) — 6543 breaks the Supabase CLI's
+  prepared statements ("prepared statement already exists"). Use
+  `supabase db push --db-url "$(echo $DATABASE_URL | sed 's/:6543/:5432/')"`.
 
 ### Phase 2 — Customer portal  _(new Next.js app, shares Supabase; $0 on Vercel Hobby)_
 - [ ] Scaffold Next.js app (App Router) + shared Supabase client + shared types strategy

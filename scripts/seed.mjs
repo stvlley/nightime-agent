@@ -79,12 +79,53 @@ async function main() {
   console.log(`  user id: ${userId}`);
 
   // Clear existing rows for this user (idempotent re-seed).
-  // Order respects FKs: bookings + messages reference threads.
+  // Order respects FKs: bookings + messages reference threads; services/availability
+  // are keyed by provider_id.
   await rest(`bookings?user_id=eq.${userId}`, { method: 'DELETE' });
   await rest(`messages?user_id=eq.${userId}`, { method: 'DELETE' });
   await rest(`threads?user_id=eq.${userId}`, { method: 'DELETE' });
   await rest(`faq?user_id=eq.${userId}`, { method: 'DELETE' });
+  await rest(`services?provider_id=eq.${userId}`, { method: 'DELETE' });
+  await rest(`availability?provider_id=eq.${userId}`, { method: 'DELETE' });
   console.log('  cleared existing demo rows');
+
+  // Publish the provider's public profile (the portal surface).
+  await rest(`profiles?id=eq.${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      slug: 'nightime-demo',
+      display_name: 'Nightime Demo',
+      headline: 'Massage & bodywork',
+      bio: 'Relaxation and deep tissue by appointment. Discreet, professional, by-appointment only.',
+      location_label: 'Downtown',
+      published: true,
+    }),
+  });
+  console.log('  published provider profile (slug: nightime-demo)');
+
+  // Services
+  await rest('services', {
+    method: 'POST',
+    body: JSON.stringify([
+      { provider_id: userId, name: 'Swedish Massage (60 min)', duration_minutes: 60, price_cents: 8000, sort_order: 1 },
+      { provider_id: userId, name: 'Deep Tissue (90 min)', duration_minutes: 90, price_cents: 12000, sort_order: 2 },
+      { provider_id: userId, name: 'Hot Stone (75 min)', duration_minutes: 75, price_cents: 11000, sort_order: 3 },
+    ]),
+  });
+  console.log('  inserted 3 services');
+
+  // Availability (Tue–Sat, 9–5, ET)
+  await rest('availability', {
+    method: 'POST',
+    body: JSON.stringify([2, 3, 4, 5, 6].map((day_of_week) => ({
+      provider_id: userId,
+      day_of_week,
+      start_time: '09:00',
+      end_time: '17:00',
+      timezone: 'America/New_York',
+    }))),
+  });
+  console.log('  inserted 5 availability windows');
 
   // FAQ
   await rest('faq', {

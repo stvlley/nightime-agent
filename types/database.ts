@@ -13,6 +13,15 @@ export interface Database {
           fcm_token: string | null;
           created_at: string | null;
           updated_at: string | null;
+          // Public portal fields (Phase 1.5)
+          slug: string | null;
+          display_name: string | null;
+          headline: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          location_label: string | null;
+          published: boolean;
+          age_gate_required: boolean;
         };
         Insert: {
           id: string;
@@ -25,8 +34,66 @@ export interface Database {
           fcm_token?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
+          slug?: string | null;
+          display_name?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          location_label?: string | null;
+          published?: boolean;
+          age_gate_required?: boolean;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+      };
+      services: {
+        Row: {
+          id: string;
+          provider_id: string;
+          name: string;
+          description: string | null;
+          duration_minutes: number;
+          price_cents: number;
+          currency: string;
+          active: boolean;
+          sort_order: number;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider_id: string;
+          name: string;
+          description?: string | null;
+          duration_minutes?: number;
+          price_cents?: number;
+          currency?: string;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['services']['Insert']>;
+      };
+      availability: {
+        Row: {
+          id: string;
+          provider_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          timezone: string;
+          active: boolean;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          timezone?: string;
+          active?: boolean;
+          created_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['availability']['Insert']>;
       };
       threads: {
         Row: {
@@ -92,6 +159,17 @@ export interface Database {
           end: string | null;
           status: string | null;
           created_at: string | null;
+          // Portal + payment fields (Phase 1.5)
+          service_id: string | null;
+          client_name: string | null;
+          client_contact: string | null;
+          source: string | null;
+          amount_cents: number | null;
+          deposit_cents: number | null;
+          currency: string | null;
+          payment_status: string | null;
+          payment_provider: string | null;
+          payment_ref: string | null;
         };
         Insert: {
           id?: string;
@@ -102,6 +180,16 @@ export interface Database {
           end?: string | null;
           status?: string | null;
           created_at?: string | null;
+          service_id?: string | null;
+          client_name?: string | null;
+          client_contact?: string | null;
+          source?: string | null;
+          amount_cents?: number | null;
+          deposit_cents?: number | null;
+          currency?: string | null;
+          payment_status?: string | null;
+          payment_provider?: string | null;
+          payment_ref?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
       };
