@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,75 +8,104 @@ import {
   Switch,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bot, Plus, CreditCard as Edit, Trash2, Shield } from 'lucide-react-native';
+import { Bot, Plus, Trash2, Shield } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { faqService, FaqItem } from '@/lib/data';
 
-interface FAQ {
-  id: string;
-  trigger: string;
-  response: string;
-  category: string;
-}
+// Demo-mode fallback (no Supabase env): keeps the public web demo populated.
+const DEMO_FAQS: FaqItem[] = [
+  { id: '1', trigger: 'What are your rates?', reply: 'Our rates are: 60 min - $80, 90 min - $120. Would you like to book a session?', enabled: true },
+  { id: '2', trigger: 'What services do you offer?', reply: 'We offer Swedish, Deep Tissue, Sports, and Hot Stone. Each session is customized to your needs.', enabled: true },
+  { id: '3', trigger: 'How do I book?', reply: "Just reply with your preferred time and date. I'll check availability and confirm.", enabled: true },
+];
 
 export default function AISettingsScreen() {
+  const { user, isSupabaseConfigured } = useAuth();
   const [aiEnabled, setAiEnabled] = useState(true);
   const [moderationLevel, setModerationLevel] = useState('Medium');
   const [newTrigger, setNewTrigger] = useState('');
   const [newResponse, setNewResponse] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [faqs, setFaqs] = useState<FAQ[]>([
-    {
-      id: '1',
-      trigger: 'What are your rates?',
-      response: 'Our massage rates are: 60 min - $80, 90 min - $120. Would you like to book a session?',
-      category: 'Pricing',
-    },
-    {
-      id: '2',
-      trigger: 'What services do you offer?',
-      response: 'We offer Swedish, Deep Tissue, Sports, and Hot Stone massages. Each session is customized to your needs.',
-      category: 'Services',
-    },
-    {
-      id: '3',
-      trigger: 'How do I book?',
-      response: 'You can book by replying with your preferred time and date. I\'ll check availability and confirm your appointment.',
-      category: 'Booking',
-    },
-  ]);
+  const [faqs, setFaqs] = useState<FaqItem[]>(isSupabaseConfigured ? [] : DEMO_FAQS);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return;
+    let active = true;
+    setLoading(true);
+    faqService
+      .list(user.id)
+      .then((rows) => {
+        if (active) setFaqs(rows);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, isSupabaseConfigured]);
 
   const moderationLevels = ['Low', 'Medium', 'Strict'];
 
-  const handleAddFAQ = () => {
+  const handleAddFAQ = async () => {
     if (!newTrigger || !newResponse) {
       Alert.alert('Error', 'Please fill in both trigger and response');
       return;
     }
 
-    const newFAQ: FAQ = {
-      id: Date.now().toString(),
-      trigger: newTrigger,
-      response: newResponse,
-      category: 'Custom',
-    };
+    // Demo mode: keep it local only.
+    if (!isSupabaseConfigured || !user) {
+      setFaqs([
+        ...faqs,
+        { id: Date.now().toString(), trigger: newTrigger, reply: newResponse, enabled: true },
+      ]);
+      setNewTrigger('');
+      setNewResponse('');
+      setShowAddForm(false);
+      return;
+    }
 
-    setFaqs([...faqs, newFAQ]);
-    setNewTrigger('');
-    setNewResponse('');
-    setShowAddForm(false);
+    setSaving(true);
+    try {
+      const created = await faqService.create(user.id, newTrigger, newResponse);
+      setFaqs([...faqs, created]);
+      setNewTrigger('');
+      setNewResponse('');
+      setShowAddForm(false);
+    } catch (e: any) {
+      Alert.alert('Could not save', e?.message ?? 'Failed to save FAQ');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteFAQ = (id: string) => {
-    Alert.alert(
-      'Delete FAQ',
-      'Are you sure you want to delete this FAQ?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', onPress: () => setFaqs(faqs.filter(faq => faq.id !== id)) },
-      ]
-    );
+    Alert.alert('Delete FAQ', 'Are you sure you want to delete this FAQ?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const prev = faqs;
+          setFaqs(faqs.filter((faq) => faq.id !== id)); // optimistic
+          if (isSupabaseConfigured) {
+            try {
+              await faqService.remove(id);
+            } catch (e: any) {
+              setFaqs(prev); // rollback
+              Alert.alert('Could not delete', e?.message ?? 'Failed to delete FAQ');
+            }
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -397,6 +426,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  faqCardDisabled: {
+    opacity: 0.55,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loader: {
+    marginTop: 24,
+  },
+  emptyText: {
+    color: '#9ca3af',
+    fontSize: 15,
+    paddingVertical: 16,
   },
   faqHeader: {
     flexDirection: 'row',
