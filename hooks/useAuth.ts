@@ -96,6 +96,15 @@ export function useAuth() {
             fcm_token: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            // Portal fields (Phase 1.5) — demo mode has no public profile.
+            slug: null,
+            display_name: businessName,
+            headline: null,
+            bio: null,
+            avatar_url: null,
+            location_label: null,
+            published: false,
+            age_gate_required: true,
           },
         };
         await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
@@ -150,6 +159,15 @@ export function useAuth() {
             fcm_token: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            // Portal fields (Phase 1.5) — demo mode has no public profile.
+            slug: null,
+            display_name: 'Demo Business',
+            headline: null,
+            bio: null,
+            avatar_url: null,
+            location_label: null,
+            published: false,
+            age_gate_required: true,
           },
         };
         await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));

@@ -40,3 +40,6 @@ supabase/.temp/
 # This project keeps source in lib/ (Supabase client, data layer), so re-include it.
 !lib/
 !lib/**
+
+# Claude Code harness artifacts
+.claude/
