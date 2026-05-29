@@ -96,8 +96,8 @@ public web portal. Both read/write the same Supabase data.
 ### Phase 1 — Wire provider UI to real data  _(remote Supabase, free; no Docker)_
 - [x] Replace mock arrays (inbox, dashboard stats, calendar) with live Supabase reads (commit 103f041)
 - [x] Fix global-gitignore excluding `lib/` (lib/supabase.ts had never been committed)
-- [ ] Make `ai-settings` FAQ editor persist to the `faq` table (faqService ready)
-- [ ] Converge screens onto canonical types; retire `types/index.ts`
+- [x] Make `ai-settings` FAQ editor persist to the `faq` table (commit 4f3a91c)
+- [x] Retire dead `types/index.ts` (commit 4f3a91c)
 
 ### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_
 - [ ] Add provider/profile public fields: slug, display name, bio, services+prices,

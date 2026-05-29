@@ -212,24 +212,30 @@ export default function AISettingsScreen() {
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} onPress={handleAddFAQ}>
-                  <Text style={styles.saveButtonText}>Add FAQ</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && styles.buttonDisabled]}
+                  onPress={handleAddFAQ}
+                  disabled={saving}
+                >
+                  <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Add FAQ'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {faqs.map((faq) => (
-            <View key={faq.id} style={styles.faqCard}>
+          {loading ? (
+            <ActivityIndicator style={styles.loader} color="#4f46e5" />
+          ) : faqs.length === 0 ? (
+            <Text style={styles.emptyText}>No FAQs yet. Add one above.</Text>
+          ) : (
+            faqs.map((faq) => (
+            <View key={faq.id} style={[styles.faqCard, !faq.enabled && styles.faqCardDisabled]}>
               <View style={styles.faqHeader}>
                 <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryText}>{faq.category}</Text>
+                  <Text style={styles.categoryText}>{faq.enabled ? 'ACTIVE' : 'OFF'}</Text>
                 </View>
                 <View style={styles.faqActions}>
-                  <TouchableOpacity style={styles.faqActionButton}>
-                    <Edit size={16} color="#6b7280" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.faqActionButton}
                     onPress={() => handleDeleteFAQ(faq.id)}
                   >
@@ -238,9 +244,10 @@ export default function AISettingsScreen() {
                 </View>
               </View>
               <Text style={styles.faqTrigger}>{faq.trigger}</Text>
-              <Text style={styles.faqResponse}>{faq.response}</Text>
+              <Text style={styles.faqResponse}>{faq.reply}</Text>
             </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
