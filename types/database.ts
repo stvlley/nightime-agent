@@ -168,6 +168,11 @@ export interface Database {
           ai_generated: boolean | null;
           ai_confidence: number | null;
           created_at: string | null;
+          // Agent runtime / approval queue (Phase 2)
+          approval_status: ApprovalStatus | null;
+          response_source: ResponseSource | null;
+          reply_to_message_id: string | null;
+          delivered_at: string | null;
         };
         Insert: {
           id?: string;
@@ -183,8 +188,64 @@ export interface Database {
           ai_generated?: boolean | null;
           ai_confidence?: number | null;
           created_at?: string | null;
+          approval_status?: ApprovalStatus | null;
+          response_source?: ResponseSource | null;
+          reply_to_message_id?: string | null;
+          delivered_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['messages']['Insert']>;
+      };
+      agent_channels: {
+        Row: {
+          id: string;
+          user_id: string;
+          channel: string;
+          external_account_id: string | null;
+          bot_token: string | null;
+          webhook_secret: string;
+          active: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          channel: string;
+          external_account_id?: string | null;
+          bot_token?: string | null;
+          webhook_secret: string;
+          active?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['agent_channels']['Insert']>;
+      };
+      agent_events: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          thread_id: string | null;
+          message_id: string | null;
+          kind: string;
+          source: string | null;
+          intent: string | null;
+          confidence: number | null;
+          detail: Record<string, unknown> | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          thread_id?: string | null;
+          message_id?: string | null;
+          kind: string;
+          source?: string | null;
+          intent?: string | null;
+          confidence?: number | null;
+          detail?: Record<string, unknown> | null;
+          created_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['agent_events']['Insert']>;
       };
       bookings: {
         Row: {
@@ -283,6 +344,17 @@ export type Booking = Database['public']['Tables']['bookings']['Row'];
 export type Service = Database['public']['Tables']['services']['Row'];
 export type Availability = Database['public']['Tables']['availability']['Row'];
 export type ProviderPreferences = Database['public']['Tables']['provider_preferences']['Row'];
+export type AgentChannel = Database['public']['Tables']['agent_channels']['Row'];
+export type AgentEvent = Database['public']['Tables']['agent_events']['Row'];
+
+export type ApprovalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'sent'
+  | 'auto_sent'
+  | 'failed';
+export type ResponseSource = 'faq' | 'llm' | 'fallback';
 
 export interface ThreadWithMessages extends Thread {
   messages: Message[];

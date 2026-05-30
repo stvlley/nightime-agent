@@ -41,6 +41,21 @@ export interface DashboardStats {
   responseRate: number; // 0-100
 }
 
+export interface PendingDraft {
+  /** The outbound draft message id (the row whose approval_status is 'pending'). */
+  id: string;
+  threadId: string;
+  clientHandle: string;
+  channel: string;
+  /** The client message this draft answers, when known. */
+  inboundText: string | null;
+  draftText: string;
+  intent: string | null;
+  confidence: number | null;
+  source: string | null;
+  createdAt: string | null;
+}
+
 function startOfTodayISO(): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -189,6 +204,71 @@ export const faqService = {
   async setEnabled(id: string, enabled: boolean): Promise<void> {
     if (!supabase) throw new Error('Supabase is not configured.');
     const { error } = await supabase.from('faq').update({ enabled }).eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const draftService = {
+  /** Agent drafts awaiting the provider's approval, newest first. */
+  async listPending(userId: string): Promise<PendingDraft[]> {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select(
+        'id, text, ai_label, ai_confidence, response_source, created_at, thread_id, reply_to_message_id, threads(client_handle, channel)'
+      )
+      .eq('user_id', userId)
+      .eq('direction', 'out')
+      .eq('approval_status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as any[];
+
+    // Resolve the inbound text each draft answers in one follow-up query.
+    const replyIds = rows.map((r) => r.reply_to_message_id).filter(Boolean) as string[];
+    const inboundById = new Map<string, string>();
+    if (replyIds.length) {
+      const { data: inbound } = await supabase
+        .from('messages')
+        .select('id, text')
+        .in('id', replyIds);
+      for (const m of inbound ?? []) inboundById.set(m.id, m.text ?? '');
+    }
+
+    return rows.map((r) => ({
+      id: r.id,
+      threadId: r.thread_id,
+      clientHandle: r.threads?.client_handle ?? 'Unknown',
+      channel: r.threads?.channel ?? '',
+      inboundText: r.reply_to_message_id ? inboundById.get(r.reply_to_message_id) ?? null : null,
+      draftText: r.text ?? '',
+      intent: r.ai_label ?? null,
+      confidence: r.ai_confidence ?? null,
+      source: r.response_source ?? null,
+      createdAt: r.created_at ?? null,
+    }));
+  },
+
+  /** Approve a draft and deliver it via the channel (Edge Function `send-draft`). */
+  async approveAndSend(messageId: string): Promise<void> {
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { data, error } = await supabase.functions.invoke('send-draft', {
+      body: { messageId },
+    });
+    if (error) throw error;
+    if (data && (data as any).error) throw new Error(String((data as any).error));
+  },
+
+  /** Reject a draft so it leaves the queue and is never sent. */
+  async reject(messageId: string): Promise<void> {
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { error } = await supabase
+      .from('messages')
+      .update({ approval_status: 'rejected' })
+      .eq('id', messageId);
     if (error) throw error;
   },
 };

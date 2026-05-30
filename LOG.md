@@ -203,6 +203,53 @@
   Codex session, so visual click-through UAT still needs to be done manually in
   the running web app/device session.
 
+## 2026-05-30 (Phase 2 — agent runtime)
+
+- Built the first server tier: the message loop the product is named for. Until
+  now everything was UI + schema + deterministic client stubs; there was no
+  compute and `utils/bookingAgent.ts` / `channelConnectors.ts` (~1.5k lines) were
+  dead, POSTing to endpoints that never existed.
+- **Edge Functions** (`supabase/functions/`, Deno):
+  - `telegram-webhook` (verify_jwt=false): authenticates the inbound call by the
+    per-provider `X-Telegram-Bot-Api-Secret-Token`, resolves the owning provider,
+    persists the inbound message, runs the free FAQ pre-filter, falls back to the
+    cheap model only on a miss, and writes a draft into the approval queue (or
+    auto-sends when the provider opted into `auto_eligible` and the FAQ match is
+    confident + clean).
+  - `send-draft` (verify_jwt=true): the provider approves a pending draft from the
+    app; it verifies ownership, sends via the bot, and marks it `sent`.
+- **Shared pure logic** lives in `_shared/agentLogic.ts` (normalize/tokenize,
+  `matchFaq`, `classifyIntent`, `screenContent`, `decideResponse`) and
+  `_shared/telegramParser.ts`. Dependency-free (no Deno/Supabase/RN) so the same
+  code runs in the Edge Function and under vitest. IO is isolated in
+  `_shared/telegram.ts` (send) and `_shared/llm.ts` (Anthropic, gated on
+  `ANTHROPIC_API_KEY`, model `claude-haiku-4-5`).
+- **Policy:** the free pre-filter handles most messages at $0; the model is only
+  called on an FAQ miss and only when a key is set (otherwise a deterministic
+  holding reply). Only confident FAQ answers can auto-send; LLM/fallback drafts
+  always require human approval — keeps the AI-disclosure / impersonation risk
+  behind a human gate for v1.
+- **Schema** (`20260530030000_agent_runtime.sql`): approval-queue columns on
+  `messages` (`approval_status`, `response_source`, `reply_to_message_id`,
+  `delivered_at`), `agent_channels` (bot creds + webhook secret, owner-RLS,
+  secrets only read server-side), and `agent_events` (observability/audit log).
+  `types/database.ts` updated to match; typecheck clean.
+- **Provider app:** `lib/data.ts` gains `draftService` (listPending /
+  approveAndSend via `send-draft` / reject); the Inbox renders a **Needs your
+  approval** section above Conversations with Approve & send / Reject and inline
+  error surfacing. Demo mode shows nothing (no Supabase).
+- **Onboarding:** `scripts/connect-telegram.mjs` validates a bot token, upserts
+  the `agent_channels` row with a generated secret, and calls Telegram
+  `setWebhook` at the deployed function. `supabase/functions/README.md` documents
+  the deploy + try-the-loop steps.
+- **Plumbing:** `config.toml` sets per-function `verify_jwt`; `tsconfig.json` and
+  `eslint.config.js` exclude `supabase/functions` (Deno toolchain, not Expo);
+  `.env.example` documents the server-side-only secrets (never `EXPO_PUBLIC_`).
+- **Verification:** `npm run typecheck`, `npm test` (45 tests, +23 new for
+  `agentLogic` and `telegramParser`), `npm run lint`, and `npm run build:web` all
+  pass. Live UAT (deploy + real bot message) still pending — not possible in this
+  no-Docker session.
+
 ### Next steps
 
 1. Manual UAT on web at `http://localhost:8082`:
