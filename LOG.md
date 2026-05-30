@@ -277,3 +277,37 @@
      tokens
    - refresh app icon/favicon for the night/owl brand
    - keep removing stale/legacy routes and Bolt remnants as they surface.
+
+## 2026-05-30 (Product direction alignment — tool, not marketplace)
+
+- Aligned the product docs with partner direction: **Nightime Agent is a
+  communication tool, not a marketplace. Not the marketplace first.** The
+  product is the messaging/communication piece on the provider's own channels;
+  the provider and client transact off-platform.
+- **Rationale captured (legal/regulatory):** as long as we sell no services — no
+  money for a service through us, no booking-of-record, no public service
+  listing — "we are a tool then we are fine," and we stay out of
+  marketplace/intermediary regulation (notably Germany/EU). Going the
+  marketplace way pulls that burden in now.
+- **Strategy captured:** launch the comms piece → get providers hooked across
+  the sites they already use → then a deliberate fork: **sell the tool to
+  companies (bidding war)** *or* **add a marketplace** (and accept the German/EU
+  work). Both are later decisions; the default path stays the comms tool.
+- **Defined "the marketplace line"** in `CORE_FEATURES.md`: the public portal
+  `/p/[slug]`, the booking-of-record flow, and **payments** are the line —
+  payments (money for a service through us) is the brightest part of it. They
+  stay schema-ready for optionality but are **gated**: do not build until an
+  explicit marketplace decision.
+- **Edits:**
+  - `CORE_FEATURES.md`: new "Product positioning & strategy" + "The marketplace
+    line" sections; §3 (customer portal) and §3.4 (payments) re-headed as GATED
+    marketplace-fork work; §5.5 compliance now leads with tool-vs-marketplace as
+    the master lever; §6 non-goals leads with "being a marketplace."
+  - `PLAN.md`: rewrote "What the app is"; added Product positioning + Marketplace
+    fork rows to the Decisions table; compliance section leads with the
+    tool/marketplace lever; **Phase 3 (Customer portal) marked ⛔ GATED** — the
+    default roadmap is Phase 2 → Phase 4 → Phase 5, Phase 3 only after an explicit
+    decision to become a marketplace.
+- **No code/schema changes.** Payment columns and portal schema remain in place
+  (dormant) so optionality for the marketplace fork is preserved. Their presence
+  does not change positioning as long as no money for a service moves through us.

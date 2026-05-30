@@ -5,15 +5,27 @@
 
 ## What the app is
 
-Nightime Agent starts as a **message-provider assistant**. It helps independent
-providers handle inbound client conversations from messaging channels: common
-questions, boundaries, tone, approval mode, follow-ups, and threads that need
-human attention.
+Nightime Agent is a **communication tool, not a marketplace** — a
+**message-provider assistant**. It helps independent providers handle inbound
+client conversations from messaging channels: common questions, boundaries,
+tone, approval mode, follow-ups, and threads that need human attention. The
+provider and client transact however they already do, **off our platform**.
+
+**Not the marketplace first.** Because we don't sell services — no money for a
+service moves through us, we don't own the booking-of-record, we don't publicly
+list services — "we are a tool then we are fine." That keeps us out of
+marketplace/intermediary regulation (notably Germany/EU); going the marketplace
+way would pull all of that in now. The strategy is: launch the communication
+piece, get providers hooked across the sites they already use, then choose a
+later fork — **sell the tool to companies / create a bidding war**, *or* **add a
+marketplace** (accepting the German/EU work that comes with it). Both are
+deliberate later decisions; the default path stays the communication tool.
 
 Booking, availability, and public portal concepts remain in the schema and
-longer-term roadmap, but they are not the center of the first usable setup
-experience. V1 should feel like onboarding a messaging assistant, not
-configuring a full business operations suite.
+longer-term roadmap **as the gated marketplace fork** (see Phase 3), but they are
+not the center of the first usable setup experience and must not ship by default.
+V1 should feel like onboarding a messaging assistant, not configuring a full
+business operations suite.
 
 ## Current state (discovery)
 
@@ -73,6 +85,8 @@ message setup and approval, not public portal readiness.
 
 | Decision | Choice | Why |
 |---|---|---|
+| **Product positioning** | **Communication tool, not a marketplace. No sales of services.** | Staying a pure messaging tool keeps us out of marketplace/intermediary regulation (Germany/EU). Marketplace is a deliberate later fork, not the default. (Partner-aligned direction.) |
+| **Marketplace fork** | **Gated — only after an explicit decision** | Launch comms → hook providers → then either sell the tool to companies (bidding war) *or* add a marketplace. Portal/booking/payments stay schema-ready but not built by default. |
 | Backend compute | **Supabase Edge Functions** | Next to data+auth; free `pg_cron`; one free platform; deploy only at launch |
 | Dev loop | **Local Supabase stack (needs Docker)** → fall back to remote (free) until Docker is set up | $0 |
 | First channel | **Telegram** | Free API, no per-message fees, simple webhook |
@@ -88,9 +102,15 @@ message setup and approval, not public portal readiness.
 
 ## Risk / compliance constraints (named, not blockers)
 
+- **Tool vs. marketplace is the master compliance lever.** As long as we sell no
+  services (no money for a service through us, no booking-of-record, no public
+  service listing), we are a tool and avoid marketplace/intermediary regulation
+  (Germany/EU). The marketplace fork (Phase 3) opts us into that burden — it is a
+  deliberate decision, not a drift.
 - A **public** portal for massage/companion services raises exposure the private
   provider app did not: public listing content, **age-gating**, and host/processor
   **ToS restrictions** on adult/companion services (many payment processors ban it).
+  These only apply once we choose the marketplace fork.
 - Agent posing as the provider → **AI-disclosure** question (clients may not know
   they're talking to a bot) + anti-spam law for any outbound.
 - Decide age-gate + disclosure copy before the portal/agent go live.
@@ -224,12 +244,17 @@ message setup and approval, not public portal readiness.
 - [ ] Notifications for inbound messages needing provider attention.
 - [ ] Channel-connect UI in Settings (currently script-only).
 
-### Phase 3 — Customer portal  _(new Next.js app, shares Supabase; $0 on Vercel Hobby)_
+### Phase 3 — Customer portal  ⛔ GATED (marketplace fork — do NOT build by default)
+> This phase **crosses the tool→marketplace line** (public listing + booking +
+> payments = sales of services = marketplace = German/EU regulatory burden). It is
+> kept here schema-ready to preserve optionality, but it ships **only** after an
+> explicit decision to become a marketplace. The default roadmap goes
+> Phase 2 → Phase 4. Do not pull this forward without that decision.
 - [ ] Scaffold Next.js app (App Router) + shared Supabase client + shared types strategy
 - [ ] Public provider page `/p/[slug]` (SSR/SEO): bio, services, availability
 - [ ] Booking flow (no auth): pick slot → create tentative booking → confirmation
 - [ ] Age-gate + AI-disclosure copy
-- [ ] (Payments deferred — schema ready)
+- [ ] (Payments = the marketplace line itself — schema ready, build only post-decision)
 
 ### Phase 4 — Re-engagement + ads  _(consent-based only)_
 - [ ] `pg_cron` job for past-client follow-ups (free)
