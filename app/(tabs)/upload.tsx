@@ -1,77 +1,131 @@
-export interface User {
-  id: string;
-  email: string;
-  businessName: string;
-  plan: 'starter' | 'pro' | 'premium';
-  createdAt: string;
-}
+import React, { useState } from 'react';
+import { Alert } from 'react-native';
+import { Mail, MessageSquare, Smartphone, Upload } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { parseConversationFile } from '@/utils/chatParsers';
+import { processConversationForAI } from '@/utils/aiTraining';
+import { XStack, YStack, Text, Badge, Button, EmptyState, ListRow, PageHeader, Screen, Section, Surface, colors } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
 
-export interface Platform {
-  id: string;
-  name: string;
-  type: 'whatsapp' | 'sms' | 'email' | 'telegram';
-  connected: boolean;
-  lastSync?: string;
-}
-
-export interface Conversation {
-  id: string;
-  clientName: string;
-  clientPhone?: string;
-  platform: Platform['type'];
-  messages: Message[];
-  lastActivity: string;
-  status: 'active' | 'archived';
-  tags: string[];
-}
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  text: string;
-  sender: 'client' | 'therapist' | 'ai';
-  timestamp: string;
-  aiGenerated?: boolean;
-  aiConfidence?: number;
-}
-
-export interface Appointment {
-  id: string;
-  clientName: string;
-  clientPhone?: string;
-  service: string;
-  datetime: string;
-  duration: number;
-  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
-  notes?: string;
-  reminderSent?: boolean;
-}
-
-export interface AISettings {
-  enabled: boolean;
-  moderationLevel: 'low' | 'medium' | 'strict';
-  autoResponse: boolean;
-  confidenceThreshold: number;
-  learningEnabled: boolean;
-}
-
-export interface FAQ {
-  id: string;
-  trigger: string;
-  response: string;
-  category: string;
-  priority: number;
-  active: boolean;
-}
-
-export interface SubscriptionPlan {
+interface UploadResult {
   id: string;
   name: string;
-  price: number;
-  features: string[];
-  limits: {
-    aiResponses: number;
-    platforms: number;
-    storage: string;
+  platform: string;
+  messageCount: number;
+  clientName: string;
+  status: 'completed';
+}
+
+const platforms = [
+  { name: 'WhatsApp', icon: MessageSquare, description: 'Exported chat text files', acceptedFormats: ['txt'] },
+  { name: 'Email', icon: Mail, description: 'Plain text or CSV conversation exports', acceptedFormats: ['txt', 'csv'] },
+  { name: 'Telegram', icon: Smartphone, description: 'JSON or text export files', acceptedFormats: ['json', 'txt'] },
+];
+
+export default function UploadScreen() {
+  const { user } = useAuth();
+  const [uploadingPlatform, setUploadingPlatform] = useState<string | null>(null);
+  const [uploads, setUploads] = useState<UploadResult[]>([]);
+
+  const handleUpload = async (platform: (typeof platforms)[number]) => {
+    try {
+      setUploadingPlatform(platform.name);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      if (!platform.acceptedFormats.includes(fileExtension || '')) {
+        Alert.alert('Unsupported file', `${platform.name} accepts ${platform.acceptedFormats.join(', ')} files.`);
+        return;
+      }
+
+      const response = await fetch(file.uri);
+      const content = await response.text();
+      if (!content.trim()) throw new Error('File appears to be empty');
+
+      const parsedConversation = parseConversationFile(file.name, content);
+      if (parsedConversation.messages.length === 0) throw new Error('No messages found in the file');
+
+      const trainingData = await processConversationForAI(parsedConversation, user?.id ?? 'demo-user');
+      setUploads([
+        {
+          id: trainingData.conversationId,
+          name: file.name,
+          platform: platform.name,
+          messageCount: parsedConversation.totalMessages,
+          clientName: parsedConversation.clientName,
+          status: 'completed',
+        },
+        ...uploads,
+      ]);
+      Alert.alert('Upload complete', `Processed ${parsedConversation.totalMessages} messages.`);
+    } catch (error) {
+      Alert.alert('Upload failed', error instanceof Error ? error.message : 'Could not process this file.');
+    } finally {
+      setUploadingPlatform(null);
+    }
   };
+
+  return (
+    <Screen>
+      <PageHeader title="Training" subtitle="Import prior conversations for agent tuning." />
+
+      <Section title="Sources">
+        <YStack gap={10}>
+          {platforms.map((platform) => (
+            <Surface key={platform.name}>
+              <XStack alignItems="center" gap={12}>
+                <XStack
+                  width={38}
+                  height={38}
+                  borderRadius={8}
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor={colors.surfaceMuted}
+                >
+                  <platform.icon size={18} color={colors.textSecondary} />
+                </XStack>
+                <YStack flex={1} gap={3}>
+                  <Text fontSize={15} fontWeight="700" color={colors.text}>{platform.name}</Text>
+                  <Text fontSize={13} color={colors.textSecondary}>{platform.description}</Text>
+                  <Text fontSize={12} color={colors.textMuted}>Accepts {platform.acceptedFormats.join(', ')}</Text>
+                </YStack>
+                <Button
+                  icon={Upload}
+                  variant="secondary"
+                  loading={uploadingPlatform === platform.name}
+                  onPress={() => handleUpload(platform)}
+                >
+                  Upload
+                </Button>
+              </XStack>
+            </Surface>
+          ))}
+        </YStack>
+      </Section>
+
+      <Section title="Recent imports">
+        {uploads.length === 0 ? (
+          <EmptyState title="No imports yet" message="Uploaded conversation files will appear here." />
+        ) : (
+          <YStack gap={10}>
+            {uploads.map((upload) => (
+              <ListRow
+                key={upload.id}
+                title={upload.name}
+                subtitle={`${upload.clientName}, ${upload.messageCount} messages`}
+                meta={upload.platform}
+                badge={<Badge tone="success">processed</Badge>}
+              />
+            ))}
+          </YStack>
+        )}
+      </Section>
+    </Screen>
+  );
 }

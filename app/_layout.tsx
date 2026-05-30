@@ -1,42 +1,22 @@
-import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
-import { useFrameworkReady } from "@/hooks/useFrameworkReady";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack } from 'expo-router';
+import { TamaguiProvider } from 'tamagui';
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { AuthProvider } from '@/hooks/useAuth';
+import tamaguiConfig from '@/tamagui.config';
 
 export default function RootLayout() {
   useFrameworkReady();
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    checkOnboardingStatus();
-  }, []);
-
-  const checkOnboardingStatus = async () => {
-    try {
-      const completed = await AsyncStorage.getItem('@onboarding_completed');
-      setIsOnboardingCompleted(completed === 'true');
-    } catch (error) {
-      console.error('Error checking onboarding status:', error);
-      setIsOnboardingCompleted(false);
-    }
-  };
-
-  // Show loading while checking onboarding status
-  if (isOnboardingCompleted === null) {
-    return null;
-  }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {!isOnboardingCompleted ? (
-        <Stack.Screen name="(onboarding)" />
-      ) : (
-        <>
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
-        </>
-      )}
-      <Stack.Screen name="+not-found" />
-    </Stack>
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </AuthProvider>
+    </TamaguiProvider>
   );
 }

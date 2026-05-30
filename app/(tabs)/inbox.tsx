@@ -1,17 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Bot, User, Calendar, Phone } from 'lucide-react-native';
+import { Calendar, Phone, User, Bot } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { threadService } from '@/lib/data';
+import { XStack, YStack, Badge, EmptyState, Field, ListRow, LoadingState, PageHeader, Screen, Section } from '@/components/ui';
 
 interface InboxItem {
   id: string;
@@ -23,13 +14,11 @@ interface InboxItem {
   unread: boolean;
 }
 
-// Shown only in demo mode (no Supabase env configured), so the public web
-// demo keeps its populated look.
 const DEMO_CONVERSATIONS: InboxItem[] = [
   {
     id: '1',
-    clientName: 'John Smith',
-    lastMessage: 'Thank you for the session today, feeling much better!',
+    clientName: 'Alex Client',
+    lastMessage: 'Thanks, that time works for me.',
     timestamp: '2 min ago',
     type: 'manual',
     platform: 'whatsapp',
@@ -37,30 +26,21 @@ const DEMO_CONVERSATIONS: InboxItem[] = [
   },
   {
     id: '2',
-    clientName: 'Sarah Wilson',
-    lastMessage: 'AI: Our next available slot is tomorrow at 3 PM.',
+    clientName: 'Mia Client',
+    lastMessage: 'Nightime Agent: Tomorrow at 3 PM is open. Should I hold it?',
     timestamp: '15 min ago',
     type: 'ai',
-    platform: 'sms',
+    platform: 'telegram',
     unread: true,
   },
   {
     id: '3',
-    clientName: 'Mike Johnson',
-    lastMessage: 'Booking confirmed for Thursday 2 PM',
+    clientName: 'Sam Rivera',
+    lastMessage: 'Booking confirmed for Thursday at 2 PM.',
     timestamp: '1 hour ago',
     type: 'booking',
     platform: 'email',
     unread: false,
-  },
-  {
-    id: '4',
-    clientName: 'Emma Davis',
-    lastMessage: 'Voice call: Asking about availability this week',
-    timestamp: '2 hours ago',
-    type: 'voice',
-    platform: 'sms',
-    unread: true,
   },
 ];
 
@@ -73,6 +53,13 @@ function relativeTime(iso: string | null): string {
   if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
   const d = Math.round(hr / 24);
   return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+function iconForType(type: InboxItem['type']) {
+  if (type === 'ai') return Bot;
+  if (type === 'booking') return Calendar;
+  if (type === 'voice') return Phone;
+  return User;
 }
 
 export default function InboxScreen() {
@@ -92,14 +79,14 @@ export default function InboxScreen() {
       .then((rows) => {
         if (!active) return;
         setConversations(
-          rows.map((t) => ({
-            id: t.id,
-            clientName: t.clientHandle,
-            lastMessage: t.lastMessage,
-            timestamp: relativeTime(t.lastActivityAt),
-            type: t.kind,
-            platform: t.channel,
-            unread: t.unread,
+          rows.map((thread) => ({
+            id: thread.id,
+            clientName: thread.clientHandle,
+            lastMessage: thread.lastMessage,
+            timestamp: relativeTime(thread.lastActivityAt),
+            type: thread.kind,
+            platform: thread.channel,
+            unread: thread.unread,
           }))
         );
       })
@@ -110,239 +97,58 @@ export default function InboxScreen() {
     return () => {
       active = false;
     };
-  }, [user?.id, isSupabaseConfigured]);
+  }, [user, isSupabaseConfigured]);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'ai':
-        return <Bot size={16} color="#10b981" />;
-      case 'booking':
-        return <Calendar size={16} color="#3b82f6" />;
-      case 'voice':
-        return <Phone size={16} color="#f59e0b" />;
-      default:
-        return <User size={16} color="#6b7280" />;
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'ai':
-        return '#dcfce7';
-      case 'booking':
-        return '#dbeafe';
-      case 'voice':
-        return '#fef3c7';
-      default:
-        return '#f3f4f6';
-    }
-  };
-
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case 'ai':
-        return 'AI';
-      case 'booking':
-        return 'BOOKING';
-      case 'voice':
-        return 'VOICE';
-      default:
-        return 'MANUAL';
-    }
-  };
-
-  const filteredConversations = conversations.filter(conv =>
-    conv.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((conversation) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      conversation.clientName.toLowerCase().includes(query) ||
+      conversation.lastMessage.toLowerCase().includes(query)
+    );
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Inbox</Text>
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#6b7280" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
+    <Screen>
+      <PageHeader title="Inbox" subtitle="Review client conversations and agent activity." />
+      <Field
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search conversations"
+      />
 
-      <ScrollView style={styles.conversationList}>
+      <Section title="Conversations">
         {loading ? (
-          <ActivityIndicator style={styles.loader} color="#4f46e5" />
+          <LoadingState />
         ) : filteredConversations.length === 0 ? (
-          <Text style={styles.emptyText}>No conversations yet.</Text>
+          <EmptyState title="No conversations" message="New client messages will appear here." />
         ) : (
-          filteredConversations.map((conversation) => (
-          <TouchableOpacity
-            key={conversation.id}
-            style={[
-              styles.conversationCard,
-              conversation.unread && styles.unreadCard
-            ]}
-          >
-            <View style={styles.conversationHeader}>
-              <View style={styles.clientInfo}>
-                <Text style={[
-                  styles.clientName,
-                  conversation.unread && styles.unreadText
-                ]}>
-                  {conversation.clientName}
-                </Text>
-                <View style={styles.badgeContainer}>
-                  <View style={[
-                    styles.typeBadge,
-                    { backgroundColor: getTypeColor(conversation.type) }
-                  ]}>
-                    {getTypeIcon(conversation.type)}
-                    <Text style={styles.typeBadgeText}>
-                      {getTypeText(conversation.type)}
-                    </Text>
-                  </View>
-                  <Text style={styles.platform}>
-                    {conversation.platform.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.timestamp}>{conversation.timestamp}</Text>
-            </View>
-            
-            <Text style={styles.lastMessage} numberOfLines={2}>
-              {conversation.lastMessage}
-            </Text>
-            
-            {conversation.unread && <View style={styles.unreadIndicator} />}
-          </TouchableOpacity>
-          ))
+          <YStack gap={10}>
+            {filteredConversations.map((conversation) => {
+              const Icon = iconForType(conversation.type);
+              return (
+                <ListRow
+                  key={conversation.id}
+                  icon={Icon}
+                  title={conversation.clientName}
+                  subtitle={conversation.lastMessage}
+                  meta={conversation.timestamp}
+                  badge={
+                    <XStack gap={6} flexWrap="wrap">
+                      <Badge tone={conversation.unread ? 'primary' : 'neutral'}>
+                        {conversation.unread ? 'unread' : 'read'}
+                      </Badge>
+                      <Badge tone={conversation.type === 'ai' ? 'success' : conversation.type === 'booking' ? 'info' : 'neutral'}>
+                        {conversation.type}
+                      </Badge>
+                      <Badge>{conversation.platform}</Badge>
+                    </XStack>
+                  }
+                />
+              );
+            })}
+          </YStack>
         )}
-      </ScrollView>
-    </SafeAreaView>
+      </Section>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    padding: 24,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  searchContainer: {
-    position: 'relative',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: 16,
-    top: 14,
-    zIndex: 1,
-  },
-  searchInput: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    padding: 12,
-    paddingLeft: 48,
-    fontSize: 16,
-  },
-  conversationList: {
-    flex: 1,
-    padding: 16,
-  },
-  loader: {
-    marginTop: 48,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#9ca3af',
-    marginTop: 48,
-    fontSize: 15,
-  },
-  conversationCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    position: 'relative',
-  },
-  unreadCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#4f46e5',
-  },
-  conversationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  unreadText: {
-    color: '#4f46e5',
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 4,
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  platform: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9ca3af',
-    alignSelf: 'center',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-  },
-  unreadIndicator: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4f46e5',
-  },
-});

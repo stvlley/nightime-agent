@@ -10,7 +10,18 @@ This app deploys as a static Expo web export. Vercel uses `vercel.json`:
 
 The rewrite rule sends app routes back to `index.html` while leaving Expo assets and public files untouched.
 
-The app boots with no environment variables. In that state, auth uses local demo storage and data is not persistent across devices.
+The app boots with no environment variables. In that state, signed-out `/` shows
+the public marketing landing page, auth uses local demo storage, client early
+access intent is local-only, and data is not persistent across devices.
+
+To verify a production-like static export locally:
+
+```bash
+npm run build:web
+npm run start
+```
+
+The local static server serves `dist` on `http://localhost:3000` by default.
 
 ## Production Environment
 
@@ -30,6 +41,9 @@ Only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are required
 
 ## Supabase
 
-Run the SQL files in `supabase/migrations/` against the target Supabase project before enabling production auth. The latest migration creates the `profiles`, `bookings`, and `faq` tables expected by the app client.
+Run the SQL files in `supabase/migrations/` against the target Supabase project
+before enabling production auth. Current migrations cover provider-owned app
+tables, portal/tenancy fields, public profile view, services, availability, and
+booking payment placeholders.
 
 Do not expose service-role keys in Expo or Vercel public variables. The browser build can only safely use the Supabase anon key with RLS policies enabled.

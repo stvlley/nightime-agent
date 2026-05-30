@@ -46,7 +46,7 @@ export default function RegisterScreen() {
     }
 
     await onboardingUtils.setUserLoggedIn(true);
-    router.replace('/(tabs)');
+    router.replace('/(onboarding)/setup');
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -122,7 +122,7 @@ export default function RegisterScreen() {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>
-              <Link href="/(auth)/login" style={styles.link}>
+              <Link href="/" style={styles.link}>
                 <Text style={styles.linkText}>Sign In</Text>
               </Link>
             </View>

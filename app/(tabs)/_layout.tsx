@@ -1,17 +1,22 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, MessageSquare, Calendar, Settings, Upload, CreditCard, Bot } from 'lucide-react-native';
+import { LayoutDashboard, Inbox, CalendarDays, Settings2, CloudUpload, Wallet, Sparkles } from 'lucide-react-native';
+import { colors } from '@/components/ui';
+import { AuthGate } from '@/components/AuthGate';
 
 export default function TabLayout() {
+  // Gate the provider workspace behind an authenticated session (shared with the
+  // onboarding group via <AuthGate>). Unauthenticated deep-links bounce to `/`.
   return (
+    <AuthGate>
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#4f46e5',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#e5e7eb',
+          borderTopColor: colors.border,
           paddingBottom: 8,
           paddingTop: 8,
           height: 88,
@@ -27,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ size, color }) => (
-            <Home size={size} color={color} />
+            <LayoutDashboard size={size} color={color} />
           ),
         }}
       />
@@ -36,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Inbox',
           tabBarIcon: ({ size, color }) => (
-            <MessageSquare size={size} color={color} />
+            <Inbox size={size} color={color} />
           ),
         }}
       />
@@ -45,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Calendar',
           tabBarIcon: ({ size, color }) => (
-            <Calendar size={size} color={color} />
+            <CalendarDays size={size} color={color} />
           ),
         }}
       />
@@ -54,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: 'AI Settings',
           tabBarIcon: ({ size, color }) => (
-            <Bot size={size} color={color} />
+            <Sparkles size={size} color={color} />
           ),
         }}
       />
@@ -63,7 +68,7 @@ export default function TabLayout() {
         options={{
           title: 'Upload',
           tabBarIcon: ({ size, color }) => (
-            <Upload size={size} color={color} />
+            <CloudUpload size={size} color={color} />
           ),
         }}
       />
@@ -72,7 +77,7 @@ export default function TabLayout() {
         options={{
           title: 'Billing',
           tabBarIcon: ({ size, color }) => (
-            <CreditCard size={size} color={color} />
+            <Wallet size={size} color={color} />
           ),
         }}
       />
@@ -81,10 +86,11 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ size, color }) => (
-            <Settings size={size} color={color} />
+            <Settings2 size={size} color={color} />
           ),
         }}
       />
     </Tabs>
+    </AuthGate>
   );
 }

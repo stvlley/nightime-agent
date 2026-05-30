@@ -5,20 +5,30 @@
 
 ## What the app is
 
-An **autonomous AI booking agent that acts as the service provider** (independent
-massage / companion services). It connects the provider's messaging channels,
-holds natural conversations with clients, qualifies them, offers time slots, and
-books appointments — so the provider doesn't have to reply manually.
+Nightime Agent starts as a **message-provider assistant**. It helps independent
+providers handle inbound client conversations from messaging channels: common
+questions, boundaries, tone, approval mode, follow-ups, and threads that need
+human attention.
+
+Booking, availability, and public portal concepts remain in the schema and
+longer-term roadmap, but they are not the center of the first usable setup
+experience. V1 should feel like onboarding a messaging assistant, not
+configuring a full business operations suite.
 
 ## Current state (discovery)
 
-- **Stack:** Bolt-generated Expo Router app (React 19, RN 0.81, Expo SDK 54),
+- **Stack:** Expo Router app (React 19, RN 0.81, Expo SDK 54),
   TypeScript. Deployed as a **static web export** to Vercel (`nightime-agent.vercel.app`).
   Typecheck passes; build is healthy.
-- **Wired & working:** Supabase auth only (login/register via `useAuth`). Real
-  Supabase project `hwcpztsltgpjzclrmyez` with schema applied (`profiles`,
-  `threads`, `messages`, `bookings`, `faq`) + RLS. Demo fallback to AsyncStorage
-  when env vars are absent.
+- **Wired & working:** Public marketing landing page on signed-out `/`; signed-in
+  providers redirect to `/(tabs)`. Supabase auth (login/register via `useAuth`).
+  Real Supabase project `hwcpztsltgpjzclrmyez` with schema applied (`profiles`,
+  `threads`, `messages`, `bookings`, `faq`, `services`, `availability`) + RLS.
+  Demo fallback to AsyncStorage when env vars are absent.
+- **Landing implementation:** `app/index.tsx` is a thin route wrapper around
+  `components/landing/LandingPage.tsx`. Landing sections, role signup modal,
+  cookie consent banner, content, types, and styles live under
+  `components/landing/`; consent persistence lives in `hooks/useCookieConsent.ts`.
 - **Dead code / skeleton (well-designed, never executed):** `utils/bookingAgent.ts`
   (state machine), `utils/channelConnectors.ts` (GV/WhatsApp/Telegram/Email),
   `utils/aiTraining.ts`, `utils/webhooks.ts`, `utils/api.ts`. **Not imported by any
@@ -31,28 +41,33 @@ books appointments — so the provider doesn't have to reply manually.
 - **Secret hygiene OK:** `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` are NOT
   `EXPO_PUBLIC_`-prefixed (won't bundle into client). `.env` is gitignored.
 
-## Key inconsistencies to resolve
+## Type and domain cleanup remaining
 
-- Identity: `package.json` name `bolt-expo-starter`, `app.json` name/slug
-  `bolt-expo-nativewind`, Vercel project `nightime-agent`.
 - Three overlapping type files: `types/database.ts` (LIVE, source of truth for DB),
   `types/booking.ts` (agent domain model — uppercase `ThreadState`), `types/index.ts`
   (DEAD — unused; screens redefine types inline). DB states are lowercase vs
   booking.ts uppercase — reconcile when building the runtime.
-- `app/_layout.tsx` contains an unused duplicate interface block.
+- Historical cleanup already completed: app identity now uses `nightime-agent`,
+  dead `types/index.ts` was retired, and the duplicate interface block in
+  `app/_layout.tsx` was removed.
 
 ## Product shape
 
-Two-sided product on one shared Supabase backend:
-1. **Provider app** (this Expo app) — authenticated control panel: dashboard, inbox,
-   calendar, ai-settings, billing, settings. Everything built so far is provider-facing.
-2. **Customer portal** (NEW, separate Next.js app) — public profile + availability +
-   booking; also the discovery/"ad" surface. Payments-ready, multi-tenant-ready.
-3. **Agent runtime** (Supabase Edge Functions, Phase 2) — talks to customers in their
-   own messaging app (Telegram/WhatsApp/email), posing as the provider.
+V1 is message-provider-first on one shared Supabase backend:
+1. **Marketing landing page** (this Expo app) — signed-out home page explaining
+   the product, capturing provider/client intent, and showing local cookie
+   consent. This is not the provider-specific booking portal.
+2. **Provider app** (this Expo app) — authenticated control panel: dashboard,
+   inbox, setup chat, message automation settings, billing, settings.
+3. **Customer portal** (FUTURE, separate Next.js app) — provider-specific public
+   profile + availability + booking at `/p/[slug]`. Payments-ready,
+   multi-tenant-ready, but deferred until the message-provider loop works.
+4. **Agent runtime** (Supabase Edge Functions, Phase 2) — talks to customers in their
+   own messaging app (Telegram/WhatsApp/email) under provider-controlled rules.
 
-The customer interacts via TWO surfaces: the conversational channel (agent) AND the
-public web portal. Both read/write the same Supabase data.
+The first customer interaction surface is the conversational channel. The
+marketing home captures early intent, but v1 UAT should focus on provider
+message setup and approval, not public portal readiness.
 
 ## Decisions (locked in)
 
@@ -61,10 +76,12 @@ public web portal. Both read/write the same Supabase data.
 | Backend compute | **Supabase Edge Functions** | Next to data+auth; free `pg_cron`; one free platform; deploy only at launch |
 | Dev loop | **Local Supabase stack (needs Docker)** → fall back to remote (free) until Docker is set up | $0 |
 | First channel | **Telegram** | Free API, no per-message fees, simple webhook |
-| AI strategy | **Autonomous conversational agent** with **free keyword/FAQ pre-filter** + cheap model (Haiku 4.5) workhorse | Controls token cost; most messages avoid the LLM |
+| V1 provider target | **Message providers** | Keeps setup and product promise focused on inbound conversations before portal/booking breadth |
+| AI strategy | **Provider-controlled message assistant** with **free keyword/FAQ pre-filter** + cheap model (Haiku 4.5) fallback | Controls token cost; most messages avoid the LLM |
 | Lead model | Inbound replies + re-engage past clients (consent-based) + post/manage ads. **No cold contact.** | Cold outreach = bans + legal exposure |
-| Customer surface | **Full public customer web portal** + conversational channel | User decision; portal doubles as the ad |
-| Customer portal stack | **Separate Next.js app** sharing Supabase (NOT public routes in Expo app) | Portal is the "ad" → needs SSR/SEO, fast first paint, payments UX; Expo-web SPA is weak at all three. Provider app stays Expo (authed dashboard, SEO irrelevant) |
+| Customer surface | **Conversational channel first; portal later** | Current priority is message-provider UAT and agent control, not public booking UX |
+| Customer portal stack | **Separate Next.js app** sharing Supabase (not Expo public booking routes) | Provider-specific booking pages need SSR/SEO, fast first paint, payments UX; Expo-web SPA is weak at all three. Provider app stays Expo (authed dashboard, SEO irrelevant) |
+| Marketing home | **Expo signed-out `/` landing page** | Fast first public surface and role intent capture; distinct from SEO-sensitive provider portal `/p/[slug]` |
 | Tenancy | **Single provider now, multi-tenant-ready schema/routes** | User decision; avoid a later rewrite without building discovery/multi-signup yet |
 | Payments | **Decide later** — schema allows a payment/deposit record; no checkout built this pass | User decision; processor ToS for the vertical is a real gating constraint |
 | Version control | git initialized; initial commit is the recovery point | rollback safety |
@@ -99,6 +116,23 @@ public web portal. Both read/write the same Supabase data.
 - [x] Make `ai-settings` FAQ editor persist to the `faq` table (commit 4f3a91c)
 - [x] Retire dead `types/index.ts` (commit 4f3a91c)
 
+### Phase 1.6 — Marketing landing + night-theme brand  _(no infra, no cost)_
+- [x] Public marketing landing route at `/` (signed-out home), composed from `components/landing`
+- [x] Dual-role signup modal + cookie consent + `landing_intents` table (anon-insert RLS)
+- [x] SEO meta via `expo-router/head` on the landing
+- [x] **Night-theme brand reskin**: deep-purple palette replaces the old teal tokens in
+      `components/ui` `colors`; Tamagui `dark` theme updated to match; `defaultTheme="dark"`.
+- [x] Owl mascot (`components/landing/OwlMascot.tsx`, react-native-svg) — hero + nav variants
+- [x] `NightSky` backdrop (stars/clouds/moon) on hero + final CTA; twinkle/drift animations
+      gated by `useCanAnimate()` (web + no reduced motion); static on native
+- [x] DESIGN_SYSTEM.md rewritten around the night palette + mascot + backdrop conventions
+- [ ] **Deferred:** migrate residual hex literals in `app/(auth)/*` and `app/(onboarding)/*`
+      to `colors` tokens. Those screens will look mismatched (light surfaces on night
+      chrome) until this pass — intentional, scheduled after the in-flight onboarding flow
+      reaches a checkpoint.
+- [ ] **Deferred:** regenerate `assets/images/icon.png` and `favicon.png` to match the owl
+      mascot.
+
 ### Phase 1.5 — Schema for portal + tenancy  _(remote Supabase, free)_ ✅ DONE (commits 23784ad, d9bd5d4, 59e5546)
 - [x] profiles public fields: slug (unique+format), display_name, headline, bio,
       avatar_url, location_label, published, age_gate_required
@@ -118,19 +152,62 @@ public web portal. Both read/write the same Supabase data.
   prepared statements ("prepared statement already exists"). Use
   `supabase db push --db-url "$(echo $DATABASE_URL | sed 's/:6543/:5432/')"`.
 
-### Phase 2 — Customer portal  _(new Next.js app, shares Supabase; $0 on Vercel Hobby)_
+### Phase 1.75 — Public marketing landing page  _(Expo web, no schema change)_ ✅ DONE
+- [x] Signed-out `/` renders marketing landing page; signed-in users still route
+      to `/(tabs)`
+- [x] CTA paths for login, provider signup, and client early access intent
+- [x] Dual role modal with `provider | client` intent
+- [x] Provider modal submission uses existing provider signup path
+- [x] Client modal submission records local placeholder intent until client
+      portal auth exists
+- [x] Cookie consent banner with `Accept all` / `Reject optional`, persisted
+      locally; no optional tracking added
+- [x] Refactored landing into `components/landing/` and
+      `hooks/useCookieConsent.ts`
+- [x] Docs updated in `CORE_FEATURES.md`, `PLAN.md`, `DESIGN_SYSTEM.md`,
+      `DEPLOYMENT.md`, and `LOG.md`
+- [x] `npm run typecheck`, `npm run lint`, `npm run build:web`
+
+### Phase 1.8 — Message-provider setup chat  _(Expo app + existing schema)_ 🔄 IN PROGRESS
+- [x] Reframe setup as a **scripted chat transcript**, not a wizard with chat
+      styling. Prior assistant prompts and provider answers remain visible in
+      a thread.
+- [x] Replace full-business setup emphasis with message-provider onboarding:
+      business/display name, provider category, current message channels,
+      common inbound questions, services/offers mentioned in chat, tone,
+      boundaries, approval mode, follow-up preference, moderation level, and
+      notification permission.
+- [x] Treat availability and booking fields as optional context only when the
+      provider says bookings happen in messages. Do not make portal readiness
+      the main path.
+- [x] Persist the same v1 data to `profiles`, `services`, `availability` when
+      relevant, `provider_preferences`, and AsyncStorage demo mode.
+- [x] Add a polished chat shell: pinned composer, scrollable transcript,
+      assistant typing state, compact quick replies, and review-before-save.
+- [x] Add **bounded setup inference** as provider-approved suggestions, not a
+      free-form AI controller. Current implementation is deterministic
+      (`utils/setupInference.ts`) and can later be backed by a server endpoint.
+- [x] Update UAT to verify the experience behaves like a conversation: answer,
+      assistant acknowledgement, next prompt, transcript review, save.
+- [ ] Visual UAT in browser/device for mobile and desktop sizes.
+- [ ] Replace deterministic suggestion internals with real inference only after
+      a server endpoint exists with prompt/version logging, structured output
+      validation, rate limiting, and deterministic fallback.
+
+### Phase 2 — Agent runtime for messages  _(local-only via Docker/Supabase, still $0)_
+- [ ] Telegram webhook → Edge Function → message loop (keyword/FAQ pre-filter
+      → LLM fallback) → DB write → reply/draft
+- [ ] Provider approval queue for outbound messages before autonomous send
+- [ ] Promote `TelegramConnector` and message parsing helpers into the runtime
+- [ ] Reconcile ThreadState casing (DB lowercase = source of truth)
+- [ ] Notifications for inbound messages needing provider attention
+
+### Phase 3 — Customer portal  _(new Next.js app, shares Supabase; $0 on Vercel Hobby)_
 - [ ] Scaffold Next.js app (App Router) + shared Supabase client + shared types strategy
 - [ ] Public provider page `/p/[slug]` (SSR/SEO): bio, services, availability
 - [ ] Booking flow (no auth): pick slot → create tentative booking → confirmation
 - [ ] Age-gate + AI-disclosure copy
 - [ ] (Payments deferred — schema ready)
-
-### Phase 3 — Agent runtime  _(local-only via Docker/Supabase, still $0)_
-- [ ] Set up Docker + local Supabase stack
-- [ ] Telegram webhook → Edge Function → agent loop (keyword/FAQ pre-filter → LLM fallback) → DB write → reply
-- [ ] Promote `BookingAgent` + `TelegramConnector` into the runtime (real, not mock slots)
-- [ ] Reconcile ThreadState casing (DB lowercase = source of truth)
-- [ ] Agent can send the portal booking/confirm link in-chat
 
 ### Phase 4 — Re-engagement + ads  _(consent-based only)_
 - [ ] `pg_cron` job for past-client follow-ups (free)

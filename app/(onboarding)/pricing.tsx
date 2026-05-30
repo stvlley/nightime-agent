@@ -139,13 +139,13 @@ export default function PricingScreen() {
         [
           {
             text: 'Let\'s Go!',
-            onPress: () => router.replace('/(auth)/login')
+            onPress: () => router.replace('/')
           }
         ]
       );
     } catch (error) {
       console.error('Error starting trial:', error);
-      router.replace('/(auth)/login');
+      router.replace('/');
     }
   };
 

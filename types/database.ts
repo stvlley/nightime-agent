@@ -95,6 +95,43 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['availability']['Insert']>;
       };
+      provider_preferences: {
+        Row: {
+          user_id: string;
+          business_category: string | null;
+          agent_tone: string | null;
+          approval_mode: 'manual' | 'auto_eligible';
+          moderation_level: 'low' | 'medium' | 'strict';
+          follow_up_enabled: boolean;
+          notifications_enabled: boolean;
+          notification_permission: 'granted' | 'denied' | 'unsupported' | 'skipped';
+          message_channels: string[];
+          common_questions: string[];
+          response_boundaries: string | null;
+          booking_context_enabled: boolean;
+          setup_completed_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          user_id: string;
+          business_category?: string | null;
+          agent_tone?: string | null;
+          approval_mode?: 'manual' | 'auto_eligible';
+          moderation_level?: 'low' | 'medium' | 'strict';
+          follow_up_enabled?: boolean;
+          notifications_enabled?: boolean;
+          notification_permission?: 'granted' | 'denied' | 'unsupported' | 'skipped';
+          message_channels?: string[];
+          common_questions?: string[];
+          response_boundaries?: string | null;
+          booking_context_enabled?: boolean;
+          setup_completed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['provider_preferences']['Insert']>;
+      };
       threads: {
         Row: {
           id: string;
@@ -212,6 +249,25 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['faq']['Insert']>;
       };
+      landing_intents: {
+        Row: {
+          id: string;
+          role: 'provider' | 'client';
+          email: string;
+          name: string;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          role: 'provider' | 'client';
+          email: string;
+          name: string;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['landing_intents']['Insert']>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -224,6 +280,9 @@ export type Thread = Database['public']['Tables']['threads']['Row'];
 export type Message = Database['public']['Tables']['messages']['Row'];
 export type FAQ = Database['public']['Tables']['faq']['Row'];
 export type Booking = Database['public']['Tables']['bookings']['Row'];
+export type Service = Database['public']['Tables']['services']['Row'];
+export type Availability = Database['public']['Tables']['availability']['Row'];
+export type ProviderPreferences = Database['public']['Tables']['provider_preferences']['Row'];
 
 export interface ThreadWithMessages extends Thread {
   messages: Message[];
