@@ -4,7 +4,7 @@
 // caller's session token authorizes them, and we additionally confirm they own
 // the draft before sending. Configure with `verify_jwt = true`.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
 import { json, corsHeaders } from '../_shared/http.ts';
 

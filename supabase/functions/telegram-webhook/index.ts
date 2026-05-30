@@ -8,7 +8,7 @@
 // Runs as a Supabase Edge Function (Deno) with the service role, so RLS is
 // bypassed here. Configure with `verify_jwt = false` (Telegram has no JWT).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { parseTelegramUpdate, type NormalizedInbound } from '../_shared/telegramParser.ts';
 import { decideResponse, FALLBACK_REPLY, type FaqEntry } from '../_shared/agentLogic.ts';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
