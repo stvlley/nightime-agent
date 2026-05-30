@@ -194,13 +194,35 @@ message setup and approval, not public portal readiness.
       a server endpoint exists with prompt/version logging, structured output
       validation, rate limiting, and deterministic fallback.
 
-### Phase 2 — Agent runtime for messages  _(local-only via Docker/Supabase, still $0)_
-- [ ] Telegram webhook → Edge Function → message loop (keyword/FAQ pre-filter
-      → LLM fallback) → DB write → reply/draft
-- [ ] Provider approval queue for outbound messages before autonomous send
-- [ ] Promote `TelegramConnector` and message parsing helpers into the runtime
-- [ ] Reconcile ThreadState casing (DB lowercase = source of truth)
-- [ ] Notifications for inbound messages needing provider attention
+### Phase 2 — Agent runtime for messages  _(Edge Functions, still $0)_ 🔄 CODE-COMPLETE (needs deploy + live UAT)
+- [x] Telegram webhook → Edge Function → message loop (keyword/FAQ pre-filter
+      → LLM fallback) → DB write → reply/draft.
+      `supabase/functions/telegram-webhook/` with shared pure logic in
+      `_shared/agentLogic.ts` (FAQ pre-filter, intent, moderation, decision) and
+      `_shared/telegramParser.ts`. LLM fallback (`_shared/llm.ts`, `claude-haiku-4-5`)
+      is gated on `ANTHROPIC_API_KEY`; without it the runtime uses a deterministic
+      holding reply. The free pre-filter runs first; the model is only hit on a miss.
+- [x] Provider approval queue for outbound messages before autonomous send.
+      Drafts land in `messages` with `approval_status='pending'`; the Inbox shows a
+      **Needs your approval** section (Approve & send / Reject). `send-draft`
+      Edge Function (JWT-verified) delivers approved drafts. Only confident FAQ
+      matches under `approval_mode='auto_eligible'` auto-send; LLM/fallback drafts
+      always wait for a human.
+- [x] Promote `TelegramConnector` and message parsing helpers into the runtime
+      (clean, tested `parseTelegramUpdate`; old dead `utils/channelConnectors.ts`
+      superseded for Telegram).
+- [x] Reconcile ThreadState casing — runtime uses DB lowercase states throughout
+      (new modules avoid the uppercase `types/booking.ts` model entirely).
+- [x] Schema: migration `20260530030000_agent_runtime.sql` — approval queue
+      columns on `messages`, `agent_channels` (per-provider bot creds + webhook
+      secret), `agent_events` (observability log). RLS owner-scoped; Edge Functions
+      use the service role.
+- [x] Channel onboarding via `scripts/connect-telegram.mjs` (validates the bot,
+      stores creds, sets the Telegram webhook with a secret token).
+- [ ] **Deploy + live UAT:** apply migration, `supabase functions deploy`, connect
+      a bot, message it, approve a draft. (Not possible in this no-Docker session.)
+- [ ] Notifications for inbound messages needing provider attention.
+- [ ] Channel-connect UI in Settings (currently script-only).
 
 ### Phase 3 — Customer portal  _(new Next.js app, shares Supabase; $0 on Vercel Hobby)_
 - [ ] Scaffold Next.js app (App Router) + shared Supabase client + shared types strategy

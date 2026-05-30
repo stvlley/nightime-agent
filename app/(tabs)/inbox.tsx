@@ -1,8 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { Calendar, Phone, User, Bot } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Calendar, Phone, User, Bot, Check, X } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { threadService } from '@/lib/data';
-import { XStack, YStack, Badge, EmptyState, Field, ListRow, LoadingState, PageHeader, Screen, Section } from '@/components/ui';
+import { threadService, draftService, PendingDraft } from '@/lib/data';
+import {
+  XStack,
+  YStack,
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  ListRow,
+  LoadingState,
+  PageHeader,
+  Screen,
+  Section,
+  Surface,
+  Text,
+  colors,
+} from '@/components/ui';
 
 interface InboxItem {
   id: string;
@@ -62,6 +77,59 @@ function iconForType(type: InboxItem['type']) {
   return User;
 }
 
+function DraftCard({
+  draft,
+  busy,
+  onApprove,
+  onReject,
+}: {
+  draft: PendingDraft;
+  busy: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const sourceLabel = draft.source === 'faq' ? 'FAQ' : draft.source === 'llm' ? 'AI' : 'fallback';
+  return (
+    <Surface tone="warning">
+      <YStack gap={10}>
+        <XStack justifyContent="space-between" alignItems="center" gap={8}>
+          <Text fontSize={14} fontWeight="700" color={colors.text}>
+            {draft.clientHandle}
+          </Text>
+          <XStack gap={6} flexWrap="wrap">
+            {draft.intent ? <Badge tone="info">{draft.intent}</Badge> : null}
+            <Badge tone="neutral">{sourceLabel}</Badge>
+            <Badge>{draft.channel}</Badge>
+          </XStack>
+        </XStack>
+
+        {draft.inboundText ? (
+          <Text fontSize={13} color={colors.textMuted} numberOfLines={3}>
+            Client: {draft.inboundText}
+          </Text>
+        ) : null}
+
+        <Surface>
+          <Text fontSize={14} color={colors.text}>
+            {draft.draftText}
+          </Text>
+        </Surface>
+
+        <XStack gap={10}>
+          <YStack flex={1}>
+            <Button icon={Check} onPress={onApprove} loading={busy} disabled={busy}>
+              Approve & send
+            </Button>
+          </YStack>
+          <Button icon={X} variant="secondary" onPress={onReject} disabled={busy}>
+            Reject
+          </Button>
+        </XStack>
+      </YStack>
+    </Surface>
+  );
+}
+
 export default function InboxScreen() {
   const { user, isSupabaseConfigured } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +137,53 @@ export default function InboxScreen() {
     isSupabaseConfigured ? [] : DEMO_CONVERSATIONS
   );
   const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [drafts, setDrafts] = useState<PendingDraft[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(isSupabaseConfigured);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const loadDrafts = useCallback(() => {
+    if (!isSupabaseConfigured || !user) return;
+    setDraftsLoading(true);
+    draftService
+      .listPending(user.id)
+      .then(setDrafts)
+      .catch(() => {})
+      .finally(() => setDraftsLoading(false));
+  }, [isSupabaseConfigured, user]);
+
+  useEffect(() => {
+    loadDrafts();
+  }, [loadDrafts]);
+
+  const handleApprove = useCallback(
+    async (id: string) => {
+      setBusyId(id);
+      setDraftError(null);
+      try {
+        await draftService.approveAndSend(id);
+        setDrafts((prev) => prev.filter((d) => d.id !== id));
+      } catch (e) {
+        setDraftError(e instanceof Error ? e.message : 'Could not send the reply. Try again.');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    []
+  );
+
+  const handleReject = useCallback(async (id: string) => {
+    setBusyId(id);
+    setDraftError(null);
+    try {
+      await draftService.reject(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : 'Could not reject the draft. Try again.');
+    } finally {
+      setBusyId(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !user) return;
@@ -115,6 +230,31 @@ export default function InboxScreen() {
         onChangeText={setSearchQuery}
         placeholder="Search conversations"
       />
+
+      {isSupabaseConfigured && (draftsLoading || drafts.length > 0) ? (
+        <Section title={`Needs your approval${drafts.length ? ` (${drafts.length})` : ''}`}>
+          {draftsLoading ? (
+            <LoadingState />
+          ) : (
+            <YStack gap={10}>
+              {draftError ? (
+                <Text fontSize={13} color={colors.danger}>
+                  {draftError}
+                </Text>
+              ) : null}
+              {drafts.map((draft) => (
+                <DraftCard
+                  key={draft.id}
+                  draft={draft}
+                  busy={busyId === draft.id}
+                  onApprove={() => handleApprove(draft.id)}
+                  onReject={() => handleReject(draft.id)}
+                />
+              ))}
+            </YStack>
+          )}
+        </Section>
+      ) : null}
 
       <Section title="Conversations">
         {loading ? (
