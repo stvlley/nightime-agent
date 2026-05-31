@@ -3,8 +3,12 @@
 // Called by the provider app from the Inbox approval queue. JWT-verified: the
 // caller's session token authorizes them, and we additionally confirm they own
 // the draft before sending. Configure with `verify_jwt = true`.
+//
+// Channel-aware: a Telegram draft is delivered via the Bot API; a web-chat draft
+// has no external destination, so approval simply marks it sent — it becomes
+// visible to the visitor on their next webchat-poll.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
 import { json, corsHeaders } from '../_shared/http.ts';
 
@@ -51,21 +55,26 @@ Deno.serve(async (req) => {
 
   const channelName = (draft as any).threads?.channel as string | undefined;
   const chatId = (draft as any).threads?.external_thread_id as string | undefined;
-  if (channelName !== 'telegram') return json({ error: 'unsupported_channel' }, 400);
-  if (!chatId) return json({ error: 'no_destination' }, 400);
 
-  const { data: channel } = await admin
-    .from('agent_channels')
-    .select('bot_token, active')
-    .eq('user_id', user.id)
-    .eq('channel', 'telegram')
-    .maybeSingle();
-  if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
+  if (channelName === 'telegram') {
+    if (!chatId) return json({ error: 'no_destination' }, 400);
+    const { data: channel } = await admin
+      .from('agent_channels')
+      .select('bot_token, active')
+      .eq('user_id', user.id)
+      .eq('channel', 'telegram')
+      .maybeSingle();
+    if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
 
-  const sent = await sendTelegramMessage(channel.bot_token as string, chatId, draft.text as string);
-  if (!sent.ok) {
-    await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
-    return json({ error: 'send_failed', detail: sent.error }, 502);
+    const sent = await sendTelegramMessage(channel.bot_token as string, chatId, draft.text as string);
+    if (!sent.ok) {
+      await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
+      return json({ error: 'send_failed', detail: sent.error }, 502);
+    }
+  } else if (channelName !== 'webchat') {
+    // Web chat needs no external send — marking it sent (below) makes it visible
+    // to the visitor's next poll. Any other channel is not wired yet.
+    return json({ error: 'unsupported_channel' }, 400);
   }
 
   await admin

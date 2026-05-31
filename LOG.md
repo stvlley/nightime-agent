@@ -311,3 +311,79 @@
 - **No code/schema changes.** Payment columns and portal schema remain in place
   (dormant) so optionality for the marketplace fork is preserved. Their presence
   does not change positioning as long as no money for a service moves through us.
+
+## 2026-05-30 (Phase 2 — first live run of the agent loop)
+
+- Docker is now available, so the message loop ran end to end for the first time
+  against the **local Supabase stack** (real Postgres + real Deno edge runtime),
+  not just unit tests. Every prior session was blocked on "no Docker."
+- **Boot gotcha (deploy-blocking) fixed:** both Edge Functions imported
+  `https://esm.sh/@supabase/supabase-js@2.55.0`, which resolves a transitive
+  `storage-js@2.99.3` whose `StorageClient` module path **404s on esm.sh** → the
+  worker fails to bootstrap (`InvalidWorkerCreation`, HTTP 503). This would have
+  failed on real deploy too; the 45 unit tests never caught it because they only
+  import the dependency-free `_shared` logic, never the function entrypoints.
+  Fix: switched both imports to the `npm:@supabase/supabase-js@2.55.0` specifier
+  the Supabase edge runtime supports natively.
+- **Local-DB gotcha:** the persisted local DB volume predated the agent-runtime
+  migration, so `supabase start` left `20260530030000_agent_runtime.sql`
+  unapplied (only 6 of 7 versions in `schema_migrations`). `supabase migration up
+  --local` applied it (creates `agent_channels`, `agent_events`, approval-queue
+  columns on `messages`).
+- **Live UAT harness** added: `scripts/connect-telegram.mjs`'s sibling
+  `scripts/live-test-agent.mjs` seeds a provider (auth user + profile +
+  `provider_preferences` + FAQ + `agent_channels`) and drives `telegram-webhook`
+  + `send-draft` with simulated Telegram updates, asserting DB state. 14/14 checks
+  pass:
+  - bad webhook secret → `200` ack, zero rows written;
+  - FAQ hit under `auto_eligible` → inbound persisted, FAQ matched (conf 1.0),
+    `auto_sent`, delivery attempted, events logged;
+  - FAQ miss with no `ANTHROPIC_API_KEY` → deterministic `$0` fallback draft into
+    the **pending** approval queue;
+  - `send-draft` (JWT) → caller identified, ownership + state-machine checks pass;
+  - moderation hit ("under 18") → forced `pending` even on a confident FAQ match.
+- **Still credential-gated (not a code gap):** literal Telegram delivery needs a
+  real bot token (the run reached `api.telegram.org` and got `404` on the fake
+  token, so outbound HTTP works), and the LLM path needs `ANTHROPIC_API_KEY` (it
+  correctly fell to the deterministic reply without one).
+
+## 2026-05-31 (Phase 2 — zero-setup web-chat channel; both channels live)
+
+- Added a **web-chat channel** alongside Telegram: the no-setup surface. A
+  provider needs no bot, no token, no third-party account — clients message an
+  embeddable widget identified by the provider's public `profiles.slug`. Telegram
+  (branded, requires a one-time BotFather token) is kept; both run the *same* loop.
+- **One loop, two transports.** Extracted the orchestration out of
+  `telegram-webhook` into channel-agnostic `_shared/agent.ts` `runAgentTurn()`
+  (persist inbound → FAQ pre-filter → LLM/fallback → approval queue/auto-send →
+  events → thread state). Channels differ only in transport via an injected
+  `deliver()`: Telegram hits the Bot API; web chat is a no-op because "delivery"
+  is just DB visibility. `telegram-webhook` is now thin (auth + parse + wire).
+- **New Edge Functions** (`verify_jwt=false`, public):
+  - `webchat-inbound`: resolves provider by public slug, requires an active
+    `webchat` channel, runs the loop. Returns the FAQ answer immediately only when
+    auto-send-eligible; otherwise returns a neutral **receipt** (NOT the held
+    draft) so the human-approval gate is never bypassed.
+  - `webchat-poll`: returns the visitor's own messages + only *visible* outbound
+    (`auto_sent`/`sent`). Pending/rejected/failed drafts are never exposed.
+- **`send-draft` is now channel-aware:** Telegram drafts deliver via the Bot API;
+  web-chat drafts just flip to `sent` (visible on the visitor's next poll).
+- **No new tables.** `threads`/`messages` were already channel-agnostic; the
+  provider-app approval queue (`lib/data.ts` `draftService`, which already reads
+  `threads.channel`) shows web-chat drafts in the same Inbox section for free.
+  Migration `20260531000000_webchat_channel.sql` only widens the `channel` CHECK
+  on `agent_channels` + `threads` to include `'webchat'` (caught live — both had
+  a CHECK limiting to gv/telegram/whatsapp/email/sms).
+- **Embeddable widget** `public/chat.html`: self-contained, night-themed, baked-in
+  **AI disclosure** banner, localStorage session id, optimistic echo + 3s polling.
+  Config via `?slug=&base=&key=&brand=` query params. `scripts/enable-webchat.mjs`
+  flips the channel on for a provider and prints the link + iframe snippet (the
+  zero-setup analog of `connect-telegram.mjs`).
+- **Live UAT:** extended `scripts/live-test-agent.mjs` to drive both channels —
+  **27/27 checks pass** against the local stack. Telegram path unchanged after the
+  refactor (no regression); web chat verified end to end including the security
+  property that a held draft is invisible to the visitor until approved, then
+  becomes visible. `npm run typecheck`, `npm test` (45), `npm run lint` all clean.
+- **Pending:** visual browser UAT of the widget; in-app Settings UI to toggle
+  channels (both are still script-first); real Telegram token + `ANTHROPIC_API_KEY`
+  for the two credential-gated paths.
