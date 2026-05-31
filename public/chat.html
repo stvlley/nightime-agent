@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Chat</title>
+<style>
+  :root {
+    --bg: #0d0a26; --surface: #1a1640; --surface2: #241f52;
+    --primary: #9d7bff; --accent: #c9b5ff; --on-primary: #140f2e;
+    --text: #ece9ff; --muted: #9a93c7; --border: #2e2860;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    padding: 14px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  header .title { font-weight: 600; font-size: 16px; }
+  header .disclosure { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  header .disclosure b { color: var(--accent); font-weight: 600; }
+  #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; }
+  .row.visitor { justify-content: flex-end; }
+  .bubble {
+    max-width: 78%; padding: 9px 13px; border-radius: 16px; white-space: pre-wrap; word-wrap: break-word;
+  }
+  .agent .bubble { background: var(--surface2); border-bottom-left-radius: 4px; }
+  .visitor .bubble { background: var(--primary); color: var(--on-primary); border-bottom-right-radius: 4px; }
+  .meta { font-size: 11px; color: var(--muted); margin: 0 4px 2px; }
+  .ai-tag { color: var(--accent); }
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); background: var(--surface); }
+  input {
+    flex: 1; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 15px; outline: none;
+  }
+  input:focus { border-color: var(--primary); }
+  button {
+    padding: 0 18px; border: 0; border-radius: 12px; background: var(--primary);
+    color: var(--on-primary); font-weight: 600; font-size: 15px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .system { align-self: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .error { align-self: center; font-size: 12px; color: #ff9d9d; padding: 4px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="title" id="brand">Chat</div>
+    <div class="disclosure">You're chatting with an <b>AI assistant</b> that replies on the provider's behalf. A human reviews anything it isn't sure about.</div>
+  </header>
+  <div id="log"></div>
+  <form id="composer">
+    <input id="text" placeholder="Type a message…" autocomplete="off" maxlength="4000" />
+    <button id="send" type="submit">Send</button>
+  </form>
+
+<script>
+(function () {
+  // ---- Config: query params override window.NIGHTIME_CHAT ------------------
+  var qs = new URLSearchParams(location.search);
+  var cfg = window.NIGHTIME_CHAT || {};
+  var slug = qs.get('slug') || cfg.slug;
+  var base = (qs.get('base') || cfg.base || 'http://127.0.0.1:54321/functions/v1').replace(/\/$/, '');
+  var anonKey = qs.get('key') || cfg.anonKey || '';
+  var brand = qs.get('brand') || cfg.brand || 'Chat';
+  document.getElementById('brand').textContent = brand;
+
+  var log = document.getElementById('log');
+  var form = document.getElementById('composer');
+  var input = document.getElementById('text');
+  var sendBtn = document.getElementById('send');
+
+  if (!slug) { addError('Misconfigured widget: missing provider slug.'); input.disabled = true; sendBtn.disabled = true; return; }
+
+  // ---- Per-conversation session id (capability to read this thread) -------
+  var SKEY = 'nightime_chat_session_' + slug;
+  var sessionId = localStorage.getItem(SKEY);
+  if (!sessionId) {
+    sessionId = (crypto.randomUUID && crypto.randomUUID()) ||
+      (Date.now().toString(36) + Math.random().toString(36).slice(2));
+    localStorage.setItem(SKEY, sessionId);
+  }
+
+  var lastIso = null;
+  var seen = {};
+
+  function headers() {
+    var h = { 'Content-Type': 'application/json' };
+    if (anonKey) { h['apikey'] = anonKey; h['Authorization'] = 'Bearer ' + anonKey; }
+    return h;
+  }
+  function atBottom() { return log.scrollHeight - log.scrollTop - log.clientHeight < 60; }
+  function scroll() { log.scrollTop = log.scrollHeight; }
+
+  function addBubble(role, text, aiGenerated) {
+    var stick = atBottom();
+    var row = document.createElement('div'); row.className = 'row ' + role;
+    var wrap = document.createElement('div');
+    if (role === 'agent') {
+      var meta = document.createElement('div'); meta.className = 'meta';
+      meta.innerHTML = aiGenerated ? '<span class="ai-tag">AI assistant</span>' : 'Provider';
+      wrap.appendChild(meta);
+    }
+    var b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+    wrap.appendChild(b); row.appendChild(wrap); log.appendChild(row);
+    if (stick) scroll();
+  }
+  function addSystem(text) { var d = document.createElement('div'); d.className = 'system'; d.textContent = text; log.appendChild(d); scroll(); }
+  function addError(text) { var d = document.createElement('div'); d.className = 'error'; d.textContent = text; log.appendChild(d); scroll(); }
+
+  function renderServerMessages(messages) {
+    (messages || []).forEach(function (m) {
+      if (seen[m.id]) return; seen[m.id] = true;
+      addBubble(m.role, m.text, m.aiGenerated);
+      if (m.createdAt) lastIso = m.createdAt;
+    });
+  }
+
+  async function poll() {
+    try {
+      var res = await fetch(base + '/webchat-poll', {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ slug: slug, sessionId: sessionId, afterIso: lastIso })
+      });
+      if (res.ok) { var data = await res.json(); renderServerMessages(data.messages); }
+    } catch (e) { /* transient; next tick retries */ }
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = ''; sendBtn.disabled = true;
+    addBubble('visitor', text, false); // optimistic echo
+    try {
+      var res = await fetch(base + '/webchat-inbound', {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ slug: slug, sessionId: sessionId, text: text })
+      });
+      var data = await res.json();
+      if (!res.ok) { addError(data.error === 'channel_disabled' ? 'This chat is currently offline.' : 'Could not send. Please try again.'); }
+      else if (data.reply) { addBubble('agent', data.reply, !!data.aiGenerated); }
+      // Sync server-side records (de-duped) so history is consistent on reload.
+      await poll();
+    } catch (e) { addError('Network error. Please try again.'); }
+    finally { sendBtn.disabled = false; input.focus(); }
+  });
+
+  // Load prior history for this session, then poll for provider-approved replies.
+  poll();
+  setInterval(poll, 3000);
+  input.focus();
+})();
+</script>
+</body>
+</html>

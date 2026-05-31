@@ -346,3 +346,44 @@
   real bot token (the run reached `api.telegram.org` and got `404` on the fake
   token, so outbound HTTP works), and the LLM path needs `ANTHROPIC_API_KEY` (it
   correctly fell to the deterministic reply without one).
+
+## 2026-05-31 (Phase 2 — zero-setup web-chat channel; both channels live)
+
+- Added a **web-chat channel** alongside Telegram: the no-setup surface. A
+  provider needs no bot, no token, no third-party account — clients message an
+  embeddable widget identified by the provider's public `profiles.slug`. Telegram
+  (branded, requires a one-time BotFather token) is kept; both run the *same* loop.
+- **One loop, two transports.** Extracted the orchestration out of
+  `telegram-webhook` into channel-agnostic `_shared/agent.ts` `runAgentTurn()`
+  (persist inbound → FAQ pre-filter → LLM/fallback → approval queue/auto-send →
+  events → thread state). Channels differ only in transport via an injected
+  `deliver()`: Telegram hits the Bot API; web chat is a no-op because "delivery"
+  is just DB visibility. `telegram-webhook` is now thin (auth + parse + wire).
+- **New Edge Functions** (`verify_jwt=false`, public):
+  - `webchat-inbound`: resolves provider by public slug, requires an active
+    `webchat` channel, runs the loop. Returns the FAQ answer immediately only when
+    auto-send-eligible; otherwise returns a neutral **receipt** (NOT the held
+    draft) so the human-approval gate is never bypassed.
+  - `webchat-poll`: returns the visitor's own messages + only *visible* outbound
+    (`auto_sent`/`sent`). Pending/rejected/failed drafts are never exposed.
+- **`send-draft` is now channel-aware:** Telegram drafts deliver via the Bot API;
+  web-chat drafts just flip to `sent` (visible on the visitor's next poll).
+- **No new tables.** `threads`/`messages` were already channel-agnostic; the
+  provider-app approval queue (`lib/data.ts` `draftService`, which already reads
+  `threads.channel`) shows web-chat drafts in the same Inbox section for free.
+  Migration `20260531000000_webchat_channel.sql` only widens the `channel` CHECK
+  on `agent_channels` + `threads` to include `'webchat'` (caught live — both had
+  a CHECK limiting to gv/telegram/whatsapp/email/sms).
+- **Embeddable widget** `public/chat.html`: self-contained, night-themed, baked-in
+  **AI disclosure** banner, localStorage session id, optimistic echo + 3s polling.
+  Config via `?slug=&base=&key=&brand=` query params. `scripts/enable-webchat.mjs`
+  flips the channel on for a provider and prints the link + iframe snippet (the
+  zero-setup analog of `connect-telegram.mjs`).
+- **Live UAT:** extended `scripts/live-test-agent.mjs` to drive both channels —
+  **27/27 checks pass** against the local stack. Telegram path unchanged after the
+  refactor (no regression); web chat verified end to end including the security
+  property that a held draft is invisible to the visitor until approved, then
+  becomes visible. `npm run typecheck`, `npm test` (45), `npm run lint` all clean.
+- **Pending:** visual browser UAT of the widget; in-app Settings UI to toggle
+  channels (both are still script-first); real Telegram token + `ANTHROPIC_API_KEY`
+  for the two credential-gated paths.

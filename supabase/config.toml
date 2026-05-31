@@ -421,3 +421,13 @@ verify_jwt = false
 [functions.send-draft]
 # Called by the provider app; requires a valid Supabase session JWT.
 verify_jwt = true
+
+[functions.webchat-inbound]
+# Public — the embeddable widget posts visitor messages. No provider secret; the
+# provider is identified by their public slug and the visitor by an unguessable
+# session id.
+verify_jwt = false
+
+[functions.webchat-poll]
+# Public — the widget polls for visible replies in its conversation.
+verify_jwt = false

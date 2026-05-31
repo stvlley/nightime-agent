@@ -20,6 +20,8 @@ const EMAIL = 'agent-uat@nightime.local';
 const PASSWORD = 'AgentUat123!';
 const WEBHOOK_SECRET = randomBytes(16).toString('hex');
 const CHAT_ID = 99001122; // simulated Telegram chat/user id
+const SLUG = 'luna-uat'; // public web-chat slug
+const WEB_SESSION = `uat-${randomBytes(8).toString('hex')}`; // visitor session id
 
 const svcHeaders = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
 
@@ -94,7 +96,7 @@ async function main() {
   await rest('profiles?on_conflict=id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({ id: userId, email: EMAIL, business_name: 'Luna Wellness', published: false, age_gate_required: false }),
+    body: JSON.stringify({ id: userId, email: EMAIL, business_name: 'Luna Wellness', slug: SLUG, published: false, age_gate_required: false }),
   });
 
   await rest('provider_preferences?on_conflict=user_id', {
@@ -138,7 +140,18 @@ async function main() {
       active: true,
     }),
   });
-  log('seeded profile, preferences, 2 FAQ, agent_channel (secret hidden)');
+  await rest('agent_channels?on_conflict=user_id,channel', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({
+      user_id: userId,
+      channel: 'webchat',
+      external_account_id: SLUG,
+      webhook_secret: randomBytes(12).toString('hex'), // unused for webchat
+      active: true,
+    }),
+  });
+  log('seeded profile, preferences, 2 FAQ, telegram + webchat channels');
 
   // Clean threads/messages/events from prior runs for this user.
   await rest(`messages?user_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
@@ -198,6 +211,54 @@ async function main() {
   await new Promise((r) => setTimeout(r, 400));
   const flagged = await rest(`messages?user_id=eq.${userId}&direction=eq.out&order=created_at.desc&select=approval_status,response_source&limit=1`);
   check('flagged message did NOT auto-send', flagged[0]?.approval_status === 'pending', JSON.stringify(flagged[0]));
+
+  // ---- Web-chat channel (zero-setup) ------------------------------------
+  const webPost = (fn, payload) =>
+    fetch(`${FN}/${fn}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+
+  log('\n=== TEST 6: web chat FAQ hit → answered immediately (no human) ===');
+  const w1 = await webPost('webchat-inbound', { slug: SLUG, sessionId: WEB_SESSION, text: 'hello, what are your hours?' });
+  check('inbound returns 200', w1.status === 200, JSON.stringify(w1.body));
+  check('status=answered', w1.body.status === 'answered', JSON.stringify(w1.body));
+  check('reply is the FAQ text', (w1.body.reply || '').includes('Tuesday to Saturday'), w1.body.reply);
+  check('flagged aiGenerated', w1.body.aiGenerated === true);
+  const wpoll1 = await webPost('webchat-poll', { slug: SLUG, sessionId: WEB_SESSION });
+  check('poll returns visitor + agent message', wpoll1.body.messages?.length >= 2, JSON.stringify(wpoll1.body.messages?.map((m) => m.role)));
+
+  log('\n=== TEST 7: web chat FAQ miss → receipt only, draft held (not leaked) ===');
+  const w2 = await webPost('webchat-inbound', { slug: SLUG, sessionId: WEB_SESSION, text: 'can you do a custom 3-hour package next month?' });
+  check('status=received (not answered)', w2.body.status === 'received', JSON.stringify(w2.body));
+  check('reply is a neutral receipt, NOT a draft', w2.body.reply?.includes('received') && w2.body.aiGenerated === false, w2.body.reply);
+  const heldPoll = await webPost('webchat-poll', { slug: SLUG, sessionId: WEB_SESSION });
+  const agentMsgs = (heldPoll.body.messages || []).filter((m) => m.role === 'agent');
+  check('held draft is NOT visible via poll', !agentMsgs.some((m) => m.text.includes('custom') || m.text.includes('package')), JSON.stringify(agentMsgs.map((m) => m.text)));
+  // The pending draft exists server-side, awaiting approval.
+  const webThread = await rest(`threads?user_id=eq.${userId}&channel=eq.webchat&external_thread_id=eq.${WEB_SESSION}&select=id`);
+  const webPending = await rest(`messages?thread_id=eq.${webThread[0].id}&approval_status=eq.pending&direction=eq.out&select=id,text&order=created_at.desc`);
+  check('a pending web draft exists in DB', webPending.length >= 1, `found ${webPending.length}`);
+
+  log('\n=== TEST 8: provider approves the web draft → visitor can now see it ===');
+  const webJwt = await signIn();
+  const webApprove = await fetch(`${FN}/send-draft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${webJwt}` },
+    body: JSON.stringify({ messageId: webPending[0].id }),
+  });
+  const webApproveBody = await webApprove.json().catch(() => ({}));
+  check('send-draft returns 200 (webchat: no external send)', webApprove.status === 200, JSON.stringify(webApproveBody));
+  await new Promise((r) => setTimeout(r, 200));
+  const afterPoll = await webPost('webchat-poll', { slug: SLUG, sessionId: WEB_SESSION });
+  const nowVisible = (afterPoll.body.messages || []).some((m) => m.role === 'agent' && m.id === webPending[0].id);
+  check('approved draft now visible to visitor', nowVisible, JSON.stringify(afterPoll.body.messages?.map((m) => m.role)));
+
+  log('\n=== TEST 9: unknown slug + disabled channel are rejected ===');
+  const badSlug = await webPost('webchat-inbound', { slug: 'no-such-provider', sessionId: 'x', text: 'hi' });
+  check('unknown provider → 404', badSlug.status === 404, JSON.stringify(badSlug.body));
+  await rest(`agent_channels?user_id=eq.${userId}&channel=eq.webchat`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ active: false }) });
+  const disabled = await webPost('webchat-inbound', { slug: SLUG, sessionId: 'y', text: 'hi' });
+  check('disabled channel → 403', disabled.status === 403, JSON.stringify(disabled.body));
+  await rest(`agent_channels?user_id=eq.${userId}&channel=eq.webchat`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ active: true }) });
 
   log(`\n=== RESULT: ${pass} passed, ${fail} failed ===`);
   process.exit(fail > 0 ? 1 : 0);

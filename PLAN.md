@@ -239,10 +239,28 @@ message setup and approval, not public portal readiness.
       use the service role.
 - [x] Channel onboarding via `scripts/connect-telegram.mjs` (validates the bot,
       stores creds, sets the Telegram webhook with a secret token).
-- [ ] **Deploy + live UAT:** apply migration, `supabase functions deploy`, connect
-      a bot, message it, approve a draft. (Not possible in this no-Docker session.)
+- [x] **Local live UAT (2026-05-30/31):** Docker now available — ran the loop end
+      to end on the local stack. Fixed a deploy-blocking Edge Function boot failure
+      (esm.sh `storage-js` 404 → switched to the `npm:` supabase-js specifier).
+      27/27 checks pass across both channels. Live UAT against the *hosted* project
+      (deploy + real Telegram bot) still pending.
+- [x] **Zero-setup web-chat channel:** extracted the loop into channel-agnostic
+      `_shared/agent.ts` `runAgentTurn()` (one loop, injected `deliver()`
+      transport). Added `webchat-inbound`/`webchat-poll` Edge Functions, made
+      `send-draft` channel-aware, an embeddable `public/chat.html` widget (with AI
+      disclosure), and `scripts/enable-webchat.mjs`. No new tables; migration
+      `20260531000000` only widens the channel CHECK. Provider identified by public
+      slug, visitor by an unguessable session id; held drafts never leak to the
+      visitor before approval.
+- **Channel model:** **web chat = no provider setup** (the default activation
+  surface); **Telegram = branded but one-time BotFather token** (Telegram has no
+  programmatic bot creation). Both kept; both currently script-first to connect.
+- [ ] **Deploy + live UAT on hosted project:** apply migrations,
+      `supabase functions deploy`, connect a bot, message it, approve a draft.
 - [ ] Notifications for inbound messages needing provider attention.
-- [ ] Channel-connect UI in Settings (currently script-only).
+- [ ] Channel-connect UI in Settings — toggle web chat on (show link/snippet) and
+      paste a Telegram token. Both channels are script-only today
+      (`enable-webchat.mjs` / `connect-telegram.mjs`).
 
 ### Phase 3 — Customer portal  ⛔ GATED (marketplace fork — do NOT build by default)
 > This phase **crosses the tool→marketplace line** (public listing + booking +
