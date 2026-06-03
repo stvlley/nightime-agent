@@ -252,11 +252,20 @@ message setup and approval, not public portal readiness.
       `20260531000000` only widens the channel CHECK. Provider identified by public
       slug, visitor by an unguessable session id; held drafts never leak to the
       visitor before approval.
+- [x] **Google Voice-over-Gmail channel wiring:** added `google-voice-webhook`,
+      dependency-free Google Voice/Gmail parsing, Gmail OAuth/API transport,
+      `send-draft` support for `gv`, channel metadata storage
+      (`20260602000000_google_voice_channel_metadata.sql`), and
+      `scripts/connect-google-voice.mjs` to register/renew Gmail `watch()`.
+      This is code-wired but credential-gated: it still needs Pub/Sub setup,
+      Gmail OAuth refresh token, deploy, and real delivery UAT.
 - **Channel model:** **web chat = no provider setup** (the default activation
   surface); **Telegram = branded but one-time BotFather token** (Telegram has no
-  programmatic bot creation). Both kept; both currently script-first to connect.
+  programmatic bot creation); **Google Voice = Gmail-backed, credential-heavy,
+  interactive messaging only**. All are currently script-first to connect.
 - [ ] **Deploy + live UAT on hosted project:** apply migrations,
-      `supabase functions deploy`, connect a bot, message it, approve a draft.
+      `supabase functions deploy`, connect a bot/Gmail watch, message it, approve
+      a draft.
 - [ ] Notifications for inbound messages needing provider attention.
 - [ ] Channel-connect UI in Settings — toggle web chat on (show link/snippet) and
       paste a Telegram token. Both channels are script-only today

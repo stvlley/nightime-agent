@@ -203,6 +203,7 @@ export interface Database {
           external_account_id: string | null;
           bot_token: string | null;
           webhook_secret: string;
+          metadata: Record<string, unknown>;
           active: boolean;
           created_at: string | null;
           updated_at: string | null;
@@ -214,6 +215,7 @@ export interface Database {
           external_account_id?: string | null;
           bot_token?: string | null;
           webhook_secret: string;
+          metadata?: Record<string, unknown>;
           active?: boolean;
           created_at?: string | null;
           updated_at?: string | null;
@@ -367,7 +369,7 @@ export interface BookingWithThread extends Booking {
   };
 }
 
-export type ChannelType = 'gv' | 'telegram' | 'whatsapp' | 'email' | 'sms';
+export type ChannelType = 'gv' | 'telegram' | 'whatsapp' | 'email' | 'sms' | 'webchat';
 export type ThreadState =
   | 'open'
   | 'qualifying'

@@ -431,3 +431,9 @@ verify_jwt = false
 [functions.webchat-poll]
 # Public — the widget polls for visible replies in its conversation.
 verify_jwt = false
+
+[functions.google-voice-webhook]
+# Public Pub/Sub push endpoint — Gmail sends no Supabase JWT. Provider resolution
+# is by watched Gmail address, and mailbox access still requires the stored
+# provider OAuth refresh token.
+verify_jwt = false

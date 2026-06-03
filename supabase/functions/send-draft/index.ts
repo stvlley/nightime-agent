@@ -4,12 +4,13 @@
 // caller's session token authorizes them, and we additionally confirm they own
 // the draft before sending. Configure with `verify_jwt = true`.
 //
-// Channel-aware: a Telegram draft is delivered via the Bot API; a web-chat draft
-// has no external destination, so approval simply marks it sent — it becomes
-// visible to the visitor on their next webchat-poll.
+// Channel-aware: Telegram drafts deliver via the Bot API; Google Voice drafts
+// reply through Gmail to the Google Voice notification address; web-chat drafts
+// have no external destination, so approval simply marks them sent.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
+import { sendGoogleVoiceReply } from '../_shared/gmail.ts';
 import { json, corsHeaders } from '../_shared/http.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -67,6 +68,21 @@ Deno.serve(async (req) => {
     if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
 
     const sent = await sendTelegramMessage(channel.bot_token as string, chatId, draft.text as string);
+    if (!sent.ok) {
+      await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
+      return json({ error: 'send_failed', detail: sent.error }, 502);
+    }
+  } else if (channelName === 'gv') {
+    if (!chatId) return json({ error: 'no_destination' }, 400);
+    const { data: channel } = await admin
+      .from('agent_channels')
+      .select('bot_token, active')
+      .eq('user_id', user.id)
+      .eq('channel', 'gv')
+      .maybeSingle();
+    if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
+
+    const sent = await sendGoogleVoiceReply(channel.bot_token as string, chatId, draft.text as string);
     if (!sent.ok) {
       await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
       return json({ error: 'send_failed', detail: sent.error }, 502);

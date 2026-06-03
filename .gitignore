@@ -44,3 +44,6 @@ supabase/.temp/
 
 # Claude Code harness artifacts
 .claude/
+
+# Editor-local config
+.vscode/

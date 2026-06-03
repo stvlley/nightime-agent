@@ -387,3 +387,36 @@
 - **Pending:** visual browser UAT of the widget; in-app Settings UI to toggle
   channels (both are still script-first); real Telegram token + `ANTHROPIC_API_KEY`
   for the two credential-gated paths.
+
+## 2026-06-02 (Phase 2 — Google Voice wiring)
+
+- Wired the first **Google Voice** path as Google Voice-over-Gmail, not a direct
+  Google Voice API. Rationale: Google Voice is documented for interactive
+  messaging, while Gmail provides the programmable push/send surface via Pub/Sub
+  mailbox watches and `messages.send`.
+- Added `google-voice-webhook` Edge Function (`verify_jwt=false`): decodes Gmail
+  Pub/Sub notifications, resolves the provider by watched Gmail address
+  (`agent_channels.channel='gv'`, `external_account_id=<gmail>`), fetches Gmail
+  history since the stored history id, parses only Google Voice SMS emails with a
+  real `@txt.voice.google.com` reply address, and runs the shared `runAgentTurn()`
+  loop on channel `gv`.
+- Added `_shared/googleVoiceParser.ts` (dependency-free, unit-tested) and
+  `_shared/gmail.ts` (Deno-only OAuth refresh, Gmail API calls, outbound
+  `messages.send`). `send-draft` now supports `gv` by replying through Gmail to
+  the stored thread destination; unsupported channels still return
+  `unsupported_channel`.
+- Added migration `20260602000000_google_voice_channel_metadata.sql` with
+  `agent_channels.metadata jsonb` for operational channel state such as
+  `lastHistoryId`, watch expiration, and Pub/Sub topic. `types/database.ts` and
+  `ChannelType` updated (`webchat` included too).
+- Added `scripts/connect-google-voice.mjs`: validates Google OAuth refresh,
+  starts/renews Gmail `watch`, saves the `gv` channel row and baseline
+  `lastHistoryId`. `.env.example` and `supabase/functions/README.md` document
+  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and
+  `GOOGLE_PUBSUB_TOPIC`.
+- Verification: `npm test` (50 tests), `npm run typecheck`, and `npm run lint`
+  all pass. Direct `deno check` was not run because Deno is not installed in this
+  local environment.
+- Pending: apply migration/deploy the new function, create the Google Cloud
+  Pub/Sub push subscription, obtain a Gmail refresh token with read/send scopes,
+  run `connect-google-voice.mjs`, and live-test actual Google Voice delivery.
