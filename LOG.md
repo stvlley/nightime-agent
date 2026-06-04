@@ -1,5 +1,44 @@
 # Project Log
 
+## 2026-06-04
+
+- Refreshed stale documentation after the Phase 2 runtime work:
+  - `AGENTS.md` now lists `npm test` and `npm run typecheck`, and no longer says
+    there is no test runner.
+  - `PLAN.md` current-state snapshot now reflects the provider app, live
+    Supabase data, setup chat, approval queue, Edge Functions, script-first
+    channel setup, and the hosted deploy/live-UAT milestone.
+  - `CORE_FEATURES.md` channel coverage now reflects implemented web chat,
+    Telegram, and Google Voice-over-Gmail runtime support, plus pending Settings
+    UI for channel connection.
+  - `DEPLOYMENT.md` now documents the current Supabase migration/function deploy
+    flow and script-first channel setup.
+  - `supabase/functions/README.md` now describes `send-draft` as channel-aware
+    instead of Telegram bot-only.
+- Verification after the docs refresh: `npm test` (50 tests) and
+  `npm run typecheck` pass.
+
+### App Store / Google Play prep + WhatsApp channel
+
+- Updated native Expo metadata for store builds:
+  - App display name: `Nightime Agent`
+  - URL scheme: `nightime-agent`
+  - iOS bundle identifier: `com.nightime.agent`
+  - Android package: `com.nightime.agent`
+  - Initial native build numbers: iOS `1`, Android `versionCode` `1`
+- Added `eas.json` with development, preview, and production build profiles;
+  production Android builds as an App Bundle.
+- Added WhatsApp Cloud API runtime support:
+  - `supabase/functions/whatsapp-webhook` for Meta webhook verification and
+    inbound message handling.
+  - `_shared/whatsappParser.ts` and `_shared/whatsapp.ts` for dependency-free
+    webhook parsing and Graph API text delivery.
+  - `send-draft` support for WhatsApp approvals.
+  - `scripts/connect-whatsapp.mjs` to validate/store a provider phone number id
+    and access token server-side.
+  - Supabase function config, env example, deployment docs, and runtime README
+    updated for WhatsApp.
+
 ## 2026-05-28
 
 - Switched hosting target from Railway to Vercel.
@@ -250,33 +289,12 @@
   pass. Live UAT (deploy + real bot message) still pending — not possible in this
   no-Docker session.
 
-### Next steps
+### Superseded next steps
 
-1. Manual UAT on web at `http://localhost:8082`:
-   - provider register -> setup chat -> save -> tabs
-   - Settings -> Setup chat -> prefilled edit -> save
-   - Settings -> Sign out -> public landing
-   - login again from landing modal
-   - route gating: while signed out, deep-link directly to `/(tabs)` and
-     `/(onboarding)/setup` and confirm both redirect to `/`
-   - re-run `npm run build:web` (not re-verified this session) before deploy
-2. Tighten setup chat UX after manual UAT:
-   - mobile/desktop spacing
-   - review summary readability
-   - edit/back behavior around accepted suggestions
-   - notification denied/skipped states
-3. Replace deterministic setup suggestions with real inference only after a
-   server endpoint exists. Required before enabling: structured output schema,
-   validation, prompt/version logging, rate limiting, deterministic fallback,
-   and no client-bundled provider secrets.
-4. Begin Phase 2 agent-runtime work once setup UAT is stable:
-   Telegram webhook -> Supabase Edge Function -> FAQ/keyword pre-filter ->
-   provider approval queue -> outbound reply/draft.
-5. Continue cleanup:
-   - migrate residual auth/onboarding hard-coded colors to `components/ui`
-     tokens
-   - refresh app icon/favicon for the night/owl brand
-   - keep removing stale/legacy routes and Bolt remnants as they surface.
+The setup-chat UAT list below was the checkpoint before the Phase 2 runtime was
+implemented. The current next steps are in `PLAN.md`: deploy/apply migrations,
+connect live webchat/Telegram/Google Voice credentials, run hosted UAT, add
+channel-connect UI in Settings, add notifications, and continue visual polish.
 
 ## 2026-05-30 (Product direction alignment — tool, not marketplace)
 

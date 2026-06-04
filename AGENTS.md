@@ -11,6 +11,8 @@ Install dependencies with `npm install`.
 - `npm run dev`: starts the Expo development server with telemetry disabled.
 - `npm run build:web`: exports the app for web using Expo.
 - `npm run lint`: runs Expo lint checks for the project.
+- `npm run typecheck`: runs TypeScript with `--noEmit`.
+- `npm test`: runs the Vitest suite.
 
 Use Expo's generated QR/device options from the dev server when validating native behavior.
 
@@ -20,7 +22,7 @@ Write TypeScript and TSX with strict typing enabled. Follow `.prettierrc`: 2-spa
 
 ## Testing Guidelines
 
-No test runner or test script is currently configured. Before merging behavior-heavy changes, at minimum run `npm run lint` and manually exercise the affected Expo route or workflow. If tests are added, place them near the feature as `*.test.ts` or `*.test.tsx`, and add a matching `npm test` script so contributors have a single command.
+Vitest is configured for dependency-free business logic and parsers. Place tests near the covered behavior as `*.test.ts` or `*.test.tsx` under `test/` or beside the feature. Before merging behavior-heavy changes, run `npm test`, `npm run typecheck`, `npm run lint`, and manually exercise the affected Expo route, Edge Function flow, or channel script.
 
 ## Commit & Pull Request Guidelines
 

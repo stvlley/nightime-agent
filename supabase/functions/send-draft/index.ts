@@ -5,12 +5,14 @@
 // the draft before sending. Configure with `verify_jwt = true`.
 //
 // Channel-aware: Telegram drafts deliver via the Bot API; Google Voice drafts
-// reply through Gmail to the Google Voice notification address; web-chat drafts
-// have no external destination, so approval simply marks them sent.
+// reply through Gmail to the Google Voice notification address; WhatsApp drafts
+// deliver via Meta Cloud API; web-chat drafts have no external destination, so
+// approval simply marks them sent.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
 import { sendGoogleVoiceReply } from '../_shared/gmail.ts';
+import { sendWhatsAppText } from '../_shared/whatsapp.ts';
 import { json, corsHeaders } from '../_shared/http.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -83,6 +85,28 @@ Deno.serve(async (req) => {
     if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
 
     const sent = await sendGoogleVoiceReply(channel.bot_token as string, chatId, draft.text as string);
+    if (!sent.ok) {
+      await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
+      return json({ error: 'send_failed', detail: sent.error }, 502);
+    }
+  } else if (channelName === 'whatsapp') {
+    if (!chatId) return json({ error: 'no_destination' }, 400);
+    const { data: channel } = await admin
+      .from('agent_channels')
+      .select('bot_token, external_account_id, active')
+      .eq('user_id', user.id)
+      .eq('channel', 'whatsapp')
+      .maybeSingle();
+    if (!channel?.bot_token || !channel?.external_account_id || !channel.active) {
+      return json({ error: 'channel_unavailable' }, 400);
+    }
+
+    const sent = await sendWhatsAppText(
+      channel.bot_token as string,
+      channel.external_account_id as string,
+      chatId,
+      draft.text as string,
+    );
     if (!sent.ok) {
       await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
       return json({ error: 'send_failed', detail: sent.error }, 502);

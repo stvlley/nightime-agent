@@ -207,11 +207,15 @@ messages.
   material (price lists, intake forms) into retrieval.
 
 ### 2.6 Channels
-- Provider connects messaging channels in settings: Telegram (Phase 3, first),
-  WhatsApp, Email, SMS, Google Voice (skeletons in `utils/channelConnectors.ts`).
+- Provider connects messaging channels in settings. Current runtime support is
+  script-first: web chat (`scripts/enable-webchat.mjs`), Telegram
+  (`scripts/connect-telegram.mjs`), WhatsApp Cloud API
+  (`scripts/connect-whatsapp.mjs`), and Google Voice-over-Gmail
+  (`scripts/connect-google-voice.mjs`). Settings UI for these connections is a
+  pending provider-app feature.
 - Each channel = a webhook + credential bundle stored server-side (NOT
   `EXPO_PUBLIC_*`). Per-channel toggle for auto-reply + business-hours-only.
-- Inbound webhook handler lives in the agent runtime (§4), not the client.
+- Inbound webhook handlers live in the agent runtime (§4), not the client.
 
 ### 2.7 Billing (`app/(tabs)/billing.tsx`)
 - Plan tier (`starter` / `pro` / `premium`) on `profiles.plan`.
@@ -304,9 +308,9 @@ or UAT.
 ### 4.2 Booking state machine
 - States (lowercase, DB-canonical): `open` → `qualifying` → `offering` →
   `awaiting_client` → `tentative` → `confirmed`. Side branches: `cancelled`,
-  `abandoned`. Transitions encoded in code (current uppercase map in
-  `types/booking.ts` `ThreadStateTransitions` is reconciled to lowercase at
-  runtime build).
+  `abandoned`. The Phase 2 message runtime uses these lowercase DB states
+  directly. The older uppercase `types/booking.ts` model should be retired or
+  rewritten before booking/portal work resumes.
 - `offering` writes a `TimeSlotOffer` (slots derived from `availability` minus
   existing `bookings` for the provider).
 - `tentative` writes a `bookings` row with `source = 'ai'` and links
@@ -315,9 +319,11 @@ or UAT.
 
 ### 4.3 Outbound sending
 - Outbound messages go through an approval queue when
-  `requireManualApproval` is true (provider taps approve in inbox).
-- Otherwise sent immediately. Failure → retry with backoff; persisted on
-  `messages` / queue table.
+  approval mode requires it (provider taps approve in inbox).
+- Only confident, clean FAQ matches can auto-send under `auto_eligible`; LLM and
+  deterministic fallback drafts stay pending for human approval. Delivery is
+  channel-aware: Telegram uses the Bot API, web chat flips visibility in the DB,
+  and Google Voice-over-Gmail replies through Gmail.
 
 ### 4.4 Re-engagement & follow-ups (`pg_cron`)
 - Past-client follow-ups (consent-based only — no cold contact).
@@ -330,10 +336,17 @@ or UAT.
 - Mind per-platform ToS — out of scope for the agent itself.
 
 ### 4.6 Channel coverage
-- Telegram first (free API, free webhooks, no per-message fee).
-- WhatsApp / SMS later (per-message cost, paid).
-- Email via standard SMTP/IMAP or a transactional provider.
-- Google Voice last (no official API; risky).
+- Web chat is the zero-setup default surface: embeddable widget, provider
+  resolved by public slug, pending drafts hidden until approved.
+- Telegram is implemented and free per message, but requires a provider-created
+  BotFather bot token.
+- WhatsApp Cloud API is wired through Meta webhooks and Graph API delivery. It
+  needs a Meta app, phone number id, access token, webhook verify token, and
+  hosted live UAT.
+- Google Voice-over-Gmail is code-wired through Gmail Pub/Sub/OAuth because
+  Google Voice has no direct SMS API. It is credential-heavy and still needs
+  hosted live UAT.
+- SMS remains a later paid channel.
 
 ---
 
@@ -365,9 +378,11 @@ or UAT.
   Vercel Hobby. Edge Functions deploy via `supabase functions deploy`.
 
 ### 5.4 Cost posture
-- $0 until launch (Supabase free tier, Vercel Hobby, Telegram).
+- $0 until launch for local/dev usage (Supabase free tier, Vercel Hobby,
+  webchat, Telegram).
 - At launch the cost drivers are LLM tokens (mitigated by FAQ/keyword
-  pre-filter + Haiku) and per-message channel fees (Telegram-only avoids both).
+  pre-filter + Haiku) and per-message channel fees for paid transports such as
+  WhatsApp/SMS. Web chat and Telegram avoid per-message channel fees.
 
 ### 5.5 Compliance constraints (named, not blockers)
 - **Tool vs. marketplace is the primary compliance lever.** Staying a pure

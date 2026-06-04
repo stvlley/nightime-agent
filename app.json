@@ -1,15 +1,25 @@
 {
   "expo": {
-    "name": "nightime-agent",
+    "name": "Nightime Agent",
     "slug": "nightime-agent",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "nightime-agent",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nightime.agent",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.nightime.agent",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0d0a26"
+      }
     },
     "web": {
       "bundler": "metro",

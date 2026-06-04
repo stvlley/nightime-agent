@@ -4,7 +4,7 @@ The message loop that turns Nightime Agent from a demo into a thing that
 processes a real message.
 
 ```
-Telegram / web chat / Google Voice-over-Gmail
+Telegram / WhatsApp / web chat / Google Voice-over-Gmail
   → channel webhook → FAQ pre-filter (free) → LLM fallback (Haiku, optional)
   → messages (inbound + draft) → approval queue → send-draft → channel delivery
 ```
@@ -14,7 +14,8 @@ Telegram / web chat / Google Voice-over-Gmail
 | Function           | verify_jwt | Purpose                                                            |
 | ------------------ | ---------- | ----------------------------------------------------------------- |
 | `telegram-webhook` | **false**  | Inbound webhook. Resolves provider by secret, drafts a reply.     |
-| `send-draft`       | **true**   | Provider approves a pending draft → sends it via the bot.         |
+| `whatsapp-webhook` | **false**  | Meta Cloud API webhook. Resolves provider by phone number id.     |
+| `send-draft`       | **true**   | Provider approves a pending draft → delivers it through its channel. |
 | `webchat-inbound`  | **false**  | Public widget inbound; returns only visible/eligible replies.      |
 | `webchat-poll`     | **false**  | Public widget polling for visible replies in one thread.           |
 | `google-voice-webhook` | **false** | Gmail Pub/Sub push for Google Voice notification emails.       |
@@ -44,13 +45,15 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...   # optional, enables LLM fall
 
 # 3. Deploy
 supabase functions deploy telegram-webhook
+supabase functions deploy whatsapp-webhook
 supabase functions deploy send-draft
 supabase functions deploy webchat-inbound
 supabase functions deploy webchat-poll
 supabase functions deploy google-voice-webhook
 
-# 4. Connect a provider's bot (creates @BotFather bot first, then):
+# 4. Connect provider channels:
 node scripts/connect-telegram.mjs <botToken> [providerEmail]
+node scripts/connect-whatsapp.mjs <phoneNumberId> <accessToken> [providerEmail]
 ```
 
 `verify_jwt` per function is configured in `supabase/config.toml`.
@@ -60,9 +63,31 @@ node scripts/connect-telegram.mjs <botToken> [providerEmail]
 1. Create a bot with [@BotFather](https://t.me/BotFather), copy the token.
 2. `node scripts/connect-telegram.mjs <token> test@nightime.local`.
 3. Message the bot — the inbound + a draft reply land in the provider's Inbox
-   under **Needs your approval**. Approve to send it back through the bot.
+   under **Needs your approval**. Approve to send it back through Telegram.
 4. Set the provider's `approval_mode` to `auto_eligible` to let confident FAQ
    answers send automatically.
+
+## WhatsApp Cloud API
+
+1. Create/configure a WhatsApp Business Platform app in Meta.
+2. Set Supabase secrets:
+
+```bash
+supabase secrets set WHATSAPP_VERIFY_TOKEN=... WHATSAPP_APP_SECRET=...
+```
+
+3. Deploy `whatsapp-webhook`, then configure Meta's webhook callback URL:
+   `https://<ref>.functions.supabase.co/whatsapp-webhook`.
+4. Subscribe the app to the WhatsApp `messages` webhook field.
+5. Store the provider's phone-number access token and phone number id:
+
+```bash
+node scripts/connect-whatsapp.mjs <phoneNumberId> <accessToken> [providerEmail]
+```
+
+Inbound free-form replies work inside WhatsApp's customer-service window.
+Provider-initiated outbound messages need approved WhatsApp templates; do not
+use this runtime for cold or bulk outreach.
 
 ## Google Voice via Gmail
 

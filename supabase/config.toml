@@ -418,6 +418,12 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # secret token (X-Telegram-Bot-Api-Secret-Token) instead.
 verify_jwt = false
 
+[functions.whatsapp-webhook]
+# Public inbound webhook — Meta sends no Supabase JWT. The GET challenge is
+# authenticated by WHATSAPP_VERIFY_TOKEN; POST signatures are checked when
+# WHATSAPP_APP_SECRET is configured. Provider resolution uses phone_number_id.
+verify_jwt = false
+
 [functions.send-draft]
 # Called by the provider app; requires a valid Supabase session JWT.
 verify_jwt = true

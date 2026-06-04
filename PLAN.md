@@ -27,38 +27,46 @@ not the center of the first usable setup experience and must not ship by default
 V1 should feel like onboarding a messaging assistant, not configuring a full
 business operations suite.
 
-## Current state (discovery)
+## Current state
 
-- **Stack:** Expo Router app (React 19, RN 0.81, Expo SDK 54),
-  TypeScript. Deployed as a **static web export** to Vercel (`nightime-agent.vercel.app`).
-  Typecheck passes; build is healthy.
-- **Wired & working:** Public marketing landing page on signed-out `/`; signed-in
-  providers redirect to `/(tabs)`. Supabase auth (login/register via `useAuth`).
-  Real Supabase project `hwcpztsltgpjzclrmyez` with schema applied (`profiles`,
-  `threads`, `messages`, `bookings`, `faq`, `services`, `availability`) + RLS.
-  Demo fallback to AsyncStorage when env vars are absent.
-- **Landing implementation:** `app/index.tsx` is a thin route wrapper around
-  `components/landing/LandingPage.tsx`. Landing sections, role signup modal,
-  cookie consent banner, content, types, and styles live under
-  `components/landing/`; consent persistence lives in `hooks/useCookieConsent.ts`.
-- **Dead code / skeleton (well-designed, never executed):** `utils/bookingAgent.ts`
-  (state machine), `utils/channelConnectors.ts` (GV/WhatsApp/Telegram/Email),
-  `utils/aiTraining.ts`, `utils/webhooks.ts`, `utils/api.ts`. **Not imported by any
-  screen.** Agent internals are regex/keyword stubs returning mock slots.
-- **UI is mostly hardcoded mock arrays** — inbox conversations, dashboard stats,
-  calendar, FAQ list are literals inside the components.
-- **No server tier exists.** Connectors POST to `/api/...` and `EXPO_PUBLIC_*_WEBHOOK_URL`
-  endpoints that don't exist. AI inference, inbound webhooks, calendar, outbound
-  sending have nowhere to run.
-- **Secret hygiene OK:** `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` are NOT
-  `EXPO_PUBLIC_`-prefixed (won't bundle into client). `.env` is gitignored.
+- **Stack:** Expo Router app (React 19, RN 0.81, Expo SDK 54), TypeScript,
+  Supabase, and Supabase Edge Functions. The provider app deploys as a static
+  web export to Vercel (`nightime-agent.vercel.app`).
+- **Provider app:** signed-out `/` renders the marketing landing page; signed-in
+  providers route to `/(tabs)`. Auth is centralized in `AuthProvider`, protected
+  route groups use `AuthGate`, and demo-mode AsyncStorage fallback still works
+  when Supabase env vars are absent.
+- **Live data:** dashboard, inbox, calendar, and FAQ settings read/write through
+  Supabase services in `lib/data.ts`, with RLS around provider-owned tables.
+  The Inbox includes the approval queue for pending agent drafts.
+- **Setup:** first-run provider onboarding is a deterministic chat transcript
+  focused on message-provider context. It persists profiles, services,
+  availability context where relevant, provider preferences, and demo payloads.
+- **Agent runtime:** Phase 2 server tier exists in `supabase/functions/`.
+  Telegram, WhatsApp, web chat, and Google Voice-over-Gmail all share the same
+  agent loop: inbound message -> FAQ pre-filter -> optional LLM fallback ->
+  approval queue or auto-send -> channel delivery.
+- **Channel setup:** web chat, Telegram, WhatsApp, and Google Voice are
+  script-first today (`enable-webchat.mjs`, `connect-telegram.mjs`,
+  `connect-whatsapp.mjs`, `connect-google-voice.mjs`).
+  Settings UI for channel connection is still pending.
+- **Verification:** current local checkpoint passes `npm test` (50 tests),
+  `npm run typecheck`, `npm run lint`, and `npm run build:web`.
+- **Open milestone:** hosted deploy and real-channel UAT are still pending:
+  apply migrations, deploy Edge Functions, connect live channel credentials
+  (especially WhatsApp + Google Voice for the first paid/phone-like pair), send
+  real messages, and approve drafts from the provider app.
+- **Secret hygiene OK:** service-role and provider/channel credentials stay
+  server-side; only Supabase public URL/anon key are safe as `EXPO_PUBLIC_*`.
 
 ## Type and domain cleanup remaining
 
 - Three overlapping type files: `types/database.ts` (LIVE, source of truth for DB),
-  `types/booking.ts` (agent domain model — uppercase `ThreadState`), `types/index.ts`
-  (DEAD — unused; screens redefine types inline). DB states are lowercase vs
-  booking.ts uppercase — reconcile when building the runtime.
+  `types/booking.ts` (older agent domain model — uppercase `ThreadState`),
+  `types/index.ts` (DEAD — unused; screens redefine types inline). The Phase 2
+  runtime uses DB-lowercase thread states directly and does not depend on the
+  uppercase `types/booking.ts` state machine; clean that older model up when the
+  booking/portal fork resumes.
 - Historical cleanup already completed: app identity now uses `nightime-agent`,
   dead `types/index.ts` was retired, and the duplicate interface block in
   `app/_layout.tsx` was removed.
@@ -74,8 +82,9 @@ V1 is message-provider-first on one shared Supabase backend:
 3. **Customer portal** (FUTURE, separate Next.js app) — provider-specific public
    profile + availability + booking at `/p/[slug]`. Payments-ready,
    multi-tenant-ready, but deferred until the message-provider loop works.
-4. **Agent runtime** (Supabase Edge Functions, Phase 2) — talks to customers in their
-   own messaging app (Telegram/WhatsApp/email) under provider-controlled rules.
+4. **Agent runtime** (Supabase Edge Functions, Phase 2) — talks to customers in
+   their own messaging surface (web chat, Telegram, WhatsApp,
+   Google Voice-over-Gmail) under provider-controlled rules.
 
 The first customer interaction surface is the conversational channel. The
 marketing home captures early intent, but v1 UAT should focus on provider
