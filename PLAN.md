@@ -46,10 +46,12 @@ business operations suite.
   Telegram, WhatsApp, web chat, and Google Voice-over-Gmail all share the same
   agent loop: inbound message -> FAQ pre-filter -> optional LLM fallback ->
   approval queue or auto-send -> channel delivery.
-- **Channel setup:** web chat, Telegram, WhatsApp, and Google Voice are
-  script-first today (`enable-webchat.mjs`, `connect-telegram.mjs`,
-  `connect-whatsapp.mjs`, `connect-google-voice.mjs`).
-  Settings UI for channel connection is still pending.
+- **Channel setup:** web chat and Telegram are self-serve in the app
+  (Settings → Channels: one-tap web chat with shareable link/embed snippet,
+  paste-a-token Telegram connect). WhatsApp and Google Voice remain
+  script-first/assisted (`connect-whatsapp.mjs`, `connect-google-voice.mjs`)
+  because they need Meta/Google Cloud credentials. The operator scripts
+  (`enable-webchat.mjs`, `connect-telegram.mjs`) still work for support cases.
 - **Verification:** current local checkpoint passes `npm test` (50 tests),
   `npm run typecheck`, `npm run lint`, and `npm run build:web`.
 - **Open milestone:** hosted deploy and real-channel UAT are still pending:
@@ -271,14 +273,32 @@ message setup and approval, not public portal readiness.
 - **Channel model:** **web chat = no provider setup** (the default activation
   surface); **Telegram = branded but one-time BotFather token** (Telegram has no
   programmatic bot creation); **Google Voice = Gmail-backed, credential-heavy,
-  interactive messaging only**. All are currently script-first to connect.
+  interactive messaging only**. Web chat + Telegram are self-serve in-app;
+  WhatsApp + Google Voice stay script-first/assisted.
+- [x] Channel-connect UI (Settings → Channels / dashboard "Manage"): one-tap web
+      chat enable with shareable link + iframe embed snippet, paste-a-token
+      Telegram connect (validates via getMe, registers the webhook), pause /
+      resume / disconnect per channel, honest "assisted setup" cards for
+      WhatsApp + Google Voice. Client writes its own `agent_channels` rows under
+      the owner-scoped RLS policy and never SELECTs `bot_token`/`webhook_secret`.
+- [x] Thread detail screen (`/(tabs)/thread?id=`): full transcript with
+      direction/source/approval badges, inline approve/reject for pending
+      drafts, and a **manual provider reply** composer that persists a pending
+      outbound message and delivers it through the existing `send-draft`
+      function (no new server surface; failed sends stay in the approval queue).
+- [x] In-app attention signal: Inbox tab badge with the pending-draft count
+      (30s poll) + a "needs your approval" card on the dashboard. Push/system
+      notifications are still pending below.
+- [x] Provider controls now persist: auto-send mode (`approval_mode`),
+      moderation level, follow-up + notification preferences write to
+      `provider_preferences`; FAQ rows can be toggled on/off; profile/slug
+      editing in Settings → Profile & business (slug validated against the DB
+      format).
 - [ ] **Deploy + live UAT on hosted project:** apply migrations,
       `supabase functions deploy`, connect a bot/Gmail watch, message it, approve
       a draft.
-- [ ] Notifications for inbound messages needing provider attention.
-- [ ] Channel-connect UI in Settings — toggle web chat on (show link/snippet) and
-      paste a Telegram token. Both channels are script-only today
-      (`enable-webchat.mjs` / `connect-telegram.mjs`).
+- [ ] Push/system notifications for inbound messages needing provider attention
+      (in-app badge exists; no push transport yet).
 
 ### Phase 3 — Customer portal  ⛔ GATED (marketplace fork — do NOT build by default)
 > This phase **crosses the tool→marketplace line** (public listing + booking +

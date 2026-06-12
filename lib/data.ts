@@ -41,6 +41,26 @@ export interface DashboardStats {
   responseRate: number; // 0-100
 }
 
+export interface ThreadMessageItem {
+  id: string;
+  text: string;
+  direction: 'in' | 'out';
+  createdAt: string | null;
+  aiGenerated: boolean;
+  approvalStatus: string | null;
+  source: string | null;
+  intent: string | null;
+  confidence: number | null;
+}
+
+export interface ThreadDetail {
+  id: string;
+  clientHandle: string;
+  channel: string;
+  state: string;
+  messages: ThreadMessageItem[];
+}
+
 export interface PendingDraft {
   /** The outbound draft message id (the row whose approval_status is 'pending'). */
   id: string;
@@ -118,6 +138,75 @@ export const threadService = {
         kind,
       };
     });
+  },
+
+  /** One thread with its full message history, oldest first. */
+  async getDetail(userId: string, threadId: string): Promise<ThreadDetail | null> {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from('threads')
+      .select(
+        'id, channel, client_handle, state, messages(id, text, direction, created_at, ai_generated, approval_status, response_source, ai_label, ai_confidence)'
+      )
+      .eq('user_id', userId)
+      .eq('id', threadId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    const messages = ((data as any).messages ?? [])
+      .slice()
+      .sort((a: any, b: any) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+      .map(
+        (m: any): ThreadMessageItem => ({
+          id: m.id,
+          text: m.text ?? '',
+          direction: m.direction === 'out' ? 'out' : 'in',
+          createdAt: m.created_at,
+          aiGenerated: Boolean(m.ai_generated),
+          approvalStatus: m.approval_status ?? null,
+          source: m.response_source ?? null,
+          intent: m.ai_label ?? null,
+          confidence: m.ai_confidence ?? null,
+        })
+      );
+
+    return {
+      id: data.id,
+      clientHandle: (data as any).client_handle ?? 'Unknown',
+      channel: (data as any).channel,
+      state: (data as any).state ?? 'open',
+      messages,
+    };
+  },
+
+  /**
+   * Provider-written reply: persist it as a pending outbound message, then
+   * deliver through the channel via the `send-draft` Edge Function (which
+   * owns per-channel transport). If delivery fails the message stays in the
+   * approval queue, so nothing is lost.
+   */
+  async sendManualReply(userId: string, threadId: string, text: string): Promise<void> {
+    if (!supabase) throw new Error('Supabase is not configured.');
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        user_id: userId,
+        thread_id: threadId,
+        text,
+        direction: 'out',
+        sender: 'provider',
+        ai_generated: false,
+        approval_status: 'pending',
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+
+    await draftService.approveAndSend(data.id);
   },
 };
 
@@ -250,6 +339,19 @@ export const draftService = {
       source: r.response_source ?? null,
       createdAt: r.created_at ?? null,
     }));
+  },
+
+  /** Count of drafts awaiting approval (inbox tab badge). */
+  async countPending(userId: string): Promise<number> {
+    if (!supabase) return 0;
+    const { count, error } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('direction', 'out')
+      .eq('approval_status', 'pending');
+    if (error) throw error;
+    return count ?? 0;
   },
 
   /** Approve a draft and deliver it via the channel (Edge Function `send-draft`). */

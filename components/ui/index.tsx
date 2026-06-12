@@ -537,7 +537,7 @@ export function ToggleRow({
         <Switch
           value={value}
           onValueChange={onValueChange}
-          trackColor={{ false: colors.border, true: '#a7d6d1' }}
+          trackColor={{ false: colors.border, true: colors.accentDim }}
           thumbColor={value ? colors.primary : '#ffffff'}
         />
       </XStack>

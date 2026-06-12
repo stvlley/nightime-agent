@@ -438,3 +438,58 @@ channel-connect UI in Settings, add notifications, and continue visual polish.
 - Pending: apply migration/deploy the new function, create the Google Cloud
   Pub/Sub push subscription, obtain a Gmail refresh token with read/send scopes,
   run `connect-google-voice.mjs`, and live-test actual Google Voice delivery.
+
+## 2026-06-12 (Provider app: self-serve channels, thread view, real controls)
+
+- **Self-serve channel connection shipped** (the open Phase 2 item). New
+  `lib/channels.ts` + `app/(tabs)/channels.tsx` (hidden tab, reachable from
+  Settings and the dashboard): one-tap web chat enable (ensures a profile slug,
+  upserts the `agent_channels` row, shows the shareable widget link + iframe
+  embed snippet with copy/share), paste-a-token Telegram connect (structural
+  token check → Bot API `getMe` validation → row upsert → `setWebhook` with a
+  fresh secret; on webhook failure the row is left inactive for retry), and
+  pause/resume/disconnect per channel. WhatsApp + Google Voice render as honest
+  "assisted setup" cards (credential-gated; scripts remain the path). All of it
+  runs as the signed-in provider under the existing owner-scoped RLS — the
+  client never SELECTs `bot_token`/`webhook_secret`; no new server surface.
+- **Thread detail + manual replies** (`app/(tabs)/thread.tsx`): the inbox rows
+  now open a full transcript (direction bubbles, AI/saved-reply source badges,
+  auto-sent/pending/rejected/failed states), pending drafts can be approved or
+  rejected inline, and the provider can reply as themselves: the reply is
+  persisted as a pending outbound message and delivered through the existing
+  `send-draft` Edge Function — if delivery fails it stays in the approval queue
+  so nothing is lost. Demo mode gets a small clearly-placeholder transcript so
+  the flow is explorable without Supabase.
+- **Dead controls now real.** Dashboard channel list reads `agent_channels`
+  (was hardcoded "connected" claims) with an empty-state CTA; the dashboard and
+  Agent Settings toggles persist `approval_mode` (relabelled "Auto-send
+  confident replies" to match what the runtime actually does); moderation level
+  persists `moderation_level`; Settings notification/follow-up toggles persist
+  to `provider_preferences` (new `lib/preferences.ts`); FAQ rows gained an
+  enable/disable switch wired to the existing `faqService.setEnabled`.
+- **Attention signal:** Inbox tab badge shows the pending-draft count (30s
+  poll in the tab layout) and the dashboard shows a tappable "N replies need
+  your approval" card. Inbox now refreshes on focus so approvals done from a
+  thread reflect immediately.
+- **Profile editing** (`app/(tabs)/profile.tsx` + `updateProfile` on the auth
+  context, demo-mode aware): business/display name, headline, location, and
+  the public chat handle (slug) with client-side validation matching the
+  `profiles_slug_format` constraint and a friendly unique-violation message.
+- **Billing made honest:** plan/usage now come from the real profile columns,
+  the invented "card ending 4242" and fictional usage bars are gone, and the
+  screen states plainly that payments aren't connected during early access
+  (consistent with the deferred-payments decision).
+- **Web-Alert bugs fixed while in there:** FAQ delete confirmation used
+  buttoned `Alert.alert` (a no-op on react-native-web, the primary deploy
+  target) — replaced with a shared `utils/confirm.ts` used by Settings sign-out,
+  channel disconnect, and FAQ delete. Inline error text replaced the other
+  web-dead alerts in Agent Settings. Last teal-era token (`#a7d6d1` ToggleRow
+  track) migrated to the night palette.
+- New pure helpers in `utils/channelSetup.ts` (slug derivation/validation,
+  Telegram token shape check, webhook secret generation, widget link/embed
+  builders) with `test/channelSetup.test.ts` — suite now 70 tests.
+- Verification: `npm run typecheck`, `npm run lint`, `npm test` (70), and
+  `npm run build:web` all pass; static export smoke-tested (`/` and
+  `/chat.html` 200 via `scripts/serve-static.mjs`).
+- Still pending (unchanged): hosted deploy + live-channel UAT, push/system
+  notifications, deferred auth/onboarding night-theme migration.

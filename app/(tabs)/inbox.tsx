@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { Calendar, Phone, User, Bot, Check, X } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { threadService, draftService, PendingDraft } from '@/lib/data';
@@ -152,9 +153,13 @@ export default function InboxScreen() {
       .finally(() => setDraftsLoading(false));
   }, [isSupabaseConfigured, user]);
 
-  useEffect(() => {
-    loadDrafts();
-  }, [loadDrafts]);
+  // Reload whenever the tab regains focus so approvals done from a thread
+  // screen (or new agent drafts) are reflected without a manual refresh.
+  useFocusEffect(
+    useCallback(() => {
+      loadDrafts();
+    }, [loadDrafts])
+  );
 
   const handleApprove = useCallback(
     async (id: string) => {
@@ -185,34 +190,36 @@ export default function InboxScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured || !user) return;
-    let active = true;
-    setLoading(true);
-    threadService
-      .listForInbox(user.id)
-      .then((rows) => {
-        if (!active) return;
-        setConversations(
-          rows.map((thread) => ({
-            id: thread.id,
-            clientName: thread.clientHandle,
-            lastMessage: thread.lastMessage,
-            timestamp: relativeTime(thread.lastActivityAt),
-            type: thread.kind,
-            platform: thread.channel,
-            unread: thread.unread,
-          }))
-        );
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [user, isSupabaseConfigured]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isSupabaseConfigured || !user) return;
+      let active = true;
+      setLoading(true);
+      threadService
+        .listForInbox(user.id)
+        .then((rows) => {
+          if (!active) return;
+          setConversations(
+            rows.map((thread) => ({
+              id: thread.id,
+              clientName: thread.clientHandle,
+              lastMessage: thread.lastMessage,
+              timestamp: relativeTime(thread.lastActivityAt),
+              type: thread.kind,
+              platform: thread.channel,
+              unread: thread.unread,
+            }))
+          );
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, [user, isSupabaseConfigured])
+  );
 
   const filteredConversations = conversations.filter((conversation) => {
     const query = searchQuery.toLowerCase();
@@ -260,7 +267,19 @@ export default function InboxScreen() {
         {loading ? (
           <LoadingState />
         ) : filteredConversations.length === 0 ? (
-          <EmptyState title="No conversations" message="New client messages will appear here." />
+          conversations.length === 0 ? (
+            <YStack gap={10}>
+              <EmptyState
+                title="No conversations yet"
+                message="When clients message one of your connected channels, threads appear here."
+              />
+              <Button variant="secondary" onPress={() => router.push('/(tabs)/channels')}>
+                Connect a channel
+              </Button>
+            </YStack>
+          ) : (
+            <EmptyState title="No matches" message="No conversations match your search." />
+          )
         ) : (
           <YStack gap={10}>
             {filteredConversations.map((conversation) => {
@@ -272,6 +291,9 @@ export default function InboxScreen() {
                   title={conversation.clientName}
                   subtitle={conversation.lastMessage}
                   meta={conversation.timestamp}
+                  onPress={() =>
+                    router.push({ pathname: '/(tabs)/thread', params: { id: conversation.id } })
+                  }
                   badge={
                     <XStack gap={6} flexWrap="wrap">
                       <Badge tone={conversation.unread ? 'primary' : 'neutral'}>

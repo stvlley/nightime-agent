@@ -96,7 +96,9 @@ supabase secrets set GOOGLE_OAUTH_CLIENT_ID=... GOOGLE_OAUTH_CLIENT_SECRET=... #
 supabase secrets set WHATSAPP_VERIFY_TOKEN=... WHATSAPP_APP_SECRET=... # WhatsApp Cloud API webhook verification
 ```
 
-Channel setup is currently script-first:
+Web chat and Telegram are self-serve in the provider app (Settings ->
+Channels). Operator scripts remain for assisted/credential-heavy channels and
+support cases:
 
 ```bash
 node scripts/enable-webchat.mjs [providerEmail]

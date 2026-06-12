@@ -1,22 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, Mail, MessageSquare, Smartphone, TrendingUp, Users, Bot } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import {
+  Calendar,
+  Globe,
+  Mail,
+  MessageSquare,
+  MessagesSquare,
+  Plus,
+  Send,
+  Smartphone,
+  Sparkles,
+  TrendingUp,
+  Bot,
+  ChevronRight,
+} from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { statsService, DashboardStats } from '@/lib/data';
+import { statsService, draftService, DashboardStats } from '@/lib/data';
+import { channelService, ConnectedChannel } from '@/lib/channels';
+import { preferencesService } from '@/lib/preferences';
+import { channelLabel } from '@/utils/channelSetup';
 import {
   XStack,
   YStack,
   Text,
   Badge,
   Button,
+  IconButton,
   ListRow,
   PageHeader,
   Screen,
   Section,
   StatBlock,
+  Surface,
   ToggleRow,
   colors,
 } from '@/components/ui';
 
+// Demo mode (no Supabase) shows illustrative numbers so the dashboard is
+// explorable; live mode always starts from real zeros.
 const DEMO_STATS: DashboardStats = {
   messagesToday: 47,
   bookingsThisWeek: 12,
@@ -24,52 +45,113 @@ const DEMO_STATS: DashboardStats = {
   responseRate: 94,
 };
 
+const CHANNEL_ICONS: Record<string, typeof Globe> = {
+  webchat: Globe,
+  telegram: Send,
+  whatsapp: MessageSquare,
+  gv: Smartphone,
+  email: Mail,
+  sms: MessagesSquare,
+};
+
 export default function HomeScreen() {
   const { user, isSupabaseConfigured } = useAuth();
-  const [agentEnabled, setAgentEnabled] = useState(true);
+  const [autoSend, setAutoSend] = useState(false);
   const [stats, setStats] = useState<DashboardStats>(
     isSupabaseConfigured
       ? { messagesToday: 0, bookingsThisWeek: 0, aiResponsesToday: 0, responseRate: 0 }
       : DEMO_STATS
   );
+  const [channels, setChannels] = useState<ConnectedChannel[]>([]);
+  const [channelsLoaded, setChannelsLoaded] = useState(!isSupabaseConfigured);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!isSupabaseConfigured || !user) return;
-    let active = true;
-    statsService
-      .getDashboardStats(user.id)
-      .then((nextStats) => {
-        if (active) setStats(nextStats);
+    statsService.getDashboardStats(user.id).then(setStats).catch(() => {});
+    channelService
+      .list(user.id)
+      .then(setChannels)
+      .catch(() => {})
+      .finally(() => setChannelsLoaded(true));
+    draftService.countPending(user.id).then(setPendingCount).catch(() => {});
+    preferencesService
+      .get(user.id)
+      .then((prefs) => {
+        if (prefs) setAutoSend(prefs.approval_mode === 'auto_eligible');
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
   }, [user, isSupabaseConfigured]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleAutoSendToggle = async (value: boolean) => {
+    setAutoSend(value);
+    setToggleError(null);
+    if (!isSupabaseConfigured || !user) return;
+    try {
+      await preferencesService.update(user.id, {
+        approval_mode: value ? 'auto_eligible' : 'manual',
+      });
+    } catch {
+      setAutoSend(!value);
+      setToggleError('Could not save the change. Check your connection and try again.');
+    }
+  };
 
   const providerName =
     (isSupabaseConfigured && user?.profile?.business_name) ||
     user?.profile?.display_name ||
     'Provider';
 
-  const connectedPlatforms = [
-    { name: 'Google Voice', status: 'connected', icon: Smartphone },
-    { name: 'WhatsApp', status: 'connected', icon: MessageSquare },
-    { name: 'Email', status: 'connected', icon: Mail },
-    { name: 'Telegram', status: 'setup required', icon: MessageSquare },
-  ];
+  const activeChannels = channels.filter((c) => c.active);
 
   return (
     <Screen>
       <PageHeader title="Dashboard" subtitle={`${providerName} operations overview`} />
 
-      <ToggleRow
-        title="Agent responses"
-        subtitle={agentEnabled ? 'Nightime Agent is handling eligible client replies.' : 'Client replies require manual review.'}
-        value={agentEnabled}
-        onValueChange={setAgentEnabled}
-        icon={Bot}
-      />
+      <YStack gap={6}>
+        <ToggleRow
+          title="Auto-send confident replies"
+          subtitle={
+            autoSend
+              ? 'Exact saved-response matches send instantly. Everything else still waits for your approval.'
+              : 'Every reply waits in the Inbox for your approval before it is sent.'
+          }
+          value={autoSend}
+          onValueChange={handleAutoSendToggle}
+          icon={Bot}
+        />
+        {toggleError ? (
+          <Text fontSize={12} color={colors.danger}>
+            {toggleError}
+          </Text>
+        ) : null}
+      </YStack>
+
+      {pendingCount > 0 ? (
+        <Surface tone="warning" pressable onPress={() => router.push('/(tabs)/inbox')}>
+          <XStack alignItems="center" gap={12}>
+            <YStack flex={1} gap={2}>
+              <Text fontSize={15} fontWeight="700" color={colors.text}>
+                {pendingCount} {pendingCount === 1 ? 'reply needs' : 'replies need'} your approval
+              </Text>
+              <Text fontSize={13} color={colors.textSecondary}>
+                Clients are waiting — review drafts in the Inbox.
+              </Text>
+            </YStack>
+            <IconButton
+              icon={ChevronRight}
+              label="Open approval queue"
+              tone="warning"
+              onPress={() => router.push('/(tabs)/inbox')}
+            />
+          </XStack>
+        </Surface>
+      ) : null}
 
       <Section title="Today">
         <XStack flexWrap="wrap" gap={12}>
@@ -86,30 +168,79 @@ export default function HomeScreen() {
             <StatBlock label="Response rate" value={`${stats.responseRate}%`} icon={TrendingUp} tone="warning" />
           </YStack>
         </XStack>
+        {!isSupabaseConfigured ? (
+          <Text fontSize={12} color={colors.textMuted}>
+            Demo data — connect Supabase to see live numbers.
+          </Text>
+        ) : null}
       </Section>
 
-      <Section title="Channels">
-        <YStack gap={10}>
-          {connectedPlatforms.map((platform) => (
-            <ListRow
-              key={platform.name}
-              icon={platform.icon}
-              title={platform.name}
-              subtitle={platform.status === 'connected' ? 'Ready for inbound client messages.' : 'Connection is not configured yet.'}
-              badge={<Badge tone={platform.status === 'connected' ? 'success' : 'warning'}>{platform.status}</Badge>}
-            />
-          ))}
-        </YStack>
+      <Section
+        title="Channels"
+        action={
+          <Button icon={Plus} variant="secondary" onPress={() => router.push('/(tabs)/channels')}>
+            Manage
+          </Button>
+        }
+      >
+        {!channelsLoaded ? null : channels.length === 0 ? (
+          <Surface>
+            <YStack gap={10} alignItems="center" paddingVertical={10}>
+              <Text fontSize={15} fontWeight="700" color={colors.text}>
+                No channels connected yet
+              </Text>
+              <Text fontSize={13} color={colors.textSecondary} textAlign="center">
+                Connect a channel so clients can reach your agent. Web chat takes one tap.
+              </Text>
+              <Button icon={Plus} onPress={() => router.push('/(tabs)/channels')}>
+                Connect a channel
+              </Button>
+            </YStack>
+          </Surface>
+        ) : (
+          <YStack gap={10}>
+            {channels.map((channel) => {
+              const Icon = CHANNEL_ICONS[channel.channel] ?? MessageSquare;
+              return (
+                <ListRow
+                  key={channel.id}
+                  icon={Icon}
+                  title={channelLabel(channel.channel)}
+                  subtitle={
+                    channel.active
+                      ? 'Ready for inbound client messages.'
+                      : 'Paused — inbound messages are ignored.'
+                  }
+                  onPress={() => router.push('/(tabs)/channels')}
+                  badge={
+                    <Badge tone={channel.active ? 'success' : 'warning'}>
+                      {channel.active ? 'active' : 'paused'}
+                    </Badge>
+                  }
+                />
+              );
+            })}
+            {activeChannels.length === 0 ? (
+              <Text fontSize={12} color={colors.textMuted}>
+                All channels are paused — clients cannot reach your agent right now.
+              </Text>
+            ) : null}
+          </YStack>
+        )}
       </Section>
 
       <Section title="Quick actions">
         <XStack flexWrap="wrap" gap={10}>
-          <Button icon={Clock} variant="secondary">Set availability</Button>
-          <Button icon={Users} variant="secondary">Review clients</Button>
+          <Button icon={Sparkles} variant="secondary" onPress={() => router.push('/(tabs)/ai-settings')}>
+            Saved responses
+          </Button>
+          <Button icon={MessagesSquare} variant="secondary" onPress={() => router.push('/(tabs)/inbox')}>
+            Open inbox
+          </Button>
+          <Button icon={Plus} variant="secondary" onPress={() => router.push('/(tabs)/channels')}>
+            Connect channels
+          </Button>
         </XStack>
-        <Text fontSize={12} color={colors.textMuted}>
-          These actions are placeholders until the scheduling and client profile workflows are connected.
-        </Text>
       </Section>
     </Screen>
   );
