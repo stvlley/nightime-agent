@@ -6,7 +6,7 @@ import {
   profileService,
   supabase,
 } from '@/lib/supabase';
-import { Profile } from '@/types/database';
+import { Database, Profile } from '@/types/database';
 import { USER_LOGGED_IN_KEY } from '@/utils/onboarding';
 
 interface AuthUser {
@@ -30,6 +30,13 @@ interface SignInResult {
   error?: string;
 }
 
+type ProfilePatch = Omit<Partial<Database['public']['Tables']['profiles']['Insert']>, 'id'>;
+
+interface UpdateProfileResult {
+  success: boolean;
+  error?: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
@@ -37,6 +44,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, businessName: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
+  updateProfile: (patch: ProfilePatch) => Promise<UpdateProfileResult>;
 }
 
 const DEMO_USER_KEY = '@demo_user';
@@ -280,6 +288,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
+  const updateProfile = async (patch: ProfilePatch): Promise<UpdateProfileResult> => {
+    if (!user) return { success: false, error: 'Not signed in.' };
+    try {
+      if (!supabase) {
+        // Demo mode: merge into the locally stored demo profile.
+        const nextUser: AuthUser = {
+          ...user,
+          profile: { ...(user.profile as Profile), ...patch } as Profile,
+        };
+        await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(nextUser));
+        setUser(nextUser);
+        return { success: true };
+      }
+
+      const profile = await withAuthTimeout(
+        profileService.upsertProfile({ id: user.id, email: user.email, ...patch }),
+        'Profile update'
+      );
+      setUser({ ...user, profile });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message ?? 'Could not save the profile.' };
+    }
+  };
+
   const value: AuthContextValue = {
     user,
     loading,
@@ -287,6 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signIn,
     signOut,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

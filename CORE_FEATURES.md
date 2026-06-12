@@ -207,12 +207,14 @@ messages.
   material (price lists, intake forms) into retrieval.
 
 ### 2.6 Channels
-- Provider connects messaging channels in settings. Current runtime support is
-  script-first: web chat (`scripts/enable-webchat.mjs`), Telegram
-  (`scripts/connect-telegram.mjs`), WhatsApp Cloud API
-  (`scripts/connect-whatsapp.mjs`), and Google Voice-over-Gmail
-  (`scripts/connect-google-voice.mjs`). Settings UI for these connections is a
-  pending provider-app feature.
+- Provider connects messaging channels in the app (Settings -> Channels, also
+  reachable from the dashboard). Self-serve today: **web chat** (one tap;
+  shareable link + iframe embed snippet) and **Telegram** (paste a BotFather
+  token; the app validates it and registers the webhook). Channels can be
+  paused, resumed, and disconnected in place. **WhatsApp** and **Google Voice**
+  show as "assisted setup" -- they need Meta/Google Cloud credentials and stay
+  script-first (`scripts/connect-whatsapp.mjs`,
+  `scripts/connect-google-voice.mjs`). Operator scripts remain for support.
 - Each channel = a webhook + credential bundle stored server-side (NOT
   `EXPO_PUBLIC_*`). Per-channel toggle for auto-reply + business-hours-only.
 - Inbound webhook handlers live in the agent runtime (§4), not the client.
