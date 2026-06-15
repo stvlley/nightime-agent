@@ -717,3 +717,10 @@ channel-connect UI in Settings, add notifications, and continue visual polish.
   real web checkout flow later without changing the native StoreKit path.
 - Added a follow-up migration to allow `web` / `web_trial` in
   `subscription_entitlements`.
+- Remote Supabase was repaired/relinked and migrations were pushed successfully;
+  remote migration history is aligned through
+  `20260615020000_web_trial_entitlements`.
+- Commit pushed to `main`: `055e4ea` (`Enable web trial entitlement flow`).
+- **Next-session pickup:** test the web signup → onboarding → web trial →
+  dashboard path against production Supabase, then replace the temporary
+  `web_trial` grant with the real web checkout flow. Keep iOS on StoreKit.
