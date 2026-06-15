@@ -34,7 +34,6 @@ export function RoleSignupModal({
   onClose,
   onFormChange,
   onModeChange,
-  onRoleChange,
   onSubmit,
 }: RoleSignupModalProps) {
   const roleCopy = getSignupRoleCopy(role);
@@ -67,36 +66,19 @@ export function RoleSignupModal({
             </Pressable>
           </View>
 
-          <View style={styles.segmented} accessibilityRole="tablist">
-            {(['login', 'signup'] as LandingAuthMode[]).map((nextMode) => (
-              <Pressable
-                key={nextMode}
-                style={[styles.segment, mode === nextMode && styles.segmentActive]}
-                onPress={() => onModeChange(nextMode)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mode === nextMode }}
-                accessibilityLabel={nextMode === 'login' ? 'Log in' : 'Create account'}
-              >
-                <Text style={[styles.segmentText, mode === nextMode && styles.segmentTextActive]}>
-                  {nextMode === 'login' ? 'Log in' : 'Create account'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {!isLogin ? (
+          {isLogin ? (
             <View style={styles.segmented} accessibilityRole="tablist">
-              {(['provider', 'client'] as LandingSignupRole[]).map((nextRole) => (
+              {(['login', 'signup'] as LandingAuthMode[]).map((nextMode) => (
                 <Pressable
-                  key={nextRole}
-                  style={[styles.segment, role === nextRole && styles.segmentActive]}
-                  onPress={() => onRoleChange(nextRole)}
+                  key={nextMode}
+                  style={[styles.segment, mode === nextMode && styles.segmentActive]}
+                  onPress={() => onModeChange(nextMode)}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: role === nextRole }}
-                  accessibilityLabel={nextRole === 'provider' ? 'Provider signup' : 'Client signup'}
+                  accessibilityState={{ selected: mode === nextMode }}
+                  accessibilityLabel={nextMode === 'login' ? 'Log in' : 'Create account'}
                 >
-                  <Text style={[styles.segmentText, role === nextRole && styles.segmentTextActive]}>
-                    {nextRole === 'provider' ? 'Provider' : 'Client'}
+                  <Text style={[styles.segmentText, mode === nextMode && styles.segmentTextActive]}>
+                    {nextMode === 'login' ? 'Log in' : 'Create account'}
                   </Text>
                 </Pressable>
               ))}

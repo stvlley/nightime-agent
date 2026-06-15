@@ -55,19 +55,19 @@ export const faqs = [
 export function getSignupRoleCopy(role: LandingSignupRole): SignupRoleCopy {
   if (role === 'provider') {
     return {
-      title: 'Start as provider',
-      intro: 'Create a provider workspace for your inbox, calendar, public profile, and AI booking controls.',
+      title: 'Create your provider account',
+      intro: 'Start with the inbox workspace, then run a short setup checkup so the assistant can draft useful replies.',
       nameLabel: 'Business or display name',
       namePlaceholder: 'Nightime Studio',
-      action: 'Create provider account',
+      action: 'Create account',
     };
   }
 
   return {
-    title: 'Continue as client',
-    intro: 'Tell us how to reach you. Client portal accounts are coming after the provider launch.',
+    title: 'Join client updates',
+    intro: 'Tell us where to send client portal updates. Provider signup is available now; client accounts open after launch.',
     nameLabel: 'Name or handle',
     namePlaceholder: 'Alex',
-    action: 'Join client early access',
+    action: 'Join updates',
   };
 }

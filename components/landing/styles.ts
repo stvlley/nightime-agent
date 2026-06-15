@@ -66,8 +66,8 @@ export const styles = StyleSheet.create({
     maxWidth: 1180,
     alignSelf: 'center',
     paddingHorizontal: 24,
-    paddingTop: 72,
-    paddingBottom: 96,
+    paddingTop: 56,
+    paddingBottom: 76,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 40,
@@ -78,12 +78,20 @@ export const styles = StyleSheet.create({
   },
   heroCopy: {
     flex: 1,
+    minWidth: 300,
     gap: 18,
   },
   heroMascot: {
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  heroMockup: {
+    flex: 1,
+    minWidth: 300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
   kicker: {
     color: colors.accent,
@@ -94,8 +102,8 @@ export const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.text,
-    fontSize: 56,
-    lineHeight: 62,
+    fontSize: 52,
+    lineHeight: 58,
     fontWeight: '900',
     maxWidth: 650,
   },
@@ -107,13 +115,14 @@ export const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 18,
     lineHeight: 28,
-    maxWidth: 620,
+    maxWidth: 600,
   },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     flexWrap: 'wrap',
+    marginTop: 4,
   },
   ctaColumn: {
     alignItems: 'stretch',

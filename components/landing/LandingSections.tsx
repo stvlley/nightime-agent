@@ -20,6 +20,7 @@ import {
 } from './content';
 import { NightSky } from './NightSky';
 import { OwlMascot } from './OwlMascot';
+import { HeroAppMockup } from './HeroAppMockup';
 import { LandingAuthMode, LandingSignupRole } from './types';
 import { styles } from './styles';
 
@@ -55,20 +56,12 @@ export function LandingNav({
           <Text style={styles.textButtonLabel}>Log in</Text>
         </Pressable>
         <Pressable
-          style={styles.textButton}
-          onPress={() => onOpenSignup('client')}
-          accessibilityRole="button"
-          accessibilityLabel="Continue as client"
-        >
-          <Text style={styles.textButtonLabel}>For clients</Text>
-        </Pressable>
-        <Pressable
           style={styles.smallButton}
           onPress={() => onOpenSignup('provider')}
           accessibilityRole="button"
-          accessibilityLabel="Start as provider"
+          accessibilityLabel="Create provider account"
         >
-          <Text style={styles.smallButtonLabel}>Start as provider</Text>
+          <Text style={styles.smallButtonLabel}>Create account</Text>
         </Pressable>
       </View>
     </View>
@@ -83,17 +76,17 @@ export function HeroSection({ isNarrow, onOpenSignup }: LandingSectionProps) {
         <View style={styles.heroCopy}>
           <Text style={styles.kicker}>AI booking for service providers</Text>
           <Text style={[styles.heroTitle, isNarrow && styles.heroTitleMobile]}>
-            Turn inbound chats into booked appointments.
+            Your booking inbox, answered before clients go cold.
           </Text>
           <Text style={styles.heroBody}>
-            Nightime Agent acts like a discreet front desk across messaging channels: it answers questions,
-            qualifies intent, offers available times, and keeps the provider in control.
+            Nightime Agent turns inbound messages into a controlled approval queue: draft replies,
+            availability context, and client handoff stay in one provider workspace.
           </Text>
           <DualCta isNarrow={isNarrow} onOpenSignup={onOpenSignup} withIcons />
         </View>
 
-        <View style={styles.heroMascot} accessibilityElementsHidden>
-          <OwlMascot size={isNarrow ? 200 : 280} />
+        <View style={styles.heroMockup}>
+          <HeroAppMockup compact={isNarrow} />
         </View>
       </View>
     </View>
@@ -104,23 +97,23 @@ export function RoleSplitSection({ isNarrow, onOpenSignup }: LandingSectionProps
   return (
     <View style={styles.band}>
       <SectionIntro
-        eyebrow="Choose your path"
-        title="Built for providers and the clients trying to book them."
-        body="One landing flow can capture both sides without changing the provider dashboard or the future customer portal plan."
+        eyebrow="One provider signup"
+        title="Start with the workspace. Clients can book without slowing signup down."
+        body="The landing page now defaults to provider account creation. Client access stays lightweight until the public portal is ready."
       />
       <View style={[styles.roleGrid, isNarrow && styles.stackSection]}>
         <RolePanel
           title="Providers"
           body="Launch a controlled AI booking workspace with channel conversations, availability, calendar, replies, and moderation."
           icon={<UsersRound size={24} color={colors.accent} />}
-          action="Start as provider"
+          action="Create provider account"
           onPress={() => onOpenSignup('provider')}
         />
         <RolePanel
           title="Clients"
-          body="Find clear profile details, services, available times, and a low-friction booking request experience."
+          body="Join early access for client booking updates. No account choice is required before providers launch their public pages."
           icon={<UserRound size={24} color={colors.accent} />}
-          action="Continue as client"
+          action="Join client updates"
           onPress={() => onOpenSignup('client')}
         />
       </View>
@@ -210,7 +203,7 @@ export function FinalCtaSection({ isNarrow, onOpenSignup }: LandingSectionProps)
   return (
     <View style={styles.finalCta}>
       <NightSky height="100%" showMoon={false} />
-      <Text style={styles.finalTitle}>Ready to route booking conversations with less manual back-and-forth?</Text>
+      <Text style={styles.finalTitle}>Create the workspace, then run the conversion checkup.</Text>
       <DualCta isNarrow={isNarrow} onOpenSignup={onOpenSignup} />
     </View>
   );
@@ -229,19 +222,10 @@ function DualCta({
         style={styles.primaryButton}
         onPress={() => onOpenSignup('provider')}
         accessibilityRole="button"
-        accessibilityLabel="Start as provider"
+        accessibilityLabel="Create provider account"
       >
         {withIcons ? <Sparkles size={18} color={colors.onPrimary} /> : null}
-        <Text style={styles.primaryButtonLabel}>Start as provider</Text>
-      </Pressable>
-      <Pressable
-        style={styles.secondaryButton}
-        onPress={() => onOpenSignup('client')}
-        accessibilityRole="button"
-        accessibilityLabel="Continue as client"
-      >
-        {withIcons ? <UserRound size={18} color={colors.text} /> : null}
-        <Text style={styles.secondaryButtonLabel}>Continue as client</Text>
+        <Text style={styles.primaryButtonLabel}>Create provider account</Text>
       </Pressable>
     </View>
   );
