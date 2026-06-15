@@ -39,12 +39,12 @@ export function LandingNav({
         style={styles.brand}
         onPress={() => router.replace('/')}
         accessibilityRole="link"
-        accessibilityLabel="Nightime Agent home"
+        accessibilityLabel="nitime home"
       >
         <View style={styles.owlBust}>
           <OwlMascot size={36} glow={false} />
         </View>
-        <Text style={styles.brandText}>Nightime Agent</Text>
+        <Text style={styles.brandText}>nitime</Text>
       </Pressable>
       <View style={styles.navActions}>
         <Pressable
@@ -214,7 +214,7 @@ export function FinalCtaSection({ isNarrow, onOpenSignup }: LandingSectionProps)
             <View style={styles.footerOwl}>
               <OwlMascot size={34} glow={false} />
             </View>
-            <Text style={styles.footerBrandText}>Nightime Agent</Text>
+            <Text style={styles.footerBrandText}>nitime</Text>
           </View>
           <Text style={styles.footerBody}>
             A controlled booking inbox for providers who need fast replies without giving up

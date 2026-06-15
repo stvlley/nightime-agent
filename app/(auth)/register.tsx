@@ -45,6 +45,7 @@ export default function RegisterScreen() {
       return;
     }
 
+    await onboardingUtils.resetOnboardingCompletion();
     await onboardingUtils.setUserLoggedIn(true);
     router.replace('/(onboarding)/onboarding');
   };

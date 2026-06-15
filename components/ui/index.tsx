@@ -326,11 +326,16 @@ export function Button({
       style={({ pressed }) => ({
         opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
         backgroundColor: variant === 'primary' && pressed ? colors.primaryActive : bg,
-        borderColor,
+        borderColor: variant === 'primary' ? colors.primary : borderColor,
         borderWidth: variant === 'ghost' ? 0 : 1,
-        borderRadius: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        borderRadius: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 11,
+        shadowColor: variant === 'primary' ? colors.primaryActive : 'transparent',
+        shadowOpacity: variant === 'primary' ? 0.18 : 0,
+        shadowRadius: variant === 'primary' ? 10 : 0,
+        shadowOffset: { width: 0, height: 5 },
+        elevation: variant === 'primary' ? 2 : 0,
       })}
     >
       <XStack alignItems="center" justifyContent="center" gap={8}>

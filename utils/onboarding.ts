@@ -24,6 +24,16 @@ export const onboardingUtils = {
     }
   },
 
+  // Clear only the completion flag so a newly created account starts onboarding
+  // even if this device previously finished it for another session.
+  resetOnboardingCompletion: async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(ONBOARDING_KEY);
+    } catch (error) {
+      console.error('Error resetting onboarding completion:', error);
+    }
+  },
+
   // Reset onboarding (for testing/debugging)
   resetOnboarding: async (): Promise<void> => {
     try {

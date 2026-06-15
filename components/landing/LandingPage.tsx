@@ -24,7 +24,7 @@ import { RoleSignupModal } from './RoleSignupModal';
 import { LandingAuthMode, LandingSignupErrors, LandingSignupForm, LandingSignupRole } from './types';
 import { styles } from './styles';
 
-const SEO_TITLE = 'Nightime Agent — AI booking for service providers';
+const SEO_TITLE = 'nitime';
 const SEO_DESCRIPTION =
   'Nightime Agent acts like a discreet front desk across messaging channels: it answers questions, qualifies intent, offers available times, and keeps the provider in control.';
 const SEO_URL = 'https://nightime-agent.vercel.app/';
@@ -180,6 +180,7 @@ export function LandingPage() {
       // Record provider intent in parallel; ignore failures (auth already succeeded).
       void recordLandingIntent({ role: 'provider', email, name });
 
+      await onboardingUtils.resetOnboardingCompletion();
       await onboardingUtils.setUserLoggedIn(true);
       setSubmitting(false);
       setSignupVisible(false);

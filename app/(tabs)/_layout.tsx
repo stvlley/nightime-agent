@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { CalendarDays, Home, Inbox, Settings2 } from 'lucide-react-native';
 import { colors } from '@/components/ui';
 import { AuthGate } from '@/components/AuthGate';
 import { useAuth } from '@/hooks/useAuth';
 import { draftService } from '@/lib/data';
+import { hasSubscriptionEntitlement } from '@/lib/subscriptions';
+import { onboardingUtils } from '@/utils/onboarding';
 
 const PENDING_POLL_MS = 30000;
 const VISIBLE_TABS = ['index', 'inbox', 'calendar', 'settings'] as const;
@@ -56,55 +58,100 @@ function usePendingDraftCount(): number {
 }
 
 export default function TabLayout() {
-  const pendingCount = usePendingDraftCount();
-
   // Gate the provider workspace behind an authenticated session (shared with the
   // onboarding group via <AuthGate>). Unauthenticated deep-links bounce to `/`.
   return (
     <AuthGate>
-      <Tabs
-        tabBar={(props) => <ProviderTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          tabBarHideOnKeyboard: true,
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Home',
-          }}
-        />
-        <Tabs.Screen
-          name="inbox"
-          options={{
-            title: 'Inbox',
-            tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-          }}
-        />
-        <Tabs.Screen
-          name="calendar"
-          options={{
-            title: 'Calendar',
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: 'More',
-          }}
-        />
-
-        {/* Secondary screens reachable from Dashboard, Inbox, and More. */}
-        <Tabs.Screen name="ai-settings" options={{ href: null }} />
-        <Tabs.Screen name="billing" options={{ href: null }} />
-        <Tabs.Screen name="channels" options={{ href: null }} />
-        <Tabs.Screen name="payments" options={{ href: null }} />
-        <Tabs.Screen name="profile" options={{ href: null }} />
-        <Tabs.Screen name="thread" options={{ href: null }} />
-        <Tabs.Screen name="upload" options={{ href: null }} />
-      </Tabs>
+      <WorkspaceTabs />
     </AuthGate>
+  );
+}
+
+function WorkspaceTabs() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const pendingCount = usePendingDraftCount();
+  const [accessState, setAccessState] = useState<{
+    onboardingCompleted: boolean;
+    subscriptionEntitled: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      onboardingUtils.isOnboardingCompleted(),
+      userId ? hasSubscriptionEntitlement(userId) : Promise.resolve(false),
+    ])
+      .then(([onboardingCompleted, subscriptionEntitled]) => {
+        if (active) setAccessState({ onboardingCompleted, subscriptionEntitled });
+      })
+      .catch(() => {
+        if (active) setAccessState({ onboardingCompleted: false, subscriptionEntitled: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  if (accessState === null) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!accessState.onboardingCompleted) {
+    return <Redirect href="/(onboarding)/onboarding" />;
+  }
+
+  if (!accessState.subscriptionEntitled) {
+    return <Redirect href="/(onboarding)/pricing" />;
+  }
+
+  return (
+    <Tabs
+      tabBar={(props) => <ProviderTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+        }}
+      />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: 'Inbox',
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Calendar',
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'More',
+        }}
+      />
+
+      {/* Secondary screens reachable from Dashboard, Inbox, and More. */}
+      <Tabs.Screen name="ai-settings" options={{ href: null }} />
+      <Tabs.Screen name="billing" options={{ href: null }} />
+      <Tabs.Screen name="channels" options={{ href: null }} />
+      <Tabs.Screen name="payments" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="thread" options={{ href: null }} />
+      <Tabs.Screen name="upload" options={{ href: null }} />
+    </Tabs>
   );
 }
 
@@ -176,6 +223,12 @@ function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
   tabWrap: {
     position: 'absolute',
     left: 0,

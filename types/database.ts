@@ -45,6 +45,37 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };
+      subscription_entitlements: {
+        Row: {
+          user_id: string;
+          product_id: string;
+          plan_id: 'annual' | 'monthly';
+          platform: 'ios' | 'android' | 'demo';
+          transaction_id: string | null;
+          original_transaction_id: string | null;
+          expires_at: string | null;
+          verified_at: string;
+          active: boolean;
+          source: 'purchase' | 'restore' | 'demo';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          product_id: string;
+          plan_id: 'annual' | 'monthly';
+          platform: 'ios' | 'android' | 'demo';
+          transaction_id?: string | null;
+          original_transaction_id?: string | null;
+          expires_at?: string | null;
+          verified_at?: string;
+          active?: boolean;
+          source?: 'purchase' | 'restore' | 'demo';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['subscription_entitlements']['Insert']>;
+      };
       services: {
         Row: {
           id: string;

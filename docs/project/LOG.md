@@ -637,3 +637,73 @@ channel-connect UI in Settings, add notifications, and continue visual polish.
   layout, and webchat-error patches. Expo web was started on port `8082`; the
   shell responded and the web bundle compiled successfully. Browser screenshot
   verification was not possible because `agent-browser` is not installed here.
+
+## 2026-06-15 (Paywall gating decision + StoreKit next step)
+
+- **Paywall bypass decision:** Skip must not let a provider enter the app before
+  the paywall/trial step. Removed the visible Skip action from the onboarding
+  top bar and added a `(tabs)` route guard: authenticated users who do not have
+  `@onboarding_completed = 'true'` are redirected back to
+  `/(onboarding)/onboarding` instead of reaching the workspace by deep link.
+- New provider signup now clears only the prior local onboarding completion flag
+  before opening onboarding, so a completed session on the same device does not
+  let a fresh account skip the conversion/paywall flow.
+- **Current paywall caveat:** the `paywall` screen still advances through the
+  funnel as a simulated "Start free trial" action. This closes the obvious skip
+  bypass, but it is **not** App Store-ready monetization until StoreKit validates
+  an active entitlement.
+- **StoreKit task for next session:** wire native iOS subscription purchase and
+  entitlement validation before App Store submission. Required setup:
+  - Apple Developer/App Store Connect access.
+  - Create subscription products in App Store Connect, likely:
+    `nightime_annual` and `nightime_monthly` (final IDs can differ, but must
+    match code/env).
+  - Add a React Native/Expo-compatible StoreKit library/config plugin
+    (evaluate current best option before implementation; likely `react-native-iap`
+    or RevenueCat if we want server-side receipt/subscription management faster).
+  - Replace the simulated paywall CTA with:
+    load products → select plan → purchase → validate receipt/entitlement →
+    write subscription state to Supabase → call `completeOnboarding()` → open
+    dashboard.
+  - Add restore purchase support wired to the existing paywall disclosure text.
+  - Add an entitlement gate in `(tabs)` in addition to the onboarding-completed
+    gate, so cancelled/expired users cannot use paid workspace features.
+  - Decide whether Stripe remains web-only/US external checkout later; for iOS
+    App Store submission, StoreKit is the safest default path for digital app
+    functionality.
+- **Implementation note:** do not fake StoreKit by only setting
+  `@onboarding_completed`. The app should only set that flag after confirmed
+  purchase/trial entitlement or a deliberate internal/demo override gated by an
+  environment flag.
+- Local validation after the route/sign-up changes passed: `npm run typecheck`,
+  `npm test`, `npm run lint`, and `npm run build:web`.
+
+### StoreKit wiring
+
+- Added `expo-iap` and registered its Expo config plugin. Native IAP requires a
+  custom development/App Store build; Expo Go will not run this path.
+- Replaced the simulated paywall advance with native subscription purchase and
+  restore hooks:
+  - iOS StoreKit product IDs come from
+    `EXPO_PUBLIC_STOREKIT_ANNUAL_PRODUCT_ID` / `EXPO_PUBLIC_STOREKIT_MONTHLY_PRODUCT_ID`,
+    defaulting to `nightime_annual` and `nightime_monthly`.
+  - Purchase success verifies the StoreKit transaction through `expo-iap`,
+    writes a subscription entitlement, finishes the transaction, and only then
+    advances to setup.
+  - Restore checks active subscriptions and writes the same entitlement state.
+- Added `subscription_entitlements` with owner-only RLS and updated local
+  database types. The `(tabs)` gate now requires both completed onboarding and
+  an active entitlement; otherwise it redirects back to pricing.
+- Added a web-safe fallback hook so Expo web export still builds. Web/demo
+  unlocks require `EXPO_PUBLIC_ALLOW_DEMO_ENTITLEMENT=true`; keep that false in
+  production/App Store builds.
+- Updated the public landing page title/visible brand labels to lowercase
+  `nitime`.
+- Still required before device/App Store validation:
+  - Create matching auto-renewable subscriptions in App Store Connect.
+  - Apply the Supabase migration.
+  - Build a custom iOS development client or App Store/TestFlight build.
+  - Test sandbox purchase, cancellation, expiration, and restore flows on a real
+    iOS device.
+- **Next phase:** split the payment flow by platform. Web should use a separate
+  checkout path, while the native iOS app should continue through StoreKit.

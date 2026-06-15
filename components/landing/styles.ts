@@ -38,7 +38,7 @@ export const styles = StyleSheet.create({
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 2,
     minWidth: 0,
   },
   brandText: {
@@ -145,13 +145,18 @@ export const styles = StyleSheet.create({
   primaryButton: {
     minHeight: 48,
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
+    borderRadius: 10,
+    paddingHorizontal: 20,
     paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowColor: colors.primaryActive,
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
   },
   primaryButtonLabel: {
     color: colors.onPrimary,
@@ -160,10 +165,10 @@ export const styles = StyleSheet.create({
   },
   secondaryButton: {
     minHeight: 48,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: darkBorder,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 18,
     paddingVertical: 13,
     flexDirection: 'row',
@@ -220,7 +225,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     padding: 14,
-    gap: 5,
+    gap: 2,
   },
   agentCard: {
     backgroundColor: lightBand,
@@ -563,7 +568,7 @@ export const styles = StyleSheet.create({
   footerBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
   },
   footerOwl: {
     width: 34,
@@ -671,7 +676,7 @@ export const styles = StyleSheet.create({
   },
   cookieAccept: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 9,
     alignItems: 'center',
@@ -774,13 +779,18 @@ export const styles = StyleSheet.create({
   },
   modalAction: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginTop: 4,
+    shadowColor: colors.primaryActive,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   modalActionLabel: {
     color: colors.onPrimary,

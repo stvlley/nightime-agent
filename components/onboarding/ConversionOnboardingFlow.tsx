@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -17,12 +17,16 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import { colors } from '@/components/ui';
+import { OwlMascot } from '@/components/landing/OwlMascot';
+import { useStoreKitSubscription } from '@/hooks/useStoreKitSubscription';
 import { onboardingUtils } from '@/utils/onboarding';
+import { BrandMark } from './BrandMark';
 import {
   type ApprovalChoice,
   type DiagnosticAnswers,
   type DiagnosticResult,
   type FunnelScreen,
+  type PlanId,
   FUNNEL_SCREENS,
   PAYWALL_TERMS,
   PLANS,
@@ -60,11 +64,19 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
   );
   const [index, setIndex] = useState(initialIndex);
   const [answers, setAnswers] = useState<DiagnosticAnswers>(EMPTY_ANSWERS);
-  const [plan, setPlan] = useState<'annual' | 'monthly'>('annual');
+  const [plan, setPlan] = useState<PlanId>('annual');
 
   const screen = FUNNEL_SCREENS[index];
   const result = useMemo(() => computeResult(answers), [answers]);
-  const canContinue = isAnswered(screen, answers);
+  const storeKit = useStoreKitSubscription({
+    onEntitlementGranted: () => {
+      setIndex((current) => Math.min(current + 1, FUNNEL_SCREENS.length - 1));
+    },
+  });
+  const paywallBusy =
+    screen.id === 'paywall' &&
+    ['purchasing', 'restoring', 'verifying', 'entitled'].includes(storeKit.status);
+  const canContinue = isAnswered(screen, answers) && !paywallBusy;
 
   const setSingle = (key: keyof DiagnosticAnswers, value: string) =>
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -88,6 +100,10 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
 
   const goNext = async () => {
     if (!canContinue) return;
+    if (screen.id === 'paywall') {
+      await storeKit.purchase(plan);
+      return;
+    }
     if (screen.id === 'handoff') {
       await completeAndOpenApp();
       return;
@@ -127,15 +143,8 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
           ) : (
             <View style={styles.iconButtonSpacer} />
           )}
-          <Text style={styles.wordmark}>nitime</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Skip setup preview"
-            style={styles.skipButton}
-            onPress={completeAndOpenApp}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
+          <BrandMark size={24} />
+          <View style={styles.iconButtonSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -147,7 +156,12 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
             <Text style={styles.body}>{screen.body}</Text>
           </View>
 
-          <ScreenBody screen={screen} interaction={interaction} onOpenApp={completeAndOpenApp} />
+          <ScreenBody
+            screen={screen}
+            interaction={interaction}
+            storeKit={storeKit}
+            onOpenApp={completeAndOpenApp}
+          />
         </ScrollView>
 
         <View style={styles.footer}>
@@ -158,9 +172,10 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
             onPress={goNext}
             disabled={!canContinue}
           >
-            {screen.id === 'dashboard' ? <RotateCcw size={16} color="#ffffff" /> : null}
-            <Text style={styles.ctaText}>{screen.cta}</Text>
-            {screen.id !== 'dashboard' ? <ChevronRight size={18} color="#ffffff" /> : null}
+            {paywallBusy ? <ActivityIndicator color="#ffffff" /> : null}
+            {!paywallBusy && screen.id === 'dashboard' ? <RotateCcw size={16} color="#ffffff" /> : null}
+            <Text style={styles.ctaText}>{paywallBusy ? paywallStatusLabel(storeKit.status) : screen.cta}</Text>
+            {!paywallBusy && screen.id !== 'dashboard' ? <ChevronRight size={18} color="#ffffff" /> : null}
           </Pressable>
         </View>
       </View>
@@ -184,20 +199,39 @@ function isAnswered(screen: FunnelScreen, answers: DiagnosticAnswers): boolean {
 type Interaction = {
   answers: DiagnosticAnswers;
   result: DiagnosticResult;
-  plan: 'annual' | 'monthly';
+  plan: PlanId;
   setSingle: (key: keyof DiagnosticAnswers, value: string) => void;
   setCents: (cents: number) => void;
   toggleMulti: (key: 'channels' | 'faqs', value: string) => void;
-  setPlan: (plan: 'annual' | 'monthly') => void;
+  setPlan: (plan: PlanId) => void;
+};
+
+type StoreKitState = ReturnType<typeof useStoreKitSubscription>;
+
+function paywallStatusLabel(status: StoreKitState['status']) {
+  switch (status) {
+    case 'purchasing':
+      return 'Opening App Store...';
+    case 'restoring':
+      return 'Restoring...';
+    case 'verifying':
+      return 'Verifying...';
+    case 'entitled':
+      return 'Trial ready';
+    default:
+      return 'Please wait...';
+  }
 };
 
 function ScreenBody({
   screen,
   interaction,
+  storeKit,
   onOpenApp,
 }: {
   screen: FunnelScreen;
   interaction: Interaction;
+  storeKit: StoreKitState;
   onOpenApp: () => Promise<void>;
 }) {
   const { answers, result } = interaction;
@@ -206,12 +240,36 @@ function ScreenBody({
     case 'intro':
       return (
         <View style={styles.featurePanel}>
-          <View style={styles.wash}>
-            <View style={styles.washBlue} />
-            <View style={styles.washViolet} />
-            <View style={styles.washPink} />
-            <Text style={styles.washLogo}>nitime</Text>
+          <View style={styles.heroHeader}>
+            <View style={styles.owlStage}>
+              <OwlMascot size={104} glow={false} />
+            </View>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>Inbox triage before missed revenue.</Text>
+            </View>
           </View>
+
+          <View style={styles.signalStack}>
+            <View style={styles.signalRow}>
+              <View style={styles.signalIcon}>
+                <MessageCircle size={17} color={colors.primaryActive} />
+              </View>
+              <View style={styles.signalCopy}>
+                <Text style={styles.signalTitle}>Client message captured</Text>
+                <Text style={styles.signalBody}>Requests stay organized by channel and thread.</Text>
+              </View>
+            </View>
+            <View style={styles.signalRow}>
+              <View style={styles.signalIcon}>
+                <ShieldCheck size={17} color={colors.success} />
+              </View>
+              <View style={styles.signalCopy}>
+                <Text style={styles.signalTitle}>Draft held for approval</Text>
+                <Text style={styles.signalBody}>The agent helps without sending risky replies alone.</Text>
+              </View>
+            </View>
+          </View>
+
           <Text style={styles.featureTitle}>Most providers do not need more leads first.</Text>
           <Text style={styles.featureBody}>
             They need a faster, safer way to answer the leads already in their inbox. This checkup
@@ -342,7 +400,7 @@ function ScreenBody({
       );
 
     case 'paywall':
-      return <Paywall interaction={interaction} />;
+      return <Paywall interaction={interaction} storeKit={storeKit} />;
 
     case 'handoff':
       return (
@@ -528,7 +586,7 @@ function TimelineRow({ day, label, last }: { day: string; label: string; last?: 
   );
 }
 
-function Paywall({ interaction }: { interaction: Interaction }) {
+function Paywall({ interaction, storeKit }: { interaction: Interaction; storeKit: StoreKitState }) {
   const selected = interaction.plan;
   return (
     <View style={styles.stack}>
@@ -550,7 +608,7 @@ function Paywall({ interaction }: { interaction: Interaction }) {
             </View>
             <View style={styles.planText}>
               <Text style={styles.planName}>{plan.name}</Text>
-              <Text style={styles.planPrice}>{plan.price}</Text>
+              <Text style={styles.planPrice}>{storeKit.productsByPlan[plan.id]?.displayPrice ?? plan.price}</Text>
               <Text style={styles.planDetail}>
                 {plan.trial ?? 'No trial'} · {plan.perMonth ?? plan.billingPeriod}
               </Text>
@@ -569,7 +627,14 @@ function Paywall({ interaction }: { interaction: Interaction }) {
         <TermLine icon={TrendingUp} text={PAYWALL_TERMS.renewalPrice} />
         <TermLine icon={ShieldCheck} text={PAYWALL_TERMS.cancellation} />
       </View>
-      <Text style={styles.restoreText}>{PAYWALL_TERMS.restorePurchase}</Text>
+      {storeKit.error ? (
+        <View style={styles.purchaseError}>
+          <Text style={styles.purchaseErrorText}>{storeKit.error}</Text>
+        </View>
+      ) : null}
+      <Pressable accessibilityRole="button" style={styles.restoreButton} onPress={storeKit.restore}>
+        <Text style={styles.restoreText}>{PAYWALL_TERMS.restorePurchase}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -618,9 +683,6 @@ const appPaper = '#fbfbfd';
 const appCard = '#ffffff';
 const appBorder = '#d7d7d9';
 const appTint = '#f4f0ff';
-const appBlue = '#8ccfff';
-const appViolet = '#7c5cff';
-const appPink = '#e7a5ff';
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -654,22 +716,6 @@ const styles = StyleSheet.create({
   iconButtonSpacer: {
     width: 42,
     height: 42,
-  },
-  wordmark: {
-    color: appInk,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  skipButton: {
-    minWidth: 42,
-    minHeight: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  skipText: {
-    color: appMuted,
-    fontSize: 13,
-    fontWeight: '900',
   },
   scrollContent: {
     paddingHorizontal: 22,
@@ -730,63 +776,93 @@ const styles = StyleSheet.create({
     borderColor: appBorder,
     backgroundColor: appCard,
     overflow: 'hidden',
-    gap: 16,
+    padding: 16,
+    gap: 14,
   },
-  wash: {
-    height: 190,
+  heroHeader: {
+    minHeight: 138,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: '#ebe6ff',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  owlStage: {
+    width: 116,
+    height: 116,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#ded6ff',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: appPaper,
+    shadowColor: colors.primaryActive,
+    shadowOpacity: 0.13,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
-  washBlue: {
-    position: 'absolute',
-    left: -70,
-    right: 220,
-    top: 70,
-    height: 135,
-    backgroundColor: appBlue,
-    opacity: 0.58,
-    transform: [{ rotate: '-10deg' }],
+  heroCopy: {
+    flex: 1,
+    gap: 5,
   },
-  washViolet: {
-    position: 'absolute',
-    left: 42,
-    right: 28,
-    top: 86,
-    height: 148,
-    backgroundColor: appViolet,
-    opacity: 0.62,
-    transform: [{ rotate: '-8deg' }],
-  },
-  washPink: {
-    position: 'absolute',
-    left: 220,
-    right: -72,
-    top: 58,
-    height: 160,
-    backgroundColor: appPink,
-    opacity: 0.55,
-    transform: [{ rotate: '-8deg' }],
-  },
-  washLogo: {
-    color: '#ffffff',
-    fontSize: 34,
+  heroTitle: {
+    color: appInk,
+    fontSize: 19,
+    lineHeight: 24,
     fontWeight: '900',
+  },
+  signalStack: {
+    gap: 8,
+  },
+  signalRow: {
+    minHeight: 64,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: appBorder,
+    backgroundColor: appPaper,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  signalIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.neutralBg,
+  },
+  signalCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  signalTitle: {
+    color: appInk,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  signalBody: {
+    color: appMuted,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
   },
   featureTitle: {
     color: appInk,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 21,
+    lineHeight: 27,
     fontWeight: '900',
-    paddingHorizontal: 18,
   },
   featureBody: {
     color: appMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    paddingHorizontal: 18,
-    paddingBottom: 20,
+    fontSize: 14,
+    lineHeight: 21,
   },
   option: {
     minHeight: 52,
@@ -1087,6 +1163,25 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
+  purchaseError: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#f0d8b8',
+    backgroundColor: '#fff6e8',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  purchaseErrorText: {
+    color: '#8f4700',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  restoreButton: {
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   termLine: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1202,12 +1297,17 @@ const styles = StyleSheet.create({
   },
   cta: {
     minHeight: 54,
-    borderRadius: 8,
-    backgroundColor: appInk,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowColor: colors.primaryActive,
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
   },
   ctaDisabled: {
     opacity: 0.45,
