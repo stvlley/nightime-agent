@@ -121,7 +121,7 @@ export default function ChannelsScreen() {
       load();
       flash('Web chat is on. Share the link below with clients.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not enable web chat.');
+      setError(e instanceof Error && e.message ? e.message : 'Could not enable web chat.');
     } finally {
       setBusy(null);
     }

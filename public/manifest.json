@@ -1,11 +1,11 @@
 {
-  "name": "TherapyBot AI - Booking Assistant",
-  "short_name": "TherapyBot",
-  "description": "AI-powered booking assistant for massage therapists and wellness providers",
+  "name": "Nightime Agent",
+  "short_name": "Nightime",
+  "description": "AI-powered messaging and booking assistant for service providers",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1f2937",
-  "theme_color": "#4f46e5",
+  "background_color": "#0d0a26",
+  "theme_color": "#0d0a26",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity", "health"],
   "screenshots": [

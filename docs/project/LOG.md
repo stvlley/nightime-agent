@@ -543,3 +543,97 @@ channel-connect UI in Settings, add notifications, and continue visual polish.
   `/chat.html` 200 via `scripts/serve-static.mjs`).
 - Still pending (unchanged): hosted deploy + live-channel UAT, push/system
   notifications, deferred auth/onboarding night-theme migration.
+
+## 2026-06-14 (Release prep, cleanup, nav polish, channel-test blocker)
+
+- **EAS/App Store prep:** created and linked the EAS project
+  `@stvll3y/nightime-agent` (`projectId:
+  0dbf9154-990b-4df3-88f5-ea145b963a13`). Added `owner: "stvll3y"` and
+  `extra.eas.projectId` to `app.json`. Set production EAS env vars
+  `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- **iOS release metadata:** added `ITSAppUsesNonExemptEncryption: false` and a
+  document-picker usage string in `ios.infoPlist`. Removed local
+  `ios.buildNumber` because EAS remote versioning is active; failed build
+  attempts initialized/incremented the remote iOS build number to `2`.
+- **Build status:** production iOS build now gets past project linking,
+  environment loading, and export-compliance metadata. Remaining blocker is
+  Apple signing credentials: EAS stops in non-interactive mode with
+  `Credentials are not set up. Run this command again in interactive mode.`
+  Resume with:
+
+  ```bash
+  EAS_BUILD_NO_EXPO_GO_WARNING=true eas build --platform ios --profile production
+  ```
+
+  This requires Apple Developer team/certificate/provisioning setup. Submit
+  after a successful build:
+
+  ```bash
+  eas submit --platform ios --profile production
+  ```
+
+- **Root cleanup:** moved project planning/history docs out of repo root into
+  `docs/project/` (`CORE_FEATURES.md`, `DEPLOYMENT.md`, `DESIGN_SYSTEM.md`,
+  `LOG.md`, `PLAN.md`). Added `.easignore` so EAS upload excludes local/generated
+  artifacts (`node_modules`, `dist`, `.expo`, `.vercel`, `graphify-out`, `.env`,
+  native credential files, editor noise). Updated the Supabase function README
+  reference to `docs/project/PLAN.md`.
+- **Brand cleanup:** replaced stale TherapyBot references in
+  `public/manifest.json`, `public/sw.js`, and `utils/webhooks.ts` with Nightime
+  Agent naming/source headers.
+- **Dependency cleanup:** removed unused packages `expo-camera`,
+  `react-native-fs`, and `@lucide/lab`. Kept `expo-haptics`, `expo-blur`,
+  `expo-symbols`, and `react-native-webview` per product direction. Wired
+  `expo-haptics` into shared controls (`Button`, `IconButton`, pressable
+  `Surface`, and `ToggleRow`) as best-effort feedback. `npm uninstall` reported
+  existing audit issues (14 total, 1 critical); did **not** run
+  `npm audit fix --force` because that can introduce breaking dependency churn
+  during release prep.
+- **Bottom nav IA + visual pass:** reduced the bottom nav from seven visible
+  tabs to four primary destinations: Home, Inbox, Calendar, More. AI settings,
+  Channels, Training imports, Payment links, Plan & billing, Profile, and Thread
+  are now secondary screens reachable from Dashboard/More. Replaced the default
+  React Navigation label bar with a custom icon-only floating nav, active pill,
+  blur background on iOS, and a small Inbox dot badge. Increased shared scroll
+  bottom padding so the floating nav does not cover content.
+- **Settings card layout fix:** fixed `ListRow` so cards use a proper
+  leading-icon / content / trailing-accessory layout. This fixed the chevron
+  stacking under title/subtitle on narrow screens. Settings now passes simple
+  chevron accessories instead of nested `IconButton`s.
+- **Web chat enable failure investigation:** user hit `could not enable web
+  chat`. Patched `lib/channels.ts` to preserve profile fields when creating a
+  slug and to surface actionable errors for missing webchat migration,
+  `agent_channels` RLS failures, and slug constraint failures. The actual hosted
+  blocker found by `supabase link --project-ref hwcpztsltgpjzclrmyez --debug`:
+
+  ```text
+  project is paused
+  An admin must unpause it from the Supabase dashboard at
+  https://supabase.com/dashboard/project/hwcpztsltgpjzclrmyez
+  ```
+
+  After unpausing, run:
+
+  ```bash
+  supabase link --project-ref hwcpztsltgpjzclrmyez
+  supabase db push
+  supabase functions deploy webchat-inbound
+  supabase functions deploy webchat-poll
+  supabase functions deploy send-draft
+  ```
+
+  Then retry More → Channels → Turn on web chat.
+- **No-AI channel expectation:** channel routing does not require
+  `ANTHROPIC_API_KEY`. With no key, FAQ misses create a deterministic fallback
+  draft in the approval queue; FAQ hits can still auto-send when
+  `approval_mode='auto_eligible'`. Existing local harness
+  `scripts/live-test-agent.mjs` tests Telegram + webchat routing, fallback
+  drafts, approval, hidden pending webchat drafts, and rejected disabled/unknown
+  channels. Local Supabase was not running in this session
+  (`supabase status` could not inspect the missing local DB container), so the
+  harness was not rerun.
+- **Verification run during this session:** `npm run typecheck`, `npm run lint`,
+  and `npm test` passed after the release config, cleanup, haptics, nav, card
+  layout, and webchat-error patches. Expo web was started on port `8082`; the
+  shell responded and the web bundle compiled successfully. Browser screenshot
+  verification was not possible because `agent-browser` is not installed here.

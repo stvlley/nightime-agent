@@ -28,7 +28,7 @@ export const sendTrainingData = async (payload: TrainingWebhookPayload): Promise
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Source': 'therapybot-mobile',
+        'X-API-Source': 'nightime-agent-mobile',
       },
       body: JSON.stringify(payload),
     });

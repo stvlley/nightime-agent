@@ -36,7 +36,7 @@ messages.
 ## Deploy
 
 ```bash
-# 1. Apply the migration (session pooler — see PLAN.md gotcha)
+# 1. Apply the migration (session pooler — see docs/project/PLAN.md gotcha)
 supabase db push --db-url "$(echo "$DATABASE_URL" | sed 's/:6543/:5432/')"
 
 # 2. Set secrets (server-side; never EXPO_PUBLIC_)

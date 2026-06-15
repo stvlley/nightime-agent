@@ -1,12 +1,32 @@
 import { useEffect, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, Inbox, CalendarDays, Settings2, CloudUpload, Wallet, Sparkles } from 'lucide-react-native';
+import { CalendarDays, Home, Inbox, Settings2 } from 'lucide-react-native';
 import { colors } from '@/components/ui';
 import { AuthGate } from '@/components/AuthGate';
 import { useAuth } from '@/hooks/useAuth';
 import { draftService } from '@/lib/data';
 
 const PENDING_POLL_MS = 30000;
+const VISIBLE_TABS = ['index', 'inbox', 'calendar', 'settings'] as const;
+const SECONDARY_PARENT: Record<string, (typeof VISIBLE_TABS)[number]> = {
+  'ai-settings': 'settings',
+  billing: 'settings',
+  channels: 'settings',
+  payments: 'settings',
+  profile: 'settings',
+  thread: 'inbox',
+  upload: 'settings',
+};
+const TAB_ICONS = {
+  index: Home,
+  inbox: Inbox,
+  calendar: CalendarDays,
+  settings: Settings2,
+};
 
 /** Pending approval-queue size, refreshed on an interval, for the Inbox badge. */
 function usePendingDraftCount(): number {
@@ -42,95 +62,185 @@ export default function TabLayout() {
   // onboarding group via <AuthGate>). Unauthenticated deep-links bounce to `/`.
   return (
     <AuthGate>
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 88,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ size, color }) => (
-            <LayoutDashboard size={size} color={color} />
-          ),
+      <Tabs
+        tabBar={(props) => <ProviderTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarHideOnKeyboard: true,
         }}
-      />
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: 'Inbox',
-          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.warning, color: colors.onPrimary },
-          tabBarIcon: ({ size, color }) => (
-            <Inbox size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: 'Calendar',
-          tabBarIcon: ({ size, color }) => (
-            <CalendarDays size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ai-settings"
-        options={{
-          title: 'AI Settings',
-          tabBarIcon: ({ size, color }) => (
-            <Sparkles size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="upload"
-        options={{
-          title: 'Upload',
-          tabBarIcon: ({ size, color }) => (
-            <CloudUpload size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="billing"
-        options={{
-          title: 'Billing',
-          tabBarIcon: ({ size, color }) => (
-            <Wallet size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ size, color }) => (
-            <Settings2 size={size} color={color} />
-          ),
-        }}
-      />
-      {/* Detail screens reachable from rows, not from the tab bar. */}
-      <Tabs.Screen name="channels" options={{ href: null }} />
-      <Tabs.Screen name="thread" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+          }}
+        />
+        <Tabs.Screen
+          name="inbox"
+          options={{
+            title: 'Inbox',
+            tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+          }}
+        />
+        <Tabs.Screen
+          name="calendar"
+          options={{
+            title: 'Calendar',
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'More',
+          }}
+        />
+
+        {/* Secondary screens reachable from Dashboard, Inbox, and More. */}
+        <Tabs.Screen name="ai-settings" options={{ href: null }} />
+        <Tabs.Screen name="billing" options={{ href: null }} />
+        <Tabs.Screen name="channels" options={{ href: null }} />
+        <Tabs.Screen name="payments" options={{ href: null }} />
+        <Tabs.Screen name="profile" options={{ href: null }} />
+        <Tabs.Screen name="thread" options={{ href: null }} />
+        <Tabs.Screen name="upload" options={{ href: null }} />
+      </Tabs>
     </AuthGate>
   );
 }
+
+function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const currentName = state.routes[state.index]?.name;
+  const activeName = SECONDARY_PARENT[currentName] ?? currentName;
+  const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name as any));
+
+  return (
+    <View pointerEvents="box-none" style={styles.tabWrap}>
+      <View style={styles.tabBar}>
+        {Platform.OS === 'ios' ? <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} /> : null}
+        <View style={styles.tabInner}>
+          {visibleRoutes.map((route) => {
+            const options = descriptors[route.key]?.options;
+            const focused = activeName === route.name;
+            const Icon = TAB_ICONS[route.name as keyof typeof TAB_ICONS];
+            const label =
+              typeof options?.title === 'string'
+                ? options.title
+                : typeof options?.tabBarLabel === 'string'
+                  ? options.tabBarLabel
+                  : route.name;
+            const badge = options?.tabBarBadge;
+
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!event.defaultPrevented) {
+                Haptics.selectionAsync().catch(() => {});
+                navigation.navigate(route.name as never);
+              }
+            };
+
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityState={focused ? { selected: true } : undefined}
+                onPress={onPress}
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  focused && styles.tabButtonActive,
+                  pressed && styles.tabButtonPressed,
+                ]}
+              >
+                <Icon
+                  size={focused ? 25 : 23}
+                  color={focused ? colors.primary : colors.textSecondary}
+                  strokeWidth={focused ? 2.7 : 2.25}
+                />
+                {badge ? (
+                  <View style={styles.badge}>
+                    <View style={styles.badgeDot} />
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    paddingBottom: 14,
+  },
+  tabBar: {
+    width: '72%',
+    maxWidth: 360,
+    minWidth: 288,
+    height: 64,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.76)' : colors.surface,
+    overflow: 'hidden',
+    shadowColor: '#161334',
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
+  },
+  tabInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  tabButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: '#f0edff',
+    borderWidth: 1,
+    borderColor: '#ded6ff',
+  },
+  tabButtonPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }],
+  },
+  badge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.warning,
+    borderWidth: 2,
+    borderColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.onPrimary,
+  },
+});

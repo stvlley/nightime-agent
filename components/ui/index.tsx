@@ -1,4 +1,5 @@
 import React, { ComponentType, ReactNode } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
   Pressable,
@@ -59,6 +60,23 @@ const toneMap: Record<Tone, { bg: string; fg: string; border: string }> = {
   danger: { bg: colors.dangerBg, fg: colors.danger, border: '#ffc8cf' },
   info: { bg: colors.infoBg, fg: colors.info, border: '#c9e0ff' },
 };
+
+function runHaptic(kind: 'selection' | 'success' | 'warning' | 'error' = 'selection') {
+  const feedback =
+    kind === 'selection'
+      ? Haptics.selectionAsync()
+      : Haptics.notificationAsync(
+          kind === 'success'
+            ? Haptics.NotificationFeedbackType.Success
+            : kind === 'warning'
+              ? Haptics.NotificationFeedbackType.Warning
+              : Haptics.NotificationFeedbackType.Error
+        );
+
+  feedback.catch(() => {
+    // Haptics are best-effort and may be unavailable on web/simulator.
+  });
+}
 
 type StackProps = {
   children?: ReactNode;
@@ -180,7 +198,7 @@ export function Screen({
       {scroll ? (
         <RNScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 28 }}
+          contentContainerStyle={{ paddingBottom: 116 }}
           showsVerticalScrollIndicator={false}
         >
           {content}
@@ -254,8 +272,14 @@ export function Surface({
   };
 
   if (pressable) {
+    const handlePress = () => {
+      if (!onPress) return;
+      runHaptic('selection');
+      onPress();
+    };
+
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [surfaceStyle, { opacity: pressed ? 0.86 : 1 }]}>
+      <Pressable onPress={handlePress} style={({ pressed }) => [surfaceStyle, { opacity: pressed ? 0.86 : 1 }]}>
         {children}
       </Pressable>
     );
@@ -289,10 +313,15 @@ export function Button({
           : 'transparent';
   const fg = variant === 'primary' || variant === 'danger' ? colors.onPrimary : colors.text;
   const borderColor = variant === 'secondary' ? colors.borderStrong : bg;
+  const handlePress = () => {
+    if (!onPress || disabled || loading) return;
+    runHaptic(variant === 'danger' ? 'warning' : variant === 'primary' ? 'success' : 'selection');
+    onPress();
+  };
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       style={({ pressed }) => ({
         opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
@@ -326,10 +355,16 @@ export function IconButton({
   onPress?: () => void;
 }) {
   const colorsForTone = toneMap[tone];
+  const handlePress = () => {
+    if (!onPress) return;
+    runHaptic(tone === 'danger' ? 'warning' : 'selection');
+    onPress();
+  };
+
   return (
     <Pressable
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={handlePress}
       style={({ pressed }) => ({
         width: 38,
         height: 38,
@@ -469,26 +504,26 @@ export function ListRow({
 }) {
   return (
     <Surface pressable={Boolean(onPress)} onPress={onPress}>
-      <XStack alignItems="center" gap={12}>
+      <XStack alignItems="center" gap={14}>
         {Icon ? (
           <XStack
-            width={36}
-            height={36}
-            borderRadius={8}
+            width={44}
+            height={44}
+            borderRadius={12}
             alignItems="center"
             justifyContent="center"
             backgroundColor={colors.surfaceMuted}
           >
-            <Icon size={18} color={colors.textSecondary} />
+            <Icon size={20} color={colors.textSecondary} />
           </XStack>
         ) : null}
         <YStack flex={1} gap={4}>
           <XStack justifyContent="space-between" gap={12}>
-            <Text flex={1} fontSize={15} fontWeight="700" color={colors.text}>
+            <Text flex={1} fontSize={15} fontWeight="800" color={colors.text} numberOfLines={2}>
               {title}
             </Text>
             {meta ? (
-              <Text fontSize={12} color={colors.textMuted}>
+              <Text fontSize={12} color={colors.textMuted} numberOfLines={1}>
                 {meta}
               </Text>
             ) : null}
@@ -498,8 +533,20 @@ export function ListRow({
               {subtitle}
             </Text>
           ) : null}
-          {badge}
         </YStack>
+        {badge ? (
+          <XStack
+            minWidth={38}
+            height={38}
+            borderRadius={12}
+            alignItems="center"
+            justifyContent="center"
+            backgroundColor={onPress ? colors.neutralBg : 'transparent'}
+            style={{ flexShrink: 0 }}
+          >
+            {badge}
+          </XStack>
+        ) : null}
       </XStack>
     </Surface>
   );
@@ -518,6 +565,11 @@ export function ToggleRow({
   onValueChange: (value: boolean) => void;
   icon?: IconComponent;
 }) {
+  const handleValueChange = (nextValue: boolean) => {
+    runHaptic('selection');
+    onValueChange(nextValue);
+  };
+
   return (
     <Surface>
       <XStack alignItems="center" gap={12}>
@@ -534,7 +586,7 @@ export function ToggleRow({
         </YStack>
         <Switch
           value={value}
-          onValueChange={onValueChange}
+          onValueChange={handleValueChange}
           trackColor={{ false: colors.border, true: colors.accentDim }}
           thumbColor={value ? colors.primary : '#ffffff'}
         />

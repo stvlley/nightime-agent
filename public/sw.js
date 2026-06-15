@@ -1,5 +1,5 @@
 // Service Worker for PWA functionality
-const CACHE_NAME = 'therapybot-v1.2.0';
+const CACHE_NAME = 'nightime-agent-v1.0.0';
 const OFFLINE_URL = '/offline.html';
 
 // Files to precache (app shell)
@@ -125,7 +125,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification('TherapyBot AI', options)
+    self.registration.showNotification('Nightime Agent', options)
   );
 });
 

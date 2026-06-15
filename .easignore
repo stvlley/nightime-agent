@@ -1,0 +1,36 @@
+# Dependencies and package-manager state
+node_modules/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Local Expo and native build output
+.expo/
+dist/
+web-build/
+ios/
+android/
+*.orig.*
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Hosted deployment state
+.vercel/
+
+# Generated analysis artifacts
+graphify-out/
+
+# Editor and OS noise
+.DS_Store
+.vscode/
+.claude/
+

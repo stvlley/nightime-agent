@@ -27,6 +27,25 @@ export interface ConnectedChannel {
 
 const SAFE_COLUMNS = 'id, channel, external_account_id, active, created_at';
 
+function formatSupabaseError(error: { code?: string; message?: string; details?: string | null; hint?: string | null }) {
+  const parts = [error.message, error.details, error.hint].filter(Boolean);
+  return parts.join(' ');
+}
+
+function explainWebchatError(error: { code?: string; message?: string; details?: string | null; hint?: string | null }) {
+  const raw = formatSupabaseError(error);
+  if (raw.includes('agent_channels_channel_check')) {
+    return 'Web chat is not enabled in the database yet. Apply the webchat migration, then try again.';
+  }
+  if (raw.includes('violates row-level security') || error.code === '42501') {
+    return 'Your account is not allowed to create channel rows yet. Check the agent_channels RLS migration.';
+  }
+  if (raw.includes('profiles_slug_format')) {
+    return 'Could not create a valid public chat handle for this profile. Update the business/profile name and try again.';
+  }
+  return raw || 'Could not enable web chat.';
+}
+
 function mapRow(row: {
   id: string;
   channel: string;
@@ -66,10 +85,10 @@ export const channelService = {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('slug, business_name, display_name')
+      .select('id, email, slug, business_name, display_name')
       .eq('id', userId)
       .maybeSingle();
-    if (profileError) throw profileError;
+    if (profileError) throw new Error(formatSupabaseError(profileError));
 
     let slug = profile?.slug ?? null;
     if (!slug) {
@@ -83,9 +102,18 @@ export const channelService = {
       for (let attempt = 0; attempt < 2; attempt++) {
         const { error } = await supabase
           .from('profiles')
-          .upsert({ id: userId, slug }, { onConflict: 'id' });
+          .upsert(
+            {
+              id: userId,
+              email: profile?.email ?? null,
+              business_name: profile?.business_name ?? null,
+              display_name: profile?.display_name ?? null,
+              slug,
+            },
+            { onConflict: 'id' }
+          );
         if (!error) break;
-        if (attempt === 1 || error.code !== '23505') throw error;
+        if (attempt === 1 || error.code !== '23505') throw new Error(explainWebchatError(error));
         slug = `${base}-${randomHexSecret(2)}`;
       }
     }
@@ -102,7 +130,7 @@ export const channelService = {
       },
       { onConflict: 'user_id,channel' }
     );
-    if (channelError) throw channelError;
+    if (channelError) throw new Error(explainWebchatError(channelError));
 
     return { slug };
   },

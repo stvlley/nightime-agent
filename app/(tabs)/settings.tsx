@@ -6,13 +6,16 @@ import {
   ChevronRight,
   CircleHelp as HelpCircle,
   Clock,
+  CloudUpload,
   LogOut,
   MessagesSquare,
+  QrCode,
   Shield,
   Sparkles,
   User,
+  Wallet,
 } from 'lucide-react-native';
-import { XStack, YStack, Text, Button, IconButton, ListRow, PageHeader, Screen, Section, Surface, ToggleRow, colors } from '@/components/ui';
+import { XStack, YStack, Text, Button, ListRow, PageHeader, Screen, Section, Surface, ToggleRow, colors } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { preferencesService } from '@/lib/preferences';
 import { confirmAsync } from '@/utils/confirm';
@@ -99,21 +102,47 @@ export default function SettingsScreen() {
             title="Profile & business"
             subtitle={user?.profile?.business_name ?? undefined}
             onPress={() => router.push('/(tabs)/profile')}
-            badge={<IconButton icon={ChevronRight} label="Edit profile" onPress={() => router.push('/(tabs)/profile')} />}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
           />
           <ListRow
             icon={MessagesSquare}
             title="Channels"
             subtitle="Where clients can reach your agent."
             onPress={() => router.push('/(tabs)/channels')}
-            badge={<IconButton icon={ChevronRight} label="Manage channels" onPress={() => router.push('/(tabs)/channels')} />}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
           />
           <ListRow
             icon={Sparkles}
             title="Agent settings"
             subtitle="Saved replies, moderation, and automation controls."
             onPress={() => router.push('/(tabs)/ai-settings')}
-            badge={<IconButton icon={ChevronRight} label="Open agent settings" onPress={() => router.push('/(tabs)/ai-settings')} />}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
+          />
+        </YStack>
+      </Section>
+
+      <Section title="Business tools">
+        <YStack gap={10}>
+          <ListRow
+            icon={CloudUpload}
+            title="Training imports"
+            subtitle="Import prior conversations to tune agent replies."
+            onPress={() => router.push('/(tabs)/upload')}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
+          />
+          <ListRow
+            icon={QrCode}
+            title="Payment links"
+            subtitle="Show clients a scannable card for direct payment."
+            onPress={() => router.push('/(tabs)/payments')}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
+          />
+          <ListRow
+            icon={Wallet}
+            title="Plan & billing"
+            subtitle="Plan details, early access status, and monthly usage."
+            onPress={() => router.push('/(tabs)/billing')}
+            badge={<ChevronRight size={20} color={colors.textSecondary} />}
           />
         </YStack>
       </Section>
