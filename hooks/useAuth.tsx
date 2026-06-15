@@ -50,6 +50,40 @@ interface AuthContextValue {
 const DEMO_USER_KEY = '@demo_user';
 const AUTH_TIMEOUT_MS = 15000;
 
+function isNetworkError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /networkerror|failed to fetch|fetch failed|load failed|network request failed/i.test(message);
+}
+
+function createDemoUser(email: string, businessName: string, id = `demo-${Date.now()}`): AuthUser {
+  return {
+    id,
+    email,
+    demo: true,
+    profile: {
+      id,
+      email,
+      business_name: businessName,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      plan: 'starter',
+      usage_month_count: 0,
+      usage_limit: 100,
+      fcm_token: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // Portal fields (Phase 1.5) — demo mode has no public profile.
+      slug: null,
+      display_name: businessName,
+      headline: null,
+      bio: null,
+      avatar_url: null,
+      location_label: null,
+      published: false,
+      age_gate_required: true,
+    },
+  };
+}
+
 async function withAuthTimeout<T>(operation: Promise<T>, label: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -143,32 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       if (!supabase) {
-        const demoUser: AuthUser = {
-          id: `demo-${Date.now()}`,
-          email,
-          demo: true,
-          profile: {
-            id: `demo-${Date.now()}`,
-            email,
-            business_name: businessName,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            plan: 'starter',
-            usage_month_count: 0,
-            usage_limit: 100,
-            fcm_token: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            // Portal fields (Phase 1.5) — demo mode has no public profile.
-            slug: null,
-            display_name: businessName,
-            headline: null,
-            bio: null,
-            avatar_url: null,
-            location_label: null,
-            published: false,
-            age_gate_required: true,
-          },
-        };
+        const demoUser = createDemoUser(email, businessName);
         await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
         setUser(demoUser);
         return {
@@ -216,6 +225,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        const demoUser = createDemoUser(email, businessName);
+        await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
+        setUser(demoUser);
+        return {
+          success: true,
+          demo: true,
+          warning: 'Auth service is unreachable, so this account was started locally for now.',
+        };
+      }
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

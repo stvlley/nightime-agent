@@ -23,12 +23,16 @@ export async function recordLandingIntent(input: LandingIntentInput): Promise<vo
     const userAgent =
       Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : null;
 
-    const { error } = await supabase
-      .from('landing_intents')
-      .insert({ ...payload, user_agent: userAgent });
+    try {
+      const { error } = await supabase
+        .from('landing_intents')
+        .insert({ ...payload, user_agent: userAgent });
 
-    if (!error) {
-      return;
+      if (!error) {
+        return;
+      }
+    } catch {
+      // Fall through to local queue when Supabase cannot be reached.
     }
   }
 
