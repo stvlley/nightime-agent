@@ -121,10 +121,14 @@ export default function SetupScreen() {
     let mounted = true;
     setupService
       .load(user.id)
-      .then((state) => {
+      .then(async (state) => {
         if (!mounted) return;
         const fallbackName = user.profile?.business_name ?? '';
-        const loadedPayload = setupPayloadFromLoaded(state, fallbackName);
+        const setupPatch = await onboardingUtils.consumeSetupPatch();
+        const loadedPayload = {
+          ...setupPayloadFromLoaded(state, fallbackName),
+          ...(setupPatch ?? {}),
+        };
         setPayload(loadedPayload);
         setDraftText(loadedPayload.businessName);
         setDraftChannels(loadedPayload.messageChannels);

@@ -184,7 +184,7 @@ export function LandingPage() {
       setSubmitting(false);
       setSignupVisible(false);
       resetSignup();
-      router.replace('/(onboarding)/setup');
+      router.replace('/(onboarding)/onboarding');
     } catch (error: any) {
       setSubmitting(false);
       setAuthRedirectPaused(false);

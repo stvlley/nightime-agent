@@ -46,7 +46,7 @@ export default function RegisterScreen() {
     }
 
     await onboardingUtils.setUserLoggedIn(true);
-    router.replace('/(onboarding)/setup');
+    router.replace('/(onboarding)/onboarding');
   };
 
   const updateFormData = (field: string, value: string) => {
