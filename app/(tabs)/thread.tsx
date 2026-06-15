@@ -92,10 +92,10 @@ function MessageBubble({
         borderRadius={10}
         borderWidth={1}
         borderColor={pending ? toneBorder('warning') : colors.border}
-        backgroundColor={outbound ? '#2a1f66' : colors.surface}
+        backgroundColor={outbound ? colors.primary : colors.surface}
         style={{ maxWidth: '85%', opacity: rejected ? 0.55 : 1 }}
       >
-        <Text fontSize={14} color={colors.text}>
+        <Text fontSize={14} color={outbound ? colors.onPrimary : colors.text}>
           {message.text}
         </Text>
         <XStack gap={6} flexWrap="wrap" alignItems="center">
@@ -129,7 +129,7 @@ function MessageBubble({
 }
 
 function toneBorder(tone: 'warning'): string {
-  return tone === 'warning' ? '#6b4a2e' : colors.border;
+  return tone === 'warning' ? '#f5d9a8' : colors.border;
 }
 
 export default function ThreadScreen() {

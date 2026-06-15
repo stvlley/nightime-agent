@@ -80,7 +80,7 @@ V1 is message-provider-first on one shared Supabase backend:
    the product, capturing provider/client intent, and showing local cookie
    consent. This is not the provider-specific booking portal.
 2. **Provider app** (this Expo app) — authenticated control panel: dashboard,
-   inbox, setup chat, message automation settings, billing, settings.
+   inbox, message automation settings, billing, settings.
 3. **Customer portal** (FUTURE, separate Next.js app) — provider-specific public
    profile + availability + booking at `/p/[slug]`. Payments-ready,
    multi-tenant-ready, but deferred until the message-provider loop works.
@@ -199,30 +199,16 @@ message setup and approval, not public portal readiness.
       `DEPLOYMENT.md`, and `LOG.md`
 - [x] `npm run typecheck`, `npm run lint`, `npm run build:web`
 
-### Phase 1.8 — Message-provider setup chat  _(Expo app + existing schema)_ 🔄 IN PROGRESS
-- [x] Reframe setup as a **scripted chat transcript**, not a wizard with chat
-      styling. Prior assistant prompts and provider answers remain visible in
-      a thread.
-- [x] Replace full-business setup emphasis with message-provider onboarding:
-      business/display name, provider category, current message channels,
-      common inbound questions, services/offers mentioned in chat, tone,
-      boundaries, approval mode, follow-up preference, moderation level, and
-      notification permission.
-- [x] Treat availability and booking fields as optional context only when the
-      provider says bookings happen in messages. Do not make portal readiness
-      the main path.
-- [x] Persist the same v1 data to `profiles`, `services`, `availability` when
-      relevant, `provider_preferences`, and AsyncStorage demo mode.
-- [x] Add a polished chat shell: pinned composer, scrollable transcript,
-      assistant typing state, compact quick replies, and review-before-save.
-- [x] Add **bounded setup inference** as provider-approved suggestions, not a
-      free-form AI controller. Current implementation is deterministic
-      (`utils/setupInference.ts`) and can later be backed by a server endpoint.
-- [x] Update UAT to verify the experience behaves like a conversation: answer,
-      assistant acknowledgement, next prompt, transcript review, save.
+### Phase 1.8 — Conversion onboarding and provider dashboard  _(Expo app + existing schema)_ 🔄 IN PROGRESS
+- [x] Replace the old setup-chat route with a conversion diagnostic that ends
+      in the dashboard.
+- [x] Keep provider configuration in the main app: Profile, Channels, Agent
+      Settings, Billing, and Settings.
+- [x] Treat availability and booking fields as optional context. Do not make
+      portal readiness the main path.
 - [ ] Visual UAT in browser/device for mobile and desktop sizes.
-- [ ] Replace deterministic suggestion internals with real inference only after
-      a server endpoint exists with prompt/version logging, structured output
+- [ ] Add server-backed inference only after prompt/version logging,
+      structured output validation, and provider approval are in place.
       validation, rate limiting, and deterministic fallback.
 
 ### Phase 2 — Agent runtime for messages  _(Edge Functions, still $0)_ 🔄 CODE-COMPLETE (needs deploy + live UAT)

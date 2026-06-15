@@ -148,12 +148,17 @@ export function WorkflowSection({ isNarrow }: Pick<LandingSectionProps, 'isNarro
 
 export function TrustSection({ isNarrow }: Pick<LandingSectionProps, 'isNarrow'>) {
   return (
-    <View style={styles.band}>
-      <SectionIntro
-        eyebrow="Trust and privacy"
-        title="Discretion, consent, and control are part of the product surface."
-        body="The launch plan includes discreet profiles, consent-based follow-ups, clear AI disclosure, and an age-gate where required."
-      />
+    <View style={styles.bandDark}>
+      <View style={styles.sectionIntro}>
+        <Text style={styles.darkKicker}>Trust and privacy</Text>
+        <Text style={styles.darkSectionTitle}>
+          Discretion, consent, and control are part of the product surface.
+        </Text>
+        <Text style={styles.darkSectionBody}>
+          The launch plan includes discreet profiles, consent-based follow-ups, clear AI disclosure,
+          and an age-gate where required.
+        </Text>
+      </View>
       <View style={[styles.trustGrid, isNarrow && styles.stackSection]}>
         <TrustItem icon={<LockKeyhole size={20} color={colors.accent} />} label="Discreet provider profiles" />
         <TrustItem icon={<ShieldCheck size={20} color={colors.accent} />} label="Moderation before autonomy" />
@@ -203,8 +208,36 @@ export function FinalCtaSection({ isNarrow, onOpenSignup }: LandingSectionProps)
   return (
     <View style={styles.finalCta}>
       <NightSky height="100%" showMoon={false} />
-      <Text style={styles.finalTitle}>Create the workspace, then run the conversion checkup.</Text>
-      <DualCta isNarrow={isNarrow} onOpenSignup={onOpenSignup} />
+      <View style={[styles.footerPanel, isNarrow && styles.footerPanelMobile]}>
+        <View style={styles.footerBrandBlock}>
+          <View style={styles.footerBrandRow}>
+            <View style={styles.footerOwl}>
+              <OwlMascot size={34} glow={false} />
+            </View>
+            <Text style={styles.footerBrandText}>Nightime Agent</Text>
+          </View>
+          <Text style={styles.footerBody}>
+            A controlled booking inbox for providers who need fast replies without giving up
+            approval, discretion, or client context.
+          </Text>
+        </View>
+
+        <View style={[styles.footerCtaBlock, isNarrow && styles.footerCtaBlockMobile]}>
+          <Text style={[styles.finalTitle, isNarrow && styles.footerTitleMobile]}>
+            Create the workspace, then run the conversion checkup.
+          </Text>
+          <DualCta isNarrow={isNarrow} onOpenSignup={onOpenSignup} />
+        </View>
+      </View>
+
+      <View style={[styles.footerMeta, isNarrow && styles.footerMetaMobile]}>
+        <Text style={styles.footerMetaText}>Provider-first launch · AI-assisted replies · Approval controls</Text>
+        <View style={styles.footerLinks}>
+          <Text style={styles.footerLink}>Privacy</Text>
+          <Text style={styles.footerLink}>Terms</Text>
+          <Text style={styles.footerLink}>Contact</Text>
+        </View>
+      </View>
     </View>
   );
 }

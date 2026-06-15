@@ -1,17 +1,30 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '@/components/ui';
 
+const lightBg = '#fbfbfd';
+const lightBand = '#f4f1ff';
+const lightCard = '#ffffff';
+const lightBorder = '#d8d3ee';
+const lightInk = '#161334';
+const lightMuted = '#5f5a7d';
+const lightFaint = '#837ca6';
+const darkBg = '#0d0a26';
+const darkText = '#f4f1ff';
+const darkMuted = '#b8aee0';
+const darkBorder = '#3d2f80';
+
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: darkBg,
   },
   page: {
+    backgroundColor: darkBg,
     paddingBottom: 160,
+    gap: 16,
   },
   nav: {
     width: '100%',
-    maxWidth: 1180,
     alignSelf: 'center',
     paddingHorizontal: 24,
     paddingVertical: 18,
@@ -20,6 +33,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
     zIndex: 2,
+    backgroundColor: darkBg,
   },
   brand: {
     flexDirection: 'row',
@@ -28,7 +42,7 @@ export const styles = StyleSheet.create({
     minWidth: 0,
   },
   brandText: {
-    color: colors.text,
+    color: darkText,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -43,7 +57,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   textButtonLabel: {
-    color: colors.textSecondary,
+    color: darkMuted,
     fontWeight: '700',
   },
   smallButton: {
@@ -60,6 +74,7 @@ export const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     width: '100%',
+    backgroundColor: darkBg,
   },
   hero: {
     width: '100%',
@@ -101,7 +116,7 @@ export const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   heroTitle: {
-    color: colors.text,
+    color: darkText,
     fontSize: 52,
     lineHeight: 58,
     fontWeight: '900',
@@ -112,7 +127,7 @@ export const styles = StyleSheet.create({
     lineHeight: 44,
   },
   heroBody: {
-    color: colors.textSecondary,
+    color: darkMuted,
     fontSize: 18,
     lineHeight: 28,
     maxWidth: 600,
@@ -147,7 +162,7 @@ export const styles = StyleSheet.create({
     minHeight: 48,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: darkBorder,
     borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 13,
@@ -157,7 +172,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryButtonLabel: {
-    color: colors.text,
+    color: darkText,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -208,8 +223,8 @@ export const styles = StyleSheet.create({
     gap: 5,
   },
   agentCard: {
-    backgroundColor: colors.background,
-    borderColor: colors.borderStrong,
+    backgroundColor: lightBand,
+    borderColor: lightBorder,
     borderWidth: 1,
   },
   messageName: {
@@ -250,12 +265,24 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 54,
     gap: 22,
+    backgroundColor: lightBg,
+    borderRadius: 8,
   },
   bandAlt: {
     width: '100%',
-    backgroundColor: colors.surface,
+    maxWidth: 1180,
+    alignSelf: 'center',
+    backgroundColor: lightBand,
     paddingHorizontal: 24,
     paddingVertical: 56,
+    gap: 24,
+    borderRadius: 8,
+  },
+  bandDark: {
+    width: '100%',
+    backgroundColor: darkBg,
+    paddingHorizontal: 24,
+    paddingVertical: 60,
     gap: 24,
   },
   sectionIntro: {
@@ -265,20 +292,40 @@ export const styles = StyleSheet.create({
     gap: 10,
   },
   sectionTitle: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 32,
     lineHeight: 38,
     fontWeight: '900',
     textAlign: 'center',
   },
   sectionTitleSmall: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 24,
     lineHeight: 30,
     fontWeight: '900',
   },
   sectionBody: {
-    color: colors.textSecondary,
+    color: lightMuted,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  darkKicker: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  darkSectionTitle: {
+    color: darkText,
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  darkSectionBody: {
+    color: darkMuted,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -293,9 +340,9 @@ export const styles = StyleSheet.create({
   rolePanel: {
     flex: 1,
     minWidth: 280,
-    backgroundColor: colors.surface,
+    backgroundColor: lightCard,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: lightBorder,
     borderRadius: 8,
     padding: 20,
     gap: 12,
@@ -307,22 +354,22 @@ export const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: lightBand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTitle: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 20,
     fontWeight: '900',
   },
   cardBody: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 15,
     lineHeight: 22,
   },
   inlineAction: {
-    color: colors.accent,
+    color: colors.primaryActive,
     fontSize: 14,
     fontWeight: '900',
     marginTop: 4,
@@ -338,11 +385,11 @@ export const styles = StyleSheet.create({
     flex: 1,
     minWidth: 220,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: lightBorder,
     borderRadius: 8,
     padding: 18,
     gap: 10,
-    backgroundColor: colors.surface,
+    backgroundColor: lightCard,
   },
   splitBand: {
     width: '100%',
@@ -352,20 +399,22 @@ export const styles = StyleSheet.create({
     paddingVertical: 54,
     flexDirection: 'row',
     gap: 16,
+    backgroundColor: lightBg,
+    borderRadius: 8,
   },
   checklist: {
     flex: 1,
     minWidth: 280,
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderStrong,
+    backgroundColor: lightCard,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 22,
     gap: 14,
   },
   checklistWarm: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: lightBand,
+    borderColor: lightBorder,
   },
   checkRow: {
     flexDirection: 'row',
@@ -382,7 +431,7 @@ export const styles = StyleSheet.create({
   },
   checkText: {
     flex: 1,
-    color: colors.text,
+    color: lightInk,
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '700',
@@ -398,8 +447,8 @@ export const styles = StyleSheet.create({
   trustItem: {
     flex: 1,
     minWidth: 220,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: lightCard,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 16,
@@ -409,7 +458,7 @@ export const styles = StyleSheet.create({
   },
   trustText: {
     flex: 1,
-    color: colors.text,
+    color: lightInk,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '800',
@@ -423,6 +472,8 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 24,
     alignItems: 'center',
+    backgroundColor: lightBg,
+    borderRadius: 8,
   },
   launchCopy: {
     flex: 1,
@@ -431,26 +482,26 @@ export const styles = StyleSheet.create({
   priceBox: {
     flex: 1,
     minWidth: 280,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: lightCard,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: lightBorder,
     borderRadius: 8,
     padding: 22,
     gap: 8,
   },
   priceLabel: {
-    color: colors.accent,
+    color: colors.primaryActive,
     fontSize: 13,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
   priceValue: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 30,
     fontWeight: '900',
   },
   priceBody: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 15,
     lineHeight: 23,
   },
@@ -461,40 +512,118 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   faqItem: {
-    borderColor: colors.border,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 18,
-    backgroundColor: colors.surface,
+    backgroundColor: lightCard,
     gap: 6,
   },
   faqQuestion: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 17,
     fontWeight: '900',
   },
   faqAnswer: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 15,
     lineHeight: 22,
   },
   finalCta: {
     width: '100%',
-    maxWidth: 980,
+    maxWidth: 1180,
     alignSelf: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 80,
-    alignItems: 'center',
+    paddingTop: 64,
+    paddingBottom: 86,
     gap: 18,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: darkBg,
+  },
+  footerPanel: {
+    borderWidth: 1,
+    borderColor: lightBorder,
+    borderRadius: 8,
+    backgroundColor: lightCard,
+    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 28,
+  },
+  footerPanelMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  footerBrandBlock: {
+    flex: 1,
+    gap: 12,
+  },
+  footerBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  footerOwl: {
+    width: 34,
+    height: 34,
+  },
+  footerBrandText: {
+    color: lightInk,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  footerBody: {
+    color: lightMuted,
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 520,
+  },
+  footerCtaBlock: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 14,
+  },
+  footerCtaBlockMobile: {
+    alignItems: 'stretch',
   },
   finalTitle: {
-    color: colors.text,
-    fontSize: 34,
-    lineHeight: 40,
+    color: lightInk,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: '900',
-    textAlign: 'center',
+    textAlign: 'right',
+    maxWidth: 460,
+  },
+  footerTitleMobile: {
+    textAlign: 'left',
+  },
+  footerMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 4,
+  },
+  footerMetaMobile: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  footerMetaText: {
+    color: lightFaint,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  footerLink: {
+    color: colors.primaryActive,
+    fontSize: 12,
+    fontWeight: '900',
   },
   cookieBanner: {
     position: 'absolute',
@@ -502,8 +631,8 @@ export const styles = StyleSheet.create({
     right: 24,
     bottom: 18,
     alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
+    backgroundColor: lightCard,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 14,
@@ -518,7 +647,7 @@ export const styles = StyleSheet.create({
   },
   cookieText: {
     flex: 1,
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 13,
     lineHeight: 19,
   },
@@ -529,14 +658,14 @@ export const styles = StyleSheet.create({
   },
   cookieGhost: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: lightBorder,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
     alignItems: 'center',
   },
   cookieGhostLabel: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 13,
     fontWeight: '800',
   },
@@ -563,8 +692,8 @@ export const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     maxHeight: '92%',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: lightCard,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 20,
@@ -579,12 +708,12 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitle: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 24,
     fontWeight: '900',
   },
   modalIntro: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 14,
     lineHeight: 21,
     marginTop: 6,
@@ -596,10 +725,10 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: lightBand,
   },
   segmented: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: lightBand,
     borderRadius: 8,
     padding: 4,
     flexDirection: 'row',
@@ -615,7 +744,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   segmentText: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontWeight: '900',
   },
   segmentTextActive: {
@@ -628,20 +757,20 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   inputLabel: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 13,
     fontWeight: '900',
   },
   input: {
     minHeight: 46,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: lightBorder,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: colors.text,
+    color: lightInk,
     fontSize: 15,
-    backgroundColor: colors.background,
+    backgroundColor: lightBg,
   },
   modalAction: {
     minHeight: 48,
@@ -662,8 +791,8 @@ export const styles = StyleSheet.create({
     opacity: 0.6,
   },
   successBox: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderStrong,
+    backgroundColor: lightBand,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 18,
@@ -671,13 +800,13 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   successTitle: {
-    color: colors.text,
+    color: lightInk,
     fontSize: 18,
     fontWeight: '900',
     textAlign: 'center',
   },
   successText: {
-    color: colors.textSecondary,
+    color: lightMuted,
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
@@ -699,13 +828,13 @@ export const styles = StyleSheet.create({
   },
   exampleTag: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderStrong,
+    backgroundColor: lightBand,
+    borderColor: lightBorder,
     borderWidth: 1,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    color: colors.textMuted,
+    color: lightFaint,
     fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',

@@ -45,5 +45,8 @@ supabase/.temp/
 # Claude Code harness artifacts
 .claude/
 
+# Graphify generated graph state
+graphify-out/
+
 # Editor-local config
 .vscode/

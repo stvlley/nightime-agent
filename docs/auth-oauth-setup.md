@@ -85,7 +85,8 @@ For **local** testing instead: `supabase start` (Docker) applies the same
 - Web: open the landing page → **Continue with Google** → consent → you land in
   `/(tabs)` with a session.
 - A new social user automatically gets a minimal `profiles` row (name from the
-  Google/Facebook metadata); the setup chat refines it later.
+  Google/Facebook metadata); the provider can refine it later from Profile,
+  Channels, and Agent Settings.
 - Native (when built): an in-app browser opens, returns to
   `nitime://auth-callback`, and the code is exchanged for a session.
 

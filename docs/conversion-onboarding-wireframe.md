@@ -6,7 +6,7 @@ High-fidelity code mockup route: `/mockups/conversion-onboarding`
 
 ## Purpose
 
-Convert provider curiosity into trial intent before the setup chat. The flow should make the provider feel the cost of slow replies, repetitive questions, missed clients, and boundary management, then present a transparent annual-first trial paywall.
+Convert provider curiosity into trial intent before the provider dashboard. The flow should make the provider feel the cost of slow replies, repetitive questions, missed clients, and boundary management, then present a transparent annual-first trial paywall.
 
 ## Mobile Funnel
 
@@ -44,7 +44,7 @@ Convert provider curiosity into trial intent before the setup chat. The flow sho
    - Availability/location.
    - What to expect.
    - Boundaries/policies.
-   - These become setup chat defaults.
+   - These shape starter agent settings.
 
 8. **Assistant caution level**
    - Draft everything for approval.
@@ -71,9 +71,9 @@ Convert provider curiosity into trial intent before the setup chat. The flow sho
    - Monthly secondary: `$39/month`, no trial.
    - Required terms: trial length, renewal price, billing period, cancellation path, restore purchase.
 
-13. **Setup handoff**
-   - Import diagnostic answers into setup chat.
-   - Provider approves and edits rules before anything goes live.
+13. **Dashboard handoff**
+   - Summarize diagnostic answers and send the provider into the dashboard.
+   - Provider edits channels, saved replies, and safety controls from the app.
 
 14. **Dashboard arrival**
    - Confirm immediate value: agent status, approvals waiting, FAQ replies, channel checklist.
@@ -83,13 +83,13 @@ Convert provider curiosity into trial intent before the setup chat. The flow sho
 - Diagnostic web layout: question panel left, sticky estimate/progress right.
 - Personalized result: wide summary panel with CTA.
 - Paywall: annual card, monthly secondary, visible terms.
-- Setup/dashboard handoff: imported answers and first actionable dashboard state.
+- Dashboard handoff: imported-answer summary and first actionable dashboard state.
 
 ## Implementation Notes
 
-- Define diagnostic questions as structured data: `id`, `prompt`, `options`, `analyticsKey`, `setupPayload` mapping.
+- Define diagnostic questions as structured data: `id`, `prompt`, `options`, and `analyticsKey`.
 - Persist answers locally before signup, then attach to provider profile after trial/signup.
-- Feed accepted answers into setup chat defaults.
+- Use accepted answers to frame the first dashboard and agent settings experience.
 - Instrument funnel events before paid traffic.
 - Keep copy on the tool side: message handling, approval queue, own channels. Avoid marketplace or client checkout language.
 
@@ -108,7 +108,7 @@ The next Figma pass should add four populated sections after the wireframe frame
 
 3. **Implementation data model**
    - Add a code-style panel for `DiagnosticQuestion` and `DiagnosticResult`.
-   - Add notes for calculation guardrails, setup handoff, paywall gate, and tool/marketplace boundary.
+   - Add notes for calculation guardrails, dashboard handoff, paywall gate, and tool/marketplace boundary.
 
 4. **Paywall requirements**
    - Annual-first plan: `$299/year` with a 3-day free trial.
@@ -132,8 +132,8 @@ The next Figma pass should add four populated sections after the wireframe frame
 | 10 | Trust 1 | Try the assistant free first | Inbox preview, approval queue, FAQ training | `trial_prime_viewed.free_first` |
 | 11 | Trust 2 | We remind you before renewal | Day 1 connect, Day 2 approve, Day 3 reminder | `trial_prime_viewed.reminder` |
 | 12 | Paywall | Start your 3-day free trial | Annual first, monthly secondary, visible terms | `paywall_viewed` |
-| 13 | Setup | Now configure your assistant | Imported answers, provider approval before live | `setup_started` |
-| 14 | Dashboard | Dashboard after setup | Approvals, FAQ replies, channel checklist | `setup_completed` |
+| 13 | Handoff | Your assistant plan is ready | Imported-answer summary, edit controls in app | `setup_completed` |
+| 14 | Dashboard | Dashboard after onboarding | Approvals, FAQ replies, channel checklist | `dashboard_viewed` |
 
 ## Diagnostic Data Shape
 
@@ -150,7 +150,6 @@ type DiagnosticQuestion = {
     recommended?: boolean;
   }[];
   analyticsKey: string;
-  setupMapping?: Partial<SetupPayload>;
 };
 
 type DiagnosticResult = {

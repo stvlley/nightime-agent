@@ -15,33 +15,31 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LucideProps } from 'lucide-react-native';
 
-// Night palette — deep purple, owl + sky brand. Applies app-wide.
+// Light app palette aligned with the conversion onboarding brand.
 export const colors = {
-  background: '#0d0a26',
-  surface: '#1a1340',
-  surfaceMuted: '#221955',
-  border: '#2e2466',
-  borderStrong: '#3d2f80',
-  text: '#f4f1ff',
-  textSecondary: '#b8aee0',
-  textMuted: '#8478b0',
-  primary: '#9d7bff',
-  primaryActive: '#7e5cf0',
-  success: '#5ae0a3',
-  successBg: '#1d3a30',
-  warning: '#ffc278',
-  warningBg: '#3a2a14',
-  danger: '#ff7884',
-  dangerBg: '#3a1620',
-  info: '#7ac0ff',
-  infoBg: '#172a44',
-  neutralBg: '#221955',
-  // Accents for mascot, hero glow, stars.
-  accent: '#c9b5ff',
-  accentDim: '#5d4d8c',
-  starGlow: 'rgba(201, 181, 255, 0.7)',
-  // Inverse white for cases where we need contrast on accent surfaces.
-  onPrimary: '#0d0a26',
+  background: '#f5f6ff',
+  surface: '#ffffff',
+  surfaceMuted: '#f8f9ff',
+  border: '#e8e8f6',
+  borderStrong: '#d9d8ef',
+  text: '#161334',
+  textSecondary: '#5a5780',
+  textMuted: '#9794b6',
+  primary: '#7c5cff',
+  primaryActive: '#6442f0',
+  success: '#119e6b',
+  successBg: '#e2f8ef',
+  warning: '#c77a12',
+  warningBg: '#fdf1dd',
+  danger: '#e5484d',
+  dangerBg: '#ffeff1',
+  info: '#2676d9',
+  infoBg: '#edf5ff',
+  neutralBg: '#f4f1ff',
+  accent: '#9a63ff',
+  accentDim: '#d8d3ee',
+  starGlow: 'rgba(124, 92, 255, 0.28)',
+  onPrimary: '#ffffff',
 };
 
 export const spacing = {
@@ -55,11 +53,11 @@ type Tone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
 
 const toneMap: Record<Tone, { bg: string; fg: string; border: string }> = {
   neutral: { bg: colors.neutralBg, fg: colors.textSecondary, border: colors.border },
-  primary: { bg: '#2a1f66', fg: colors.accent, border: colors.borderStrong },
-  success: { bg: colors.successBg, fg: colors.success, border: '#2a5e47' },
-  warning: { bg: colors.warningBg, fg: colors.warning, border: '#6b4a2e' },
-  danger: { bg: colors.dangerBg, fg: colors.danger, border: '#6e2b3a' },
-  info: { bg: colors.infoBg, fg: colors.info, border: '#2f4a72' },
+  primary: { bg: '#f0edff', fg: colors.primary, border: '#d8d0ff' },
+  success: { bg: colors.successBg, fg: colors.success, border: '#bdeed9' },
+  warning: { bg: colors.warningBg, fg: colors.warning, border: '#f5d9a8' },
+  danger: { bg: colors.dangerBg, fg: colors.danger, border: '#ffc8cf' },
+  info: { bg: colors.infoBg, fg: colors.info, border: '#c9e0ff' },
 };
 
 type StackProps = {
@@ -289,7 +287,7 @@ export function Button({
         : variant === 'secondary'
           ? colors.surface
           : 'transparent';
-  const fg = variant === 'primary' || variant === 'danger' ? '#ffffff' : colors.text;
+  const fg = variant === 'primary' || variant === 'danger' ? colors.onPrimary : colors.text;
   const borderColor = variant === 'secondary' ? colors.borderStrong : bg;
 
   return (

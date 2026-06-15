@@ -1,9 +1,8 @@
 /*
   # Provider setup preferences
 
-  Stores provider-owned business operations preferences collected during the
-  post-signup setup chat. Public profile, services, and availability stay in
-  their existing tables.
+  Stores provider-owned business operations preferences edited from the app.
+  Public profile, services, and availability stay in their existing tables.
 */
 
 CREATE TABLE IF NOT EXISTS public.provider_preferences (

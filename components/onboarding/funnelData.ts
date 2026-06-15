@@ -11,8 +11,6 @@
 // drift. Positioning rule: this is a message-assistant tool, never a marketplace
 // — no public booking, client checkout, or service payment language anywhere.
 
-import type { SetupPayload } from '@/utils/setup';
-
 export type ScreenKind =
   | 'intro'
   | 'single'
@@ -294,7 +292,7 @@ export const FUNNEL_SCREENS: FunnelScreen[] = [
     body: 'Your checkup answers are imported. You approve every rule before anything goes live.',
     event: FUNNEL_EVENTS.setupStarted,
     kind: 'handoff',
-    cta: 'Open setup chat',
+    cta: 'Open dashboard',
   },
   {
     id: 'dashboard',
@@ -458,28 +456,6 @@ export function computeResult(answers: DiagnosticAnswers): DiagnosticResult {
     approvalMode: answers.approvalMode ?? 'safe_faq_auto',
     estimatedMonthlyOpportunityCents,
     coldRequestsPerWeek,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Setup-chat handoff: map accepted diagnostic answers onto a SetupPayload patch
-// so setup starts pre-filled and feels intelligent.
-// ---------------------------------------------------------------------------
-
-const APPROVAL_TO_PAYLOAD: Record<ApprovalChoice, SetupPayload['approvalMode']> = {
-  draft_all: 'manual',
-  safe_faq_auto: 'auto_eligible',
-  routine_auto: 'auto_eligible',
-};
-
-export function toSetupPayloadPatch(result: DiagnosticResult): Partial<SetupPayload> {
-  return {
-    businessCategory: result.providerCategory,
-    messageChannels: result.recommendedChannels.map(channelLabel),
-    commonQuestions: result.faqCategories.map(faqLabel),
-    approvalMode: APPROVAL_TO_PAYLOAD[result.approvalMode],
-    // Companion/nightlife-adjacent work leans on stricter moderation by default.
-    moderationLevel: result.providerCategory.toLowerCase().includes('companion') ? 'strict' : 'medium',
   };
 }
 

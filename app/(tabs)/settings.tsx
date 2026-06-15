@@ -9,7 +9,7 @@ import {
   LogOut,
   MessagesSquare,
   Shield,
-  SlidersHorizontal,
+  Sparkles,
   User,
 } from 'lucide-react-native';
 import { XStack, YStack, Text, Button, IconButton, ListRow, PageHeader, Screen, Section, Surface, ToggleRow, colors } from '@/components/ui';
@@ -109,11 +109,11 @@ export default function SettingsScreen() {
             badge={<IconButton icon={ChevronRight} label="Manage channels" onPress={() => router.push('/(tabs)/channels')} />}
           />
           <ListRow
-            icon={SlidersHorizontal}
-            title="Setup chat"
-            subtitle="Re-run the guided assistant setup."
-            onPress={() => router.push('/(onboarding)/setup')}
-            badge={<IconButton icon={ChevronRight} label="Open setup chat" onPress={() => router.push('/(onboarding)/setup')} />}
+            icon={Sparkles}
+            title="Agent settings"
+            subtitle="Saved replies, moderation, and automation controls."
+            onPress={() => router.push('/(tabs)/ai-settings')}
+            badge={<IconButton icon={ChevronRight} label="Open agent settings" onPress={() => router.push('/(tabs)/ai-settings')} />}
           />
         </YStack>
       </Section>
@@ -167,8 +167,8 @@ export default function SettingsScreen() {
               <YStack flex={1} gap={3}>
                 <Text fontSize={15} fontWeight="700" color={colors.text}>Help</Text>
                 <Text fontSize={13} color={colors.textSecondary}>
-                  Stuck? Re-run the setup chat above, or check the Channels screen for
-                  step-by-step connection guides.
+                  Stuck? Check Channels for connection guides or Agent Settings for reply and
+                  moderation controls.
                 </Text>
               </YStack>
             </XStack>

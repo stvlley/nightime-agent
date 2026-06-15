@@ -31,7 +31,6 @@ import {
   computeResult,
   faqLabel,
   formatCurrencyCents,
-  toSetupPayloadPatch,
 } from './funnelData';
 
 const EMPTY_ANSWERS: DiagnosticAnswers = {
@@ -82,24 +81,22 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
       };
     });
 
-  const persistAndOpenSetup = async () => {
-    await onboardingUtils.saveSetupPatch(toSetupPayloadPatch(result));
+  const completeAndOpenApp = async () => {
     await onboardingUtils.completeOnboarding();
-    router.replace('/(onboarding)/setup');
+    router.replace('/(tabs)');
   };
 
   const goNext = async () => {
     if (!canContinue) return;
     if (screen.id === 'handoff') {
-      await persistAndOpenSetup();
+      await completeAndOpenApp();
       return;
     }
     if (index < FUNNEL_SCREENS.length - 1) {
       setIndex((current) => current + 1);
       return;
     }
-    await onboardingUtils.completeOnboarding();
-    router.replace('/(tabs)');
+    await completeAndOpenApp();
   };
 
   const goBack = () => setIndex((current) => Math.max(0, current - 1));
@@ -135,7 +132,7 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
             accessibilityRole="button"
             accessibilityLabel="Skip setup preview"
             style={styles.skipButton}
-            onPress={persistAndOpenSetup}
+            onPress={completeAndOpenApp}
           >
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
@@ -150,7 +147,7 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
             <Text style={styles.body}>{screen.body}</Text>
           </View>
 
-          <ScreenBody screen={screen} interaction={interaction} onOpenSetup={persistAndOpenSetup} />
+          <ScreenBody screen={screen} interaction={interaction} onOpenApp={completeAndOpenApp} />
         </ScrollView>
 
         <View style={styles.footer}>
@@ -197,11 +194,11 @@ type Interaction = {
 function ScreenBody({
   screen,
   interaction,
-  onOpenSetup,
+  onOpenApp,
 }: {
   screen: FunnelScreen;
   interaction: Interaction;
-  onOpenSetup: () => Promise<void>;
+  onOpenApp: () => Promise<void>;
 }) {
   const { answers, result } = interaction;
 
@@ -281,7 +278,7 @@ function ScreenBody({
               onPress={() => interaction.toggleMulti('faqs', option.value)}
             />
           ))}
-          <Notice icon={Bot} text="These categories prefill your setup-chat suggestions." />
+          <Notice icon={Bot} text="These categories shape the starter agent settings." />
         </View>
       );
 
@@ -359,9 +356,9 @@ function ScreenBody({
           />
           <ChatBubble text="What name should clients see?" />
           <ChatBubble text="Aurora Studio" outgoing />
-          <ChatBubble text="I drafted starting rules from your checkup. Edit anything before it goes live." />
-          <Pressable style={styles.secondaryAction} onPress={onOpenSetup}>
-            <Text style={styles.secondaryActionText}>Open setup chat now</Text>
+          <ChatBubble text="I drafted starting rules from your checkup. You can edit channels, replies, and safety controls from the app." />
+          <Pressable style={styles.secondaryAction} onPress={onOpenApp}>
+            <Text style={styles.secondaryActionText}>Open dashboard now</Text>
           </Pressable>
         </View>
       );

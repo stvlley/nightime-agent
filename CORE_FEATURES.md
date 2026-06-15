@@ -46,7 +46,7 @@ make a conscious decision to become a marketplace.
 
 | Side | Features | Build now? |
 |---|---|---|
-| **Tool** (active) | Provider app, setup chat, inbox/approval, FAQ/automation, agent runtime on the provider's own channels, consent-based re-engagement, marketing landing page | Yes |
+| **Tool** (active) | Provider app, conversion onboarding, inbox/approval, FAQ/automation, agent runtime on the provider's own channels, consent-based re-engagement, marketing landing page | Yes |
 | **Marketplace** (gated) | Public customer portal `/p/[slug]`, booking flow that creates/confirms bookings, **payments** (prepay/deposit/checkout), multi-provider directory/discovery | No — only after an explicit "become a marketplace" decision |
 
 Treat the public **portal**, the **booking flow**, and **payments** as the line.
@@ -58,7 +58,7 @@ default next step and must not ship by default.
 | Surface | Stack | Audience | Role |
 |---|---|---|---|
 | **Marketing landing page** | Expo Router (this repo), web export to Vercel | Anonymous public, providers, booking clients | Product explanation, provider/client intent capture, early access CTAs, consent banner |
-| **Provider app** | Expo Router (this repo), web export to Vercel | Authenticated provider | Control panel: setup chat, train message replies, watch conversations, manage automation, billing |
+| **Provider app** | Expo Router (this repo), web export to Vercel | Authenticated provider | Control panel: dashboard, train message replies, watch conversations, manage automation, billing |
 | **Customer portal** | Separate Next.js app (App Router), SSR | Anonymous public + booking client | Future discovery / "ad" surface + self-serve booking; payments-ready |
 | **Agent runtime** | Supabase Edge Functions + `pg_cron` | Background (no UI) | Handles channel webhooks, applies message rules, drafts/sends replies |
 
@@ -136,27 +136,17 @@ messages.
 
 ## 2. Provider app (Expo, this repo)
 
-### 2.1 Authentication & setup chat
+### 2.1 Authentication & conversion onboarding
 - Email/password auth via Supabase (`hooks/useAuth.ts`), with AsyncStorage demo
   fallback when env vars are absent.
-- First-run setup flow (`app/(onboarding)/setup.tsx`) must behave like a
-  deterministic chat transcript, not a wizard. The assistant asks one question,
-  the provider answers by quick reply or inline input, prior messages remain in
-  the thread, and the next scripted prompt appears.
-- V1 setup is message-provider-first: display/business name, provider category,
-  common inbound questions, current client message channels, services/offers
-  clients ask about, response tone, hard boundaries, approval mode, follow-up
-  preference, moderation level, and notification permission.
-- The setup chat can offer provider-approved starter suggestions after it has
-  enough context. In the current app those suggestions are deterministic and
-  local; later real inference should sit behind a server endpoint and return
-  validated structured data. Suggestions are never saved unless the provider
-  accepts or edits them.
-- The chat experience should feel like a conversation: transcript persists on
-  screen, assistant typing/transition state is visible, the composer stays at
-  the bottom, and review is presented as a final chat summary before save.
-- Availability and booking details are optional context for providers who say
-  booking happens in messages. They should not dominate the first setup path.
+- First-run onboarding is the conversion diagnostic in
+  `app/(onboarding)/onboarding.tsx`, ending in the provider dashboard rather
+  than a second setup-chat flow.
+- V1 remains message-provider-first: profile, channels, saved replies,
+  moderation, approval mode, follow-up preference, and billing are edited from
+  the main app screens after onboarding.
+- Availability and booking details are optional context only. They should not
+  dominate the first provider path.
 - Profile maps to `profiles`; message/automation preferences map to
   `provider_preferences`; services and availability are saved only as relevant
   message context until portal work resumes.

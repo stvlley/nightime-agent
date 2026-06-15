@@ -1,5 +1,55 @@
 # Project Log
 
+## 2026-06-15
+
+### Remove setup chat and align lighter app branding
+
+- Removed the old chat-style onboarding path:
+  - Deleted `app/(onboarding)/setup.tsx`.
+  - Deleted setup-chat-only utilities, inference helpers, validation helpers,
+    tests, and manual setup-flow QA doc.
+  - Removed the `setup` screen from the onboarding stack.
+- Updated conversion onboarding so skip/finish now marks onboarding complete and
+  routes directly to the provider dashboard instead of handing off to setup chat.
+- Replaced Settings' "Setup chat" row with a direct "Agent settings" entry.
+- Rethemed the shared app UI tokens to the lighter conversion-onboarding
+  palette and switched the Tamagui root theme to `light`.
+- Updated the landing page to keep a partial dark branded backing:
+  - Dark nav, hero, trust band, footer CTA, and page gutters.
+  - Light constrained section panels/cards on top of the dark backing.
+  - `NightSky` restored in the footer CTA.
+- Refreshed docs and roadmap references so active product docs describe
+  conversion onboarding and dashboard configuration instead of setup chat.
+- Local validation passed: `npm run typecheck`, `npm test`, `npm run lint`, and
+  `npm run build:web`.
+
+### Landing signup and visual direction
+
+- Updated the public landing direction so the top stays dark and branded:
+  dark nav + starry hero remain, owl stays in the navbar logo, and the hero
+  visual is now the app inbox mockup instead of the large owl mascot.
+- Reduced signup friction from landing:
+  - Removed the separate client CTA from the nav and hero.
+  - Primary CTA now opens provider account creation directly.
+  - Signup modal no longer asks users to choose provider/client again after
+    clicking provider signup.
+  - Client path remains as a lighter early-access/update option in the role
+    section.
+- Lightened the rest of the landing page:
+  - Main content bands, cards, FAQ, early-access section, cookie banner, and
+    signup modal now use light branded surfaces with dark text.
+  - Reintroduced one intentional dark contrast band for trust/privacy because it
+    fits the brand and makes the discretion/control story feel stronger.
+- Reworked the bottom CTA into a more authentic footer:
+  - Brand row with owl mark.
+  - Product grounding copy.
+  - Provider CTA.
+  - Small trust/meta line and Privacy / Terms / Contact footer links.
+- Local validation passed: `npm run typecheck`, `npm run lint`, and
+  `npm run build:web`.
+- Deployment intentionally paused per owner request: do not deploy again until
+  explicitly told to deploy.
+
 ## 2026-06-04
 
 - Refreshed stale documentation after the Phase 2 runtime work:
