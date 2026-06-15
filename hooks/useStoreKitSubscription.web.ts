@@ -2,8 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { PlanId } from '@/components/onboarding/funnelData';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  grantDemoEntitlement,
-  isDemoEntitlementEnabled,
+  grantWebTrialEntitlement,
 } from '@/lib/subscriptions';
 
 type UseStoreKitSubscriptionOptions = {
@@ -16,17 +15,11 @@ type StoreProductPreview = { displayPrice: string };
 export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSubscriptionOptions) {
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<PurchaseStatus>('unavailable');
+  const [status, setStatus] = useState<PurchaseStatus>('idle');
 
   const purchase = useCallback(
     async (plan: PlanId) => {
       setError(null);
-
-      if (!isDemoEntitlementEnabled) {
-        setStatus('unavailable');
-        setError('StoreKit subscriptions require an iOS development or App Store build.');
-        return;
-      }
 
       if (!user) {
         setStatus('error');
@@ -35,7 +28,7 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
       }
 
       setStatus('verifying');
-      await grantDemoEntitlement(user.id, plan);
+      await grantWebTrialEntitlement(user.id, plan);
       setStatus('entitled');
       await onEntitlementGranted();
     },
@@ -43,14 +36,15 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
   );
 
   const restore = useCallback(async () => {
-    setStatus('unavailable');
-    setError('Restore purchase is available in the iOS app build.');
+    setStatus('idle');
+    setError('Web trial access is tied to your signed-in account. Log in with the same email to continue.');
   }, []);
 
   return {
     status,
     error,
     connected: false,
+    isWebTrial: true,
     productsByPlan: useMemo<Record<PlanId, StoreProductPreview | undefined>>(
       () => ({ annual: undefined, monthly: undefined }),
       []

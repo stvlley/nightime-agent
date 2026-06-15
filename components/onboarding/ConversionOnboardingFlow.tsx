@@ -588,6 +588,10 @@ function TimelineRow({ day, label, last }: { day: string; label: string; last?: 
 
 function Paywall({ interaction, storeKit }: { interaction: Interaction; storeKit: StoreKitState }) {
   const selected = interaction.plan;
+  const paymentLine = storeKit.isWebTrial
+    ? 'Web trial access is enabled for testing; web checkout will be added before public launch'
+    : PAYWALL_TERMS.paymentDuringTrial;
+
   return (
     <View style={styles.stack}>
       {PLANS.map((plan) => (
@@ -623,7 +627,7 @@ function Paywall({ interaction, storeKit }: { interaction: Interaction; storeKit
       ))}
       <View style={styles.termsBlock}>
         <TermLine icon={Clock3} text={PAYWALL_TERMS.trialLength} />
-        <TermLine icon={CreditCard} text={PAYWALL_TERMS.paymentDuringTrial} />
+        <TermLine icon={CreditCard} text={paymentLine} />
         <TermLine icon={TrendingUp} text={PAYWALL_TERMS.renewalPrice} />
         <TermLine icon={ShieldCheck} text={PAYWALL_TERMS.cancellation} />
       </View>

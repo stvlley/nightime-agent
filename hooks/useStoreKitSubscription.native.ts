@@ -229,6 +229,7 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
     status,
     error,
     connected,
+    isWebTrial: false,
     productsByPlan,
     purchase,
     restore,

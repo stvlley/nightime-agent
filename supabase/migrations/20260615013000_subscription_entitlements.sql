@@ -10,13 +10,13 @@ CREATE TABLE IF NOT EXISTS public.subscription_entitlements (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   product_id text NOT NULL,
   plan_id text NOT NULL CHECK (plan_id IN ('annual', 'monthly')),
-  platform text NOT NULL CHECK (platform IN ('ios', 'android', 'demo')),
+  platform text NOT NULL CHECK (platform IN ('ios', 'android', 'web', 'demo')),
   transaction_id text,
   original_transaction_id text,
   expires_at timestamptz,
   verified_at timestamptz NOT NULL DEFAULT now(),
   active boolean NOT NULL DEFAULT true,
-  source text NOT NULL DEFAULT 'purchase' CHECK (source IN ('purchase', 'restore', 'demo')),
+  source text NOT NULL DEFAULT 'purchase' CHECK (source IN ('purchase', 'restore', 'web_trial', 'demo')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );

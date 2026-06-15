@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import type { PlanId } from '@/components/onboarding/funnelData';
 
-export type SubscriptionPlatform = 'ios' | 'android' | 'demo';
+export type SubscriptionPlatform = 'ios' | 'android' | 'web' | 'demo';
 
 export type SubscriptionEntitlementInput = {
   userId: string;
@@ -13,7 +13,7 @@ export type SubscriptionEntitlementInput = {
   transactionId?: string | null;
   originalTransactionId?: string | null;
   expiresAt?: string | null;
-  source: 'purchase' | 'restore' | 'demo';
+  source: 'purchase' | 'restore' | 'web_trial' | 'demo';
 };
 
 export const STOREKIT_PRODUCT_IDS: Record<PlanId, string> = {
@@ -127,5 +127,16 @@ export async function grantDemoEntitlement(userId: string, plan: PlanId): Promis
     platform: 'demo',
     source: 'demo',
     transactionId: `demo-${Date.now()}`,
+  });
+}
+
+export async function grantWebTrialEntitlement(userId: string, plan: PlanId): Promise<void> {
+  await grantSubscriptionEntitlement({
+    userId,
+    productId: `web_trial_${plan}`,
+    plan,
+    platform: 'web',
+    source: 'web_trial',
+    transactionId: `web-trial-${Date.now()}`,
   });
 }

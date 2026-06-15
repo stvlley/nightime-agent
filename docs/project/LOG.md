@@ -707,3 +707,13 @@ channel-connect UI in Settings, add notifications, and continue visual polish.
     iOS device.
 - **Next phase:** split the payment flow by platform. Web should use a separate
   checkout path, while the native iOS app should continue through StoreKit.
+
+### Web testing bridge
+
+- Web paywall flow now grants a Supabase-backed `web_trial` entitlement so the
+  browser version can be tested and used before App Store launch.
+- iOS remains on StoreKit purchase/restore. Web entitlements are stored as
+  `platform = 'web'` and `source = 'web_trial'` so they can be replaced by a
+  real web checkout flow later without changing the native StoreKit path.
+- Added a follow-up migration to allow `web` / `web_trial` in
+  `subscription_entitlements`.
