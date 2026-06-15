@@ -162,7 +162,7 @@ function PrototypeFlow() {
                 style={styles.backButton}
                 onPress={goBack}
               >
-                <ArrowLeft size={18} color={colors.text} />
+                <ArrowLeft size={18} color={appInk} />
               </Pressable>
             ) : null}
             <Pressable
@@ -171,11 +171,11 @@ function PrototypeFlow() {
               onPress={goNext}
               disabled={!canContinue}
             >
-              {isLast ? <RotateCcw size={16} color={colors.text} /> : null}
+              {isLast ? <RotateCcw size={16} color={appInk} /> : null}
               <Text style={[styles.ctaText, isLast && styles.ctaTextNeutral]}>
                 {isLast ? 'Restart prototype' : screen.cta}
               </Text>
-              {!isLast ? <ChevronRight size={17} color={colors.onPrimary} /> : null}
+              {!isLast ? <ChevronRight size={17} color="#ffffff" /> : null}
             </Pressable>
           </View>
         }
@@ -258,7 +258,7 @@ function PhoneFrame({
   interaction?: Interaction;
   footer?: React.ReactNode;
 }) {
-  const dark = screen.kind === 'paywall';
+  const dark = false;
   return (
     <View style={[styles.phone, dark && styles.phoneDark]}>
       <View style={styles.statusBar}>
@@ -295,7 +295,7 @@ function StaticFooter({ screen }: { screen: FunnelScreen }) {
     <View style={styles.footerRow}>
       <View style={[styles.cta, dark && styles.ctaNeutral]}>
         <Text style={[styles.ctaText, dark && styles.ctaTextNeutral]}>{screen.cta}</Text>
-        {!dark ? <ChevronRight size={17} color={colors.onPrimary} /> : null}
+        {!dark ? <ChevronRight size={17} color="#ffffff" /> : null}
       </View>
     </View>
   );
@@ -309,7 +309,12 @@ function ScreenBody({ screen, interaction }: { screen: FunnelScreen; interaction
     case 'intro':
       return (
         <View style={styles.featurePanel}>
-          <MessageCircle size={26} color={colors.accent} />
+          <View style={styles.featureWash}>
+            <View style={styles.featureWashBlue} />
+            <View style={styles.featureWashViolet} />
+            <View style={styles.featureWashPink} />
+            <Text style={styles.featureLogo}>nitime</Text>
+          </View>
           <Text style={styles.featureTitle}>Most providers do not need more leads first.</Text>
           <Text style={styles.featureBody}>
             They need a faster, safer way to answer the leads already in their inbox. This checkup
@@ -880,10 +885,10 @@ function Notice({
   tone: 'primary' | 'info' | 'warning' | 'success';
 }) {
   const map = {
-    primary: { fg: colors.primary, bg: colors.surfaceMuted, border: colors.borderStrong },
-    info: { fg: colors.info, bg: colors.infoBg, border: '#2f4a72' },
-    warning: { fg: colors.warning, bg: colors.warningBg, border: '#6b4a2e' },
-    success: { fg: colors.success, bg: colors.successBg, border: '#2a5e47' },
+    primary: { fg: colors.primary, bg: appTint, border: appBorder },
+    info: { fg: '#1d6fa5', bg: '#eef8ff', border: '#c7e6fb' },
+    warning: { fg: '#a85c00', bg: '#fff6e8', border: '#f0d8b8' },
+    success: { fg: '#11855a', bg: '#f0fff7', border: '#cdebdc' },
   }[tone];
   return (
     <View style={[styles.notice, { backgroundColor: map.bg, borderColor: map.border }]}>
@@ -897,7 +902,7 @@ function TimelineRow({ day, label, last }: { day: string; label: string; last?: 
   return (
     <View style={styles.timelineRow}>
       <View style={styles.timelineMarker}>
-        <Bell size={13} color={colors.onPrimary} />
+        <Bell size={13} color="#ffffff" />
       </View>
       {!last ? <View style={styles.timelineLine} /> : null}
       <View style={styles.timelineText}>
@@ -980,10 +985,10 @@ function ChatBubble({ text, outgoing }: { text: string; outgoing?: boolean }) {
 
 function Metric({ label, value, tone }: { label: string; value: string; tone: 'primary' | 'success' | 'info' | 'warning' }) {
   const map = {
-    primary: { fg: colors.primary, bg: colors.surfaceMuted, border: colors.borderStrong },
-    success: { fg: colors.success, bg: colors.successBg, border: '#2a5e47' },
-    info: { fg: colors.info, bg: colors.infoBg, border: '#2f4a72' },
-    warning: { fg: colors.warning, bg: colors.warningBg, border: '#6b4a2e' },
+    primary: { fg: colors.primary, bg: appTint, border: appBorder },
+    success: { fg: '#11855a', bg: '#f0fff7', border: '#cdebdc' },
+    info: { fg: '#1d6fa5', bg: '#eef8ff', border: '#c7e6fb' },
+    warning: { fg: '#a85c00', bg: '#fff6e8', border: '#f0d8b8' },
   }[tone];
   return (
     <View style={[styles.metric, { borderColor: map.border, backgroundColor: map.bg }]}>
@@ -1056,8 +1061,17 @@ function DesktopPanel({ variant }: { variant: 'diagnostic' | 'result' | 'paywall
   );
 }
 
-const translucentSurface = 'rgba(244, 241, 255, 0.05)';
-const translucentPanel = 'rgba(157, 123, 255, 0.13)';
+const appInk = '#061016';
+const appMuted = '#77777b';
+const appPaper = '#fbfbfd';
+const appCard = '#ffffff';
+const appBorder = '#d7d7d9';
+const appTint = '#f4f0ff';
+const appBlue = '#8ccfff';
+const appViolet = '#7c5cff';
+const appPink = '#e7a5ff';
+const translucentSurface = '#ffffff';
+const translucentPanel = '#ebe6ff';
 
 const styles = StyleSheet.create({
   page: {
@@ -1581,24 +1595,24 @@ const styles = StyleSheet.create({
     height: 844,
     borderRadius: 34,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
+    borderColor: appBorder,
+    backgroundColor: appPaper,
     paddingHorizontal: 24,
     paddingTop: 14,
     paddingBottom: 18,
     overflow: 'hidden',
   },
   phoneDark: {
-    backgroundColor: colors.background,
+    backgroundColor: appPaper,
   },
   statusBar: {
     height: 30,
     justifyContent: 'center',
   },
   statusText: {
-    color: colors.text,
+    color: appInk,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   dynamicIsland: {
     position: 'absolute',
@@ -1607,7 +1621,7 @@ const styles = StyleSheet.create({
     width: 142,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.onPrimary,
+    backgroundColor: appInk,
   },
   phoneHeader: {
     marginTop: 10,
@@ -1616,23 +1630,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   brand: {
-    color: colors.text,
+    color: appInk,
     fontSize: 17,
     fontWeight: '900',
   },
   stepBadge: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: appBorder,
     borderRadius: 8,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: appCard,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   stepBadgeDark: {
-    backgroundColor: colors.surface,
+    backgroundColor: appCard,
   },
   stepBadgeText: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1643,7 +1657,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   progressText: {
-    color: colors.textMuted,
+    color: appMuted,
     fontSize: 12,
     fontWeight: '800',
     width: 34,
@@ -1652,7 +1666,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.border,
+    backgroundColor: '#ebecef',
     overflow: 'hidden',
   },
   progressFill: {
@@ -1665,13 +1679,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   phoneTitle: {
-    color: colors.text,
-    fontSize: 27,
-    lineHeight: 32,
+    color: appInk,
+    fontSize: 31,
+    lineHeight: 37,
     fontWeight: '900',
   },
   phoneBody: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -1688,27 +1702,73 @@ const styles = StyleSheet.create({
   featurePanel: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.background,
-    padding: 22,
+    borderColor: appBorder,
+    backgroundColor: appCard,
+    padding: 0,
     gap: 16,
+    overflow: 'hidden',
   },
-  featureTitle: {
-    color: colors.text,
-    fontSize: 22,
-    lineHeight: 28,
+  featureWash: {
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: appPaper,
+  },
+  featureWashBlue: {
+    position: 'absolute',
+    left: -72,
+    right: 194,
+    top: 70,
+    height: 130,
+    backgroundColor: appBlue,
+    opacity: 0.58,
+    transform: [{ rotate: '-10deg' }],
+  },
+  featureWashViolet: {
+    position: 'absolute',
+    left: 52,
+    right: 20,
+    top: 86,
+    height: 142,
+    backgroundColor: appViolet,
+    opacity: 0.62,
+    transform: [{ rotate: '-8deg' }],
+  },
+  featureWashPink: {
+    position: 'absolute',
+    left: 210,
+    right: -82,
+    top: 58,
+    height: 154,
+    backgroundColor: appPink,
+    opacity: 0.55,
+    transform: [{ rotate: '-8deg' }],
+  },
+  featureLogo: {
+    color: '#ffffff',
+    fontSize: 32,
     fontWeight: '900',
   },
+  featureTitle: {
+    color: appInk,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '900',
+    paddingHorizontal: 18,
+  },
   featureBody: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 15,
     lineHeight: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
   },
   option: {
-    minHeight: 50,
+    minHeight: 52,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: appBorder,
     backgroundColor: translucentSurface,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1727,7 +1787,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: appBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1737,9 +1797,9 @@ const styles = StyleSheet.create({
   },
   optionText: {
     flex: 1,
-    color: colors.text,
+    color: appInk,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   chipGrid: {
     flexDirection: 'row',
@@ -1750,7 +1810,7 @@ const styles = StyleSheet.create({
     minWidth: 148,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: appBorder,
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: translucentSurface,
@@ -1760,12 +1820,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   chipText: {
-    color: colors.text,
+    color: appInk,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   chipTextSelected: {
-    color: colors.onPrimary,
+    color: '#ffffff',
   },
   notice: {
     borderWidth: 1,
@@ -1777,7 +1837,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     flex: 1,
-    color: colors.text,
+    color: appInk,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
@@ -1785,8 +1845,8 @@ const styles = StyleSheet.create({
   valuePanel: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2a5e47',
-    backgroundColor: colors.successBg,
+    borderColor: '#d9eadf',
+    backgroundColor: '#f0fff7',
     padding: 18,
     gap: 7,
     marginTop: 4,
@@ -1797,76 +1857,76 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   valueAmount: {
-    color: colors.text,
+    color: appInk,
     fontSize: 30,
     fontWeight: '900',
   },
   valueCaption: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 11,
   },
   recommendation: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.background,
+    borderColor: appBorder,
+    backgroundColor: appCard,
     padding: 16,
     gap: 8,
   },
   recommendTitle: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '900',
   },
   recommendText: {
-    color: colors.text,
+    color: appInk,
     fontSize: 13,
     lineHeight: 19,
   },
   resultPanel: {
     borderRadius: 8,
-    backgroundColor: colors.background,
+    backgroundColor: appCard,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    padding: 22,
+    borderColor: appBorder,
+    padding: 18,
     gap: 12,
   },
   resultEyebrow: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '900',
   },
   resultTitle: {
-    color: colors.text,
+    color: appInk,
     fontSize: 25,
     lineHeight: 30,
     fontWeight: '900',
   },
   resultBody: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 14,
     lineHeight: 21,
   },
   resultDivider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: appBorder,
     marginVertical: 4,
   },
   resultAmount: {
-    color: colors.text,
+    color: appInk,
     fontSize: 28,
     fontWeight: '900',
   },
   trustPanel: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surfaceMuted,
+    borderColor: appBorder,
+    backgroundColor: appCard,
     padding: 18,
     gap: 10,
   },
   trustTitle: {
-    color: colors.accent,
+    color: appInk,
     fontSize: 17,
     fontWeight: '900',
     marginBottom: 4,
@@ -1892,19 +1952,19 @@ const styles = StyleSheet.create({
     top: 30,
     width: 2,
     height: 38,
-    backgroundColor: colors.borderStrong,
+    backgroundColor: appBorder,
   },
   timelineText: {
     flex: 1,
     paddingTop: 1,
   },
   timelineDay: {
-    color: colors.textMuted,
+    color: appMuted,
     fontSize: 12,
     fontWeight: '800',
   },
   timelineLabel: {
-    color: colors.text,
+    color: appInk,
     fontSize: 14,
     fontWeight: '800',
     marginTop: 5,
@@ -1913,8 +1973,8 @@ const styles = StyleSheet.create({
     minHeight: 92,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
+    borderColor: appBorder,
+    backgroundColor: appCard,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1923,7 +1983,7 @@ const styles = StyleSheet.create({
   },
   planCardSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: appTint,
   },
   planMain: {
     flex: 1,
@@ -1936,7 +1996,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.borderStrong,
+    borderColor: appBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1954,18 +2014,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   planName: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '900',
   },
   planPrice: {
-    color: colors.text,
+    color: appInk,
     fontSize: 25,
     fontWeight: '900',
     marginTop: 6,
   },
   planDetail: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 12,
     marginTop: 6,
     lineHeight: 17,
@@ -1984,8 +2044,8 @@ const styles = StyleSheet.create({
   termsBlock: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: translucentSurface,
+    borderColor: appBorder,
+    backgroundColor: '#f7f7f8',
     padding: 14,
     gap: 10,
     marginTop: 2,
@@ -1997,13 +2057,13 @@ const styles = StyleSheet.create({
   },
   termText: {
     flex: 1,
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '600',
   },
   restoreText: {
-    color: colors.textSecondary,
+    color: appMuted,
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '800',
@@ -2014,43 +2074,43 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: translucentSurface,
+    borderColor: appBorder,
+    backgroundColor: appCard,
     padding: 13,
   },
   chatBubbleOutgoing: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: appInk,
+    borderColor: appInk,
   },
   chatText: {
-    color: colors.text,
+    color: appInk,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
   },
   chatTextOutgoing: {
-    color: colors.onPrimary,
+    color: '#ffffff',
   },
   agentStatus: {
     minHeight: 88,
     borderRadius: 8,
-    backgroundColor: colors.background,
+    backgroundColor: appCard,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: appBorder,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   agentLabel: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '900',
   },
   agentTitle: {
     flex: 1,
-    color: colors.text,
+    color: appInk,
     fontSize: 20,
     fontWeight: '900',
     marginTop: 6,
@@ -2083,7 +2143,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   metricLabel: {
-    color: colors.textSecondary,
+    color: appMuted,
     fontSize: 12,
     fontWeight: '800',
     marginTop: 5,
@@ -2099,8 +2159,8 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
+    borderColor: appBorder,
+    backgroundColor: appCard,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2108,7 +2168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 54,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: appInk,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2118,23 +2178,23 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   ctaNeutral: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: appCard,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: appBorder,
   },
   ctaText: {
-    color: colors.onPrimary,
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '900',
   },
   ctaTextNeutral: {
-    color: colors.text,
+    color: appInk,
   },
   darkText: {
-    color: colors.text,
+    color: appInk,
   },
   darkSubtext: {
-    color: colors.textSecondary,
+    color: appMuted,
   },
   annotation: {
     borderRadius: 8,
