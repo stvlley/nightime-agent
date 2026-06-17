@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { PlanId } from '@/components/onboarding/funnelData';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  grantWebTrialEntitlement,
-} from '@/lib/subscriptions';
+import { grantWebTrialEntitlement, isDevPaywallBypassEnabled } from '@/lib/subscriptions';
 
 type UseStoreKitSubscriptionOptions = {
   onEntitlementGranted: () => void | Promise<void>;
@@ -27,10 +25,17 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
         return;
       }
 
-      setStatus('verifying');
-      await grantWebTrialEntitlement(user.id, plan);
-      setStatus('entitled');
-      await onEntitlementGranted();
+      try {
+        setStatus('verifying');
+        if (!isDevPaywallBypassEnabled) {
+          await grantWebTrialEntitlement(user.id, plan);
+        }
+        setStatus('entitled');
+        await onEntitlementGranted();
+      } catch (purchaseError) {
+        setStatus('error');
+        setError(purchaseError instanceof Error ? purchaseError.message : 'Could not start the trial.');
+      }
     },
     [onEntitlementGranted, user]
   );

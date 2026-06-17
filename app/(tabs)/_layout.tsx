@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Redirect, Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { CalendarDays, Home, Inbox, Settings2 } from 'lucide-react-native';
 import { colors } from '@/components/ui';
 import { AuthGate } from '@/components/AuthGate';
@@ -13,7 +13,7 @@ import { hasSubscriptionEntitlement } from '@/lib/subscriptions';
 import { onboardingUtils } from '@/utils/onboarding';
 
 const PENDING_POLL_MS = 30000;
-const VISIBLE_TABS = ['index', 'inbox', 'calendar', 'settings'] as const;
+const VISIBLE_TABS = ['dashboard', 'inbox', 'calendar', 'settings'] as const;
 const SECONDARY_PARENT: Record<string, (typeof VISIBLE_TABS)[number]> = {
   'ai-settings': 'settings',
   billing: 'settings',
@@ -24,11 +24,15 @@ const SECONDARY_PARENT: Record<string, (typeof VISIBLE_TABS)[number]> = {
   upload: 'settings',
 };
 const TAB_ICONS = {
-  index: Home,
+  dashboard: Home,
   inbox: Inbox,
   calendar: CalendarDays,
   settings: Settings2,
 };
+const HOME_OPTIONS = { title: 'Home' };
+const CALENDAR_OPTIONS = { title: 'Calendar' };
+const SETTINGS_OPTIONS = { title: 'More' };
+const HIDDEN_ROUTE_OPTIONS = { href: null };
 
 /** Pending approval-queue size, refreshed on an interval, for the Inbox badge. */
 function usePendingDraftCount(): number {
@@ -71,6 +75,21 @@ function WorkspaceTabs() {
   const { user } = useAuth();
   const userId = user?.id;
   const pendingCount = usePendingDraftCount();
+  const renderTabBar = useCallback((props: BottomTabBarProps) => <ProviderTabBar {...props} />, []);
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      tabBarHideOnKeyboard: true,
+    }),
+    []
+  );
+  const inboxOptions = useMemo(
+    () => ({
+      title: 'Inbox',
+      tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+    }),
+    [pendingCount]
+  );
   const [accessState, setAccessState] = useState<{
     onboardingCompleted: boolean;
     subscriptionEntitled: boolean;
@@ -93,6 +112,19 @@ function WorkspaceTabs() {
     };
   }, [userId]);
 
+  const redirectTarget =
+    accessState && !accessState.onboardingCompleted
+      ? '/(onboarding)/onboarding'
+      : accessState && !accessState.subscriptionEntitled
+        ? '/(onboarding)/pricing'
+        : null;
+
+  useEffect(() => {
+    if (redirectTarget) {
+      router.replace(redirectTarget);
+    }
+  }, [redirectTarget]);
+
   if (accessState === null) {
     return (
       <View style={styles.loadingScreen}>
@@ -101,56 +133,44 @@ function WorkspaceTabs() {
     );
   }
 
-  if (!accessState.onboardingCompleted) {
-    return <Redirect href="/(onboarding)/onboarding" />;
-  }
-
-  if (!accessState.subscriptionEntitled) {
-    return <Redirect href="/(onboarding)/pricing" />;
+  if (redirectTarget) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
 
   return (
     <Tabs
-      tabBar={(props) => <ProviderTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarHideOnKeyboard: true,
-      }}
+      tabBar={renderTabBar}
+      screenOptions={screenOptions}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-        }}
+        name="dashboard"
+        options={HOME_OPTIONS}
       />
       <Tabs.Screen
         name="inbox"
-        options={{
-          title: 'Inbox',
-          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-        }}
+        options={inboxOptions}
       />
       <Tabs.Screen
         name="calendar"
-        options={{
-          title: 'Calendar',
-        }}
+        options={CALENDAR_OPTIONS}
       />
       <Tabs.Screen
         name="settings"
-        options={{
-          title: 'More',
-        }}
+        options={SETTINGS_OPTIONS}
       />
 
       {/* Secondary screens reachable from Dashboard, Inbox, and More. */}
-      <Tabs.Screen name="ai-settings" options={{ href: null }} />
-      <Tabs.Screen name="billing" options={{ href: null }} />
-      <Tabs.Screen name="channels" options={{ href: null }} />
-      <Tabs.Screen name="payments" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
-      <Tabs.Screen name="thread" options={{ href: null }} />
-      <Tabs.Screen name="upload" options={{ href: null }} />
+      <Tabs.Screen name="ai-settings" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="billing" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="channels" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="payments" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="profile" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="thread" options={HIDDEN_ROUTE_OPTIONS} />
+      <Tabs.Screen name="upload" options={HIDDEN_ROUTE_OPTIONS} />
     </Tabs>
   );
 }

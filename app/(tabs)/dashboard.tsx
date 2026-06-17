@@ -25,7 +25,6 @@ import {
   Text,
   Badge,
   Button,
-  IconButton,
   ListRow,
   PageHeader,
   Screen,
@@ -143,12 +142,18 @@ export default function HomeScreen() {
                 Clients are waiting — review drafts in the Inbox.
               </Text>
             </YStack>
-            <IconButton
-              icon={ChevronRight}
-              label="Open approval queue"
-              tone="warning"
-              onPress={() => router.push('/(tabs)/inbox')}
-            />
+            <XStack
+              width={38}
+              height={38}
+              borderRadius={8}
+              alignItems="center"
+              justifyContent="center"
+              backgroundColor={colors.warningBg}
+              borderColor="#f5d9a8"
+              borderWidth={1}
+            >
+              <ChevronRight size={18} color={colors.warning} />
+            </XStack>
           </XStack>
         </Surface>
       ) : null}

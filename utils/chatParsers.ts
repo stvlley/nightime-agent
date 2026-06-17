@@ -151,8 +151,12 @@ export const parseEmailConversation = (content: string): ParsedConversation => {
   let clientName = 'Unknown Client';
   let clientEmail = '';
   
-  // Simple email parsing - look for From:, Date:, and message content
-  const emailBlocks = content.split(/(?=From:|Date:)/);
+  // Simple email parsing - split on message boundaries that start with From:
+  // while keeping each header/body block intact.
+  const emailBlocks = content
+    .split(/(?=^From:\s)/m)
+    .map((block) => block.trim())
+    .filter(Boolean);
   
   for (const block of emailBlocks) {
     const fromMatch = block.match(/From:\s*(.+?)(?:\n|$)/);

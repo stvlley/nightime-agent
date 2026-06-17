@@ -279,7 +279,11 @@ export function Surface({
     };
 
     return (
-      <Pressable onPress={handlePress} style={({ pressed }) => [surfaceStyle, { opacity: pressed ? 0.86 : 1 }]}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={handlePress}
+        style={({ pressed }) => [surfaceStyle, { opacity: pressed ? 0.86 : 1 }]}
+      >
         {children}
       </Pressable>
     );
@@ -321,6 +325,7 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={handlePress}
       disabled={disabled || loading}
       style={({ pressed }) => ({
@@ -368,6 +373,7 @@ export function IconButton({
 
   return (
     <Pressable
+      accessibilityRole="button"
       accessibilityLabel={label}
       onPress={handlePress}
       style={({ pressed }) => ({

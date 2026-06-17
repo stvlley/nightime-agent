@@ -8,6 +8,7 @@ import { useCookieConsent } from '@/hooks/useCookieConsent';
 import { validateLandingAuthForm } from '@/utils/landingAuthValidation';
 import { onboardingUtils } from '@/utils/onboarding';
 import { recordLandingIntent } from '@/lib/landingIntents';
+import { hasSubscriptionEntitlement } from '@/lib/subscriptions';
 import { CookieConsentBanner } from './CookieConsentBanner';
 import {
   EarlyAccessSection,
@@ -35,10 +36,23 @@ const initialSignupForm: LandingSignupForm = {
   displayName: '',
 };
 
+async function getSignedInStartRoute(
+  userId: string
+): Promise<'/(onboarding)/onboarding' | '/(onboarding)/pricing' | '/(tabs)/dashboard'> {
+  const [onboardingCompleted, subscriptionEntitled] = await Promise.all([
+    onboardingUtils.isOnboardingCompleted(),
+    hasSubscriptionEntitlement(userId),
+  ]);
+
+  if (!onboardingCompleted) return '/(onboarding)/onboarding';
+  return subscriptionEntitled ? '/(tabs)/dashboard' : '/(onboarding)/pricing';
+}
+
 export function LandingPage() {
   const { width } = useWindowDimensions();
   const isNarrow = width < 760;
   const { user, loading, signIn, signUp } = useAuth();
+  const userId = user?.id;
   const { preference, loaded: consentLoaded, savePreference } = useCookieConsent();
   const [authMode, setAuthMode] = useState<LandingAuthMode>('signup');
   const [signupRole, setSignupRole] = useState<LandingSignupRole>('provider');
@@ -50,10 +64,22 @@ export function LandingPage() {
   const [errors, setErrors] = useState<LandingSignupErrors>({});
 
   useEffect(() => {
-    if (!loading && user && !authRedirectPaused) {
-      router.replace('/(tabs)');
-    }
-  }, [authRedirectPaused, loading, user]);
+    if (loading || !userId || authRedirectPaused) return;
+
+    let active = true;
+    getSignedInStartRoute(userId)
+      .then((route) => {
+        if (!active) return;
+        router.replace(route);
+      })
+      .catch(() => {
+        if (active) router.replace('/(onboarding)/onboarding');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authRedirectPaused, loading, userId]);
 
   // Restore native page scrolling on web (root layout/HTML shell sets body to overflow: hidden
   // so authenticated ScrollViews behave; the marketing page needs normal document scroll
@@ -144,7 +170,7 @@ export function LandingPage() {
         setSubmitting(false);
         setSignupVisible(false);
         resetSignup();
-        router.replace('/(tabs)');
+        router.replace(result.userId ? await getSignedInStartRoute(result.userId) : '/(onboarding)/onboarding');
       } catch (error: any) {
         setSubmitting(false);
         setAuthRedirectPaused(false);

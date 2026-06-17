@@ -38,6 +38,8 @@ const DEMO_APPOINTMENTS: Appointment[] = [
 
 function channelLabel(channel: string): string {
   switch (channel) {
+    case 'webchat':
+      return 'Web chat session';
     case 'whatsapp':
       return 'WhatsApp session';
     case 'telegram':

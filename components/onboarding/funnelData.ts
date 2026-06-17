@@ -277,7 +277,7 @@ export const FUNNEL_SCREENS: FunnelScreen[] = [
   {
     id: 'paywall',
     step: 12,
-    eyebrow: 'Paywall',
+    eyebrow: 'Your trial',
     title: 'Start your 7-day free trial',
     body: 'Annual first, monthly secondary, and every subscription term visible up front.',
     event: FUNNEL_EVENTS.paywallViewed,

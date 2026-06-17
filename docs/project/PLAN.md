@@ -33,9 +33,9 @@ business operations suite.
   Supabase, and Supabase Edge Functions. The provider app deploys as a static
   web export to Vercel (`nightime-agent.vercel.app`).
 - **Provider app:** signed-out `/` renders the marketing landing page; signed-in
-  providers route to `/(tabs)`. Auth is centralized in `AuthProvider`, protected
-  route groups use `AuthGate`, and demo-mode AsyncStorage fallback still works
-  when Supabase env vars are absent.
+  providers route to `/(tabs)/dashboard`. Auth is centralized in `AuthProvider`,
+  protected route groups use `AuthGate`, and demo-mode AsyncStorage fallback
+  still works when Supabase env vars are absent.
 - **Live data:** dashboard, inbox, calendar, and FAQ settings read/write through
   Supabase services in `lib/data.ts`, with RLS around provider-owned tables.
   The Inbox includes the approval queue for pending agent drafts.
@@ -185,7 +185,7 @@ message setup and approval, not public portal readiness.
 
 ### Phase 1.75 — Public marketing landing page  _(Expo web, no schema change)_ ✅ DONE
 - [x] Signed-out `/` renders marketing landing page; signed-in users still route
-      to `/(tabs)`
+      to `/(tabs)/dashboard`
 - [x] CTA paths for login, provider signup, and client early access intent
 - [x] Dual role modal with `provider | client` intent
 - [x] Provider modal submission uses existing provider signup path

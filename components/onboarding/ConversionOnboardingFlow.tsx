@@ -95,7 +95,7 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
 
   const completeAndOpenApp = async () => {
     await onboardingUtils.completeOnboarding();
-    router.replace('/(tabs)');
+    router.replace('/(tabs)/dashboard');
   };
 
   const goNext = async () => {

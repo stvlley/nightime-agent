@@ -16,6 +16,7 @@ import {
   getPlanProductId,
   grantDemoEntitlement,
   grantSubscriptionEntitlement,
+  isDevPaywallBypassEnabled,
   isDemoEntitlementEnabled,
   STOREKIT_SUBSCRIPTION_IDS,
 } from '@/lib/subscriptions';
@@ -149,6 +150,12 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
         return;
       }
 
+      if (isDevPaywallBypassEnabled) {
+        setStatus('entitled');
+        await onEntitlementGranted();
+        return;
+      }
+
       if (isDemoEntitlementEnabled) {
         setStatus('verifying');
         await grantDemoEntitlement(user.id, plan);
@@ -182,6 +189,12 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
     if (!user) {
       setError('Sign in before restoring a purchase.');
       setStatus('error');
+      return;
+    }
+
+    if (isDevPaywallBypassEnabled) {
+      setStatus('entitled');
+      await onEntitlementGranted();
       return;
     }
 

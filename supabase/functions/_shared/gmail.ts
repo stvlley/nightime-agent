@@ -82,9 +82,35 @@ export async function sendGoogleVoiceReply(
       text,
     ].join('\r\n'),
   );
-  const sent = await gmailApi(refreshToken, 'messages/send', {
-    method: 'POST',
-    body: JSON.stringify({ raw, ...(threadId ? { threadId } : {}) }),
-  });
+  const sent = await sendWithBackoff(() =>
+    gmailApi(refreshToken, 'messages/send', {
+      method: 'POST',
+      body: JSON.stringify({ raw, ...(threadId ? { threadId } : {}) }),
+    }),
+  );
   return sent.ok ? { ok: true } : { ok: false, error: sent.error };
+}
+
+function retryableGmailSendError(error: string): boolean {
+  const statusMatch = /gmail (\d{3})|oauth (\d{3})/.exec(error);
+  const status = Number(statusMatch?.[1] ?? statusMatch?.[2]);
+
+  if (status === 429 || status >= 500) return true;
+
+  // Gmail quota throttles can arrive as 403. Auth/scope 403s still fail fast.
+  if (status === 403) {
+    return /userRateLimitExceeded|rateLimitExceeded/i.test(error);
+  }
+
+  return false;
+}
+
+async function sendWithBackoff(fn: () => Promise<{ ok: boolean; error?: string }>, attempt = 1): Promise<{ ok: boolean; error?: string }> {
+  const result = await fn();
+  if (result.ok) return result;
+  const error = result.error ?? '';
+  if (attempt >= 3 || !retryableGmailSendError(error)) return result;
+  const sleepMs = Math.min(800 * Math.pow(2, attempt - 1), 5000);
+  await new Promise((resolve) => setTimeout(resolve, sleepMs));
+  return sendWithBackoff(fn, attempt + 1);
 }

@@ -25,6 +25,7 @@ interface SignUpResult {
 
 interface SignInResult {
   success: boolean;
+  userId?: string;
   demo?: boolean;
   warning?: string;
   error?: string;
@@ -50,9 +51,18 @@ interface AuthContextValue {
 const DEMO_USER_KEY = '@demo_user';
 const AUTH_TIMEOUT_MS = 15000;
 
+function shouldAllowDemoAuthFallback(): boolean {
+  return process.env.NODE_ENV !== 'production';
+}
+
 function isNetworkError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return /networkerror|failed to fetch|fetch failed|load failed|network request failed/i.test(message);
+}
+
+function isEmailRateLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /email.*rate limit|rate limit.*email|email rate limit exceeded/i.test(message);
 }
 
 function createDemoUser(email: string, businessName: string, id = `demo-${Date.now()}`): AuthUser {
@@ -152,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { session } }) => {
         if (session?.user) {
           void loadUserProfile(session.user);
+        } else if (shouldAllowDemoAuthFallback()) {
+          void loadDemoUser();
         } else {
           setLoading(false);
         }
@@ -225,14 +237,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     } catch (error: any) {
-      if (isNetworkError(error)) {
+      if (isNetworkError(error) || (shouldAllowDemoAuthFallback() && isEmailRateLimitError(error))) {
         const demoUser = createDemoUser(email, businessName);
         await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
         setUser(demoUser);
         return {
           success: true,
           demo: true,
-          warning: 'Auth service is unreachable, so this account was started locally for now.',
+          warning: isEmailRateLimitError(error)
+            ? 'Supabase email rate limit was reached, so this account was started locally for testing.'
+            : 'Auth service is unreachable, so this account was started locally for now.',
         };
       }
       return { success: false, error: error.message };
@@ -275,12 +289,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(demoUser);
         return {
           success: true,
+          userId: demoUser.id,
           demo: true,
           warning: missingSupabaseConfigMessage,
         };
       }
 
-      const { error } = await withAuthTimeout(
+      const { data, error } = await withAuthTimeout(
         supabase.auth.signInWithPassword({
           email,
           password,
@@ -289,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (error) throw error;
-      return { success: true };
+      return { success: true, userId: data.user?.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     } finally {

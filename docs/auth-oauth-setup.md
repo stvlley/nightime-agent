@@ -83,7 +83,7 @@ For **local** testing instead: `supabase start` (Docker) applies the same
 ## 4. Verify
 
 - Web: open the landing page → **Continue with Google** → consent → you land in
-  `/(tabs)` with a session.
+  `/(tabs)/dashboard` with a session.
 - A new social user automatically gets a minimal `profiles` row (name from the
   Google/Facebook metadata); the provider can refine it later from Profile,
   Channels, and Agent Settings.

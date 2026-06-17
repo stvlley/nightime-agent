@@ -151,7 +151,7 @@ messages.
   `provider_preferences`; services and availability are saved only as relevant
   message context until portal work resumes.
 
-### 2.2 Dashboard (`app/(tabs)/index.tsx`)
+### 2.2 Dashboard (`app/(tabs)/dashboard.tsx`)
 - Live counts from Supabase: open threads, bookings today/week, agent reply
   count, conversion %, monthly usage vs `usage_limit`.
 - AI insights card surfaces recent agent activity, top FAQ matches, missed-reply

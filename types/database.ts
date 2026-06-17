@@ -363,13 +363,28 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['landing_intents']['Insert']>;
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      public_provider_profiles: {
+        Row: {
+          id: string;
+          slug: string | null;
+          display_name: string | null;
+          headline: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          location_label: string | null;
+          timezone: string | null;
+          age_gate_required: boolean;
+        };
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
   };
 }
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type PublicProviderProfile = Database['public']['Views']['public_provider_profiles']['Row'];
 export type Thread = Database['public']['Tables']['threads']['Row'];
 export type Message = Database['public']['Tables']['messages']['Row'];
 export type FAQ = Database['public']['Tables']['faq']['Row'];

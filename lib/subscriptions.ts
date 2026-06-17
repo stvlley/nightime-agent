@@ -28,6 +28,9 @@ export const isStoreKitPlatform = Platform.OS === 'ios' || Platform.OS === 'andr
 export const isDemoEntitlementEnabled =
   process.env.EXPO_PUBLIC_ALLOW_DEMO_ENTITLEMENT === 'true';
 
+export const isDevPaywallBypassEnabled =
+  process.env.EXPO_PUBLIC_BYPASS_PAYWALL === 'true';
+
 const entitlementKey = (userId: string) => `@subscription_entitlement:${userId}`;
 
 function productIdToPlan(productId: string): PlanId {
@@ -86,8 +89,12 @@ export async function grantSubscriptionEntitlement(input: SubscriptionEntitlemen
   );
 }
 
+function isAutoEntitled(): boolean {
+  return isDemoEntitlementEnabled || isDevPaywallBypassEnabled;
+}
+
 export async function hasSubscriptionEntitlement(userId: string): Promise<boolean> {
-  if (isDemoEntitlementEnabled) {
+  if (isAutoEntitled()) {
     return true;
   }
 

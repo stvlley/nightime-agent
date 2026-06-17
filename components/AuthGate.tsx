@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { router } from 'expo-router';
 import { colors } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -14,6 +14,12 @@ import { useAuth } from '@/hooks/useAuth';
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/');
+    }
+  }, [loading, user]);
 
   if (loading) {
     return (
@@ -31,7 +37,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <Redirect href="/" />;
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
 
   return <>{children}</>;

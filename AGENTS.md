@@ -16,6 +16,15 @@ Install dependencies with `npm install`.
 
 Use Expo's generated QR/device options from the dev server when validating native behavior.
 
+### Lint/prereqs
+`npm run lint` depends on server-side env vars from `.env` (`SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`) because lint config loads those files. If those secrets are not available in your shell, export dummy values first, for example:
+
+```bash
+export SUPABASE_SERVICE_ROLE_KEY=""
+export DATABASE_URL=""
+npm run lint
+```
+
 ## Coding Style & Naming Conventions
 
 Write TypeScript and TSX with strict typing enabled. Follow `.prettierrc`: 2-space indentation, spaces instead of tabs, single quotes, and bracket spacing. Prefer functional React components and hooks. Name components in PascalCase, for example `StatusBadge.tsx`; name hooks with a `use` prefix, for example `useAuth.ts`; keep utility modules camelCase, for example `bookingAgent.ts`. Use the `@/*` path alias for root-relative imports when it improves readability.

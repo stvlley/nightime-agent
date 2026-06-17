@@ -30,6 +30,20 @@ The app is configured for EAS native builds with stable identifiers:
 - iOS bundle ID: `com.nightime.agent`
 - Android package: `com.nightime.agent`
 
+Run the release audit before building. It fails on known App Store blockers such
+as enabled paywall bypass, demo entitlement, missing production Supabase config,
+missing StoreKit product ids, and missing native metadata:
+
+```bash
+npm run release:audit
+```
+
+To audit a production env file instead of local `.env`:
+
+```bash
+RELEASE_ENV_FILE=.env.production npm run release:audit
+```
+
 Build production binaries with:
 
 ```bash
