@@ -193,8 +193,7 @@ messages.
   cancellation policy, follow-up cadence.
 - Content filter level (low / medium / strict) for inbound NSFW/abuse before
   classification.
-- File upload card (`components/FileUploadCard.tsx`) feeds long-form training
-  material (price lists, intake forms) into retrieval.
+- Long-form training uploads are deferred until retrieval exists.
 
 ### 2.6 Channels
 - Provider connects messaging channels in the app (Settings -> Channels, also
@@ -220,8 +219,7 @@ messages.
   view).
 - Toggle `age_gate_required`.
 - Manage services (`services`) and weekly availability (`availability`).
-- Timezone, notification preferences, FCM token registration
-  (`utils/notifications.ts`).
+- Timezone and notification preferences.
 
 ### 2.9 Notifications
 - Push (FCM) for: new inbound message needing approval, new booking, cancellation,

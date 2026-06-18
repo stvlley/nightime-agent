@@ -1,6 +1,5 @@
 // Telegram update parsing — pure, dependency-free (shared by the Edge Function
-// and vitest). Promotes the inbound-parsing logic from the old
-// utils/channelConnectors.ts TelegramConnector into a clean, tested module.
+// and vitest).
 
 export interface NormalizedInbound {
   /** Telegram chat id — stable per conversation, used as external_thread_id. */

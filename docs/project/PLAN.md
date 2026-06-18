@@ -46,6 +46,11 @@ business operations suite.
   Telegram, WhatsApp, web chat, and Google Voice-over-Gmail all share the same
   agent loop: inbound message -> FAQ pre-filter -> optional LLM fallback ->
   approval queue or auto-send -> channel delivery.
+- **Agent cost architecture:** `docs/project/COST_EFFICIENT_AGENT_ARCHITECTURE.md`
+  formalizes the v1 posture: one deterministic loop, no live agent swarm, model
+  calls only on misses, approval-gated LLM drafts, provider-level cost caps, and
+  a model-router policy: GPT-4.1 mini / Gemini Flash / Haiku-class live draft,
+  cheapest acceptable offline summarizer, GPT-5.5 only for rare high-risk review.
 - **Channel setup:** web chat and Telegram are self-serve in the app
   (Settings → Channels: one-tap web chat with shareable link/embed snippet,
   paste-a-token Telegram connect). WhatsApp and Google Voice remain
@@ -102,13 +107,16 @@ message setup and approval, not public portal readiness.
 | Dev loop | **Local Supabase stack (needs Docker)** → fall back to remote (free) until Docker is set up | $0 |
 | First channel | **Telegram** | Free API, no per-message fees, simple webhook |
 | V1 provider target | **Message providers** | Keeps setup and product promise focused on inbound conversations before portal/booking breadth |
-| AI strategy | **Provider-controlled message assistant** with **free keyword/FAQ pre-filter** + cheap model (Haiku 4.5) fallback | Controls token cost; most messages avoid the LLM |
+| AI strategy | **Provider-controlled message assistant** with **free keyword/FAQ pre-filter** + cheap draft model fallback | Candidate live defaults: GPT-4.1 mini, Gemini Flash, or Haiku-class. Most messages should avoid the LLM entirely. |
+| Agent architecture | **One deterministic loop; no live multi-agent swarm** | Every additional model call compounds cost and latency. Specialized analysis runs offline/batch, not per inbound message. |
 | Lead model | Inbound replies + re-engage past clients (consent-based) + post/manage ads. **No cold contact.** | Cold outreach = bans + legal exposure |
 | Customer surface | **Conversational channel first; portal later** | Current priority is message-provider UAT and agent control, not public booking UX |
 | Customer portal stack | **Separate Next.js app** sharing Supabase (not Expo public booking routes) | Provider-specific booking pages need SSR/SEO, fast first paint, payments UX; Expo-web SPA is weak at all three. Provider app stays Expo (authed dashboard, SEO irrelevant) |
 | Marketing home | **Expo signed-out `/` landing page** | Fast first public surface and role intent capture; distinct from SEO-sensitive provider portal `/p/[slug]` |
 | Tenancy | **Single provider now, multi-tenant-ready schema/routes** | User decision; avoid a later rewrite without building discovery/multi-signup yet |
-| Payments | **Decide later** — schema allows a payment/deposit record; no checkout built this pass | User decision; processor ToS for the vertical is a real gating constraint |
+| Provider payment links | **Tool-side** — direct PayPal/Venmo/Cash App/Zelle handles; Nightime does not process service payments | Keeps provider/client money movement off-platform while still helping providers present payment options |
+| Money and tax management | **Build as recordkeeping/export, not payment processing or tax advice** | Providers need payment records, quarterly summaries, and CPA-ready exports; Steward reviews copy and guardrails |
+| Marketplace payments | **Decide later** — schema allows a payment/deposit record; no service checkout built by default | User decision; processor ToS for the vertical is a real gating constraint |
 | Version control | git initialized; initial commit is the recovery point | rollback safety |
 
 ## Risk / compliance constraints (named, not blockers)
@@ -132,6 +140,13 @@ message setup and approval, not public portal readiness.
 - Real cost drivers at launch: **AI tokens** (controllable via pre-filter + cheap
   model) and **per-message channel fees** (Telegram = free; WhatsApp/SMS = paid).
 - DB: Supabase free tier (500MB, 50K MAU) fine pre-launch.
+- Provider money records are a separate product lane from Nightime subscription
+  revenue. Direct payment handles and manual records stay tool-side because
+  money moves between client and provider off-platform.
+- See `docs/project/COST_EFFICIENT_AGENT_ARCHITECTURE.md` for the concrete
+  budget controls: model-call ledger, per-provider caps, per-thread caps,
+  duplicate suppression, kill switch, prompt-caching target, and offline FAQ
+  mining.
 
 ## Phased plan
 
@@ -225,9 +240,8 @@ message setup and approval, not public portal readiness.
       Edge Function (JWT-verified) delivers approved drafts. Only confident FAQ
       matches under `approval_mode='auto_eligible'` auto-send; LLM/fallback drafts
       always wait for a human.
-- [x] Promote `TelegramConnector` and message parsing helpers into the runtime
-      (clean, tested `parseTelegramUpdate`; old dead `utils/channelConnectors.ts`
-      superseded for Telegram).
+- [x] Promote Telegram message parsing helpers into the runtime
+      (clean, tested `parseTelegramUpdate` in `_shared/telegramParser.ts`).
 - [x] Reconcile ThreadState casing — runtime uses DB lowercase states throughout
       (new modules avoid the uppercase `types/booking.ts` model entirely).
 - [x] Schema: migration `20260530030000_agent_runtime.sql` — approval queue
@@ -285,6 +299,28 @@ message setup and approval, not public portal readiness.
       a draft.
 - [ ] Push/system notifications for inbound messages needing provider attention
       (in-app badge exists; no push transport yet).
+
+### Phase 2.5 — Money + tax management  _(tool-side recordkeeping; no service-payment processing)_
+> This phase is **not** marketplace payments. Nightime records and organizes the
+> money providers receive elsewhere; it does not process client service payments,
+> file taxes, or give tax/accounting advice. Steward reviews tax/compliance copy.
+- [x] Direct provider payment-link screen exists for PayPal, Venmo, Cash App,
+      and Zelle QR/client-view cards. Current storage is local-only.
+- [ ] Move payment handles to Supabase with owner-only RLS so they survive
+      device/browser changes.
+- [ ] Add manual payment records: date, method, amount, currency, client/thread
+      link, note, and status. Records may link to conversations/bookings, but
+      payment still happens off-platform.
+- [ ] Add provider Money dashboard: configured methods, recorded payments,
+      unpaid/manual follow-up list, monthly gross by method, and export buttons.
+- [ ] Add CSV export for provider-entered payment records.
+- [ ] Add tax-year and quarter filters, quarterly summary export, and
+      CPA-ready packet generation (payments CSV, expenses CSV once expenses
+      exist, subscription receipts, channel cost estimates, summary file).
+- [ ] Add conservative reminder copy for quarterly estimated-tax review dates.
+      Do not compute binding tax positions; route final decisions to a CPA.
+- [ ] Add UI copy guardrail everywhere this appears: "Nightime records payments
+      you receive elsewhere; it does not process client service payments."
 
 ### Phase 3 — Customer portal  ⛔ GATED (marketplace fork — do NOT build by default)
 > This phase **crosses the tool→marketplace line** (public listing + booking +

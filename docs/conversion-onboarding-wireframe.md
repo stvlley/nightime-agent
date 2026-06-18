@@ -2,7 +2,7 @@
 
 Figma file: https://www.figma.com/design/BPw6F3KXJ5ny67GNBrB8Xj
 
-High-fidelity code mockup route: `/mockups/conversion-onboarding`
+Production route: `/onboarding`
 
 ## Purpose
 

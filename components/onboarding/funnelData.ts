@@ -1,15 +1,12 @@
 // Conversion onboarding funnel — structured source of truth.
 //
 // This module is intentionally pure data + pure functions (no React, no IO) so
-// it can be shared by:
-//   - the hi-fi review route `app/mockups/conversion-onboarding.tsx`, and
-//   - the production `app/(onboarding)/onboarding.tsx` + `pricing.tsx` once the
-//     mockup direction is approved.
+// it can be shared by the production onboarding and pricing routes.
 //
 // Keeping copy, answer options, analytics keys, the opportunity calculation, and
-// the paywall terms here means the mockup and the eventual real flow cannot
-// drift. Positioning rule: this is a message-assistant tool, never a marketplace
-// — no public booking, client checkout, or service payment language anywhere.
+// the paywall terms here keeps the flow from drifting. Positioning rule: this
+// is a message-assistant tool, never a marketplace — no public booking, client
+// checkout, or service payment language anywhere.
 
 export type ScreenKind =
   | 'intro'
