@@ -4,6 +4,9 @@ Use this when moving as far as possible without Will. It assumes you have Apple 
 
 ## App Store Connect Setup
 
+Current blocker: EAS stopped at Apple credential validation. Complete Apple
+login/2FA in EAS or configure an App Store Connect API key before building.
+
 1. Create or open the app record.
    - Platform: iOS
    - Name: Nitime
@@ -16,6 +19,9 @@ Use this when moving as far as possible without Will. It assumes you have Apple 
    - Support: `https://nitime.app/support`
    - Privacy: `https://nitime.app/privacy`
    - Terms: `https://nitime.app/terms`
+   - DNS must point Cloudflare to Vercel first:
+     - `A nitime.app 76.76.21.21`
+     - `A www.nitime.app 76.76.21.21`
 
 3. Create one auto-renewable subscription group.
    - Group name: Nitime
@@ -45,6 +51,13 @@ AGENT_LLM_MAX_TOKENS=180
 ```
 
 Leave `ANTHROPIC_API_KEY` unset until you intentionally enable paid model drafts. The app still queues deterministic holding replies and FAQ replies without paid LLM calls.
+
+Current production Supabase status:
+
+- Migrations applied through `20260615020000`.
+- Functions active: `connect-channel`, `webchat-inbound`, `webchat-poll`, `send-draft`, `telegram-webhook`, `whatsapp-webhook`, `google-voice-webhook`.
+- Cost controls set: `AGENT_LLM_DISABLED=true`, `AGENT_LLM_MAX_TOKENS=180`.
+- App Review demo email: `reviewer@nitime.app`; password is in ignored `.env.reviewer.local`.
 
 ## Cost-First Defaults
 

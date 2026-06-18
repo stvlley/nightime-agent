@@ -5,7 +5,8 @@ provider app to Vercel. Everything below has been verified on the local stack;
 this promotes it to production.
 
 - Supabase project ref: **`hwcpztsltgpjzclrmyez`** (org `gay-copper-nm3ssps`).
-- Provider app (Vercel): `nightime-agent.vercel.app`.
+- Provider app (Vercel): `nitime.app` after Cloudflare DNS; current working
+  Vercel alias is `nightime-agent.vercel.app`.
 
 > **Auth required.** The CLI must be logged in. In this Claude Code session you
 > can run the interactive login yourself by typing:
@@ -37,8 +38,8 @@ the CLI's prepared statements ("prepared statement already exists"):
 supabase db push --db-url "$(echo "$DATABASE_URL" | sed 's/:6543/:5432/')"
 ```
 
-Migrations that must land: the base schema through
-`20260606000000_days_off_and_translation.sql` (days off + translation columns).
+Migrations currently applied remotely: base schema through
+`20260615020000_web_trial_entitlements.sql`.
 
 ## 3. Set Edge Function secrets
 
@@ -48,6 +49,8 @@ where a feature needs it):
 
 ```bash
 supabase secrets set \
+  AGENT_LLM_DISABLED=true         \  # cost-first TestFlight default
+  AGENT_LLM_MAX_TOKENS=180        \  # hard cap remains 320 in code
   ANTHROPIC_API_KEY=...            \  # smart-reply drafting (else deterministic fallback)
   GOOGLE_TRANSLATE_API_KEY=...     \  # auto-translation (cheapest engine; else passthrough)
   GOOGLE_OAUTH_CLIENT_ID=...       \  # Google Voice / Gmail (same client as Supabase Google login)
@@ -73,6 +76,19 @@ supabase functions deploy connect-channel
 ```
 
 (or `supabase functions deploy` to push them all at once).
+
+Current production status: all functions above are active on project
+`hwcpztsltgpjzclrmyez`.
+
+## 4.5 Point `nitime.app` DNS
+
+Vercel already has `nitime.app` and `www.nitime.app` attached to the
+`nightime-agent` project. Cloudflare still needs:
+
+```text
+A nitime.app 76.76.21.21
+A www.nitime.app 76.76.21.21
+```
 
 ## 5. Point inbound webhooks
 

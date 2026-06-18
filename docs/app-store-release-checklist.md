@@ -7,20 +7,22 @@ Use this alongside `npm run release:audit`. The script catches mechanical blocke
 - Confirm `.env` or the selected `RELEASE_ENV_FILE` has `EXPO_PUBLIC_BYPASS_PAYWALL=false` or unset.
 - Confirm `EXPO_PUBLIC_ALLOW_DEMO_ENTITLEMENT=false`.
 - Confirm `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` point to the production Supabase project.
-- Confirm Supabase migrations are applied to production.
-- Deploy required Edge Functions: `webchat-inbound`, `webchat-poll`, `send-draft`, plus any enabled channel webhooks.
+- Confirm Supabase migrations are applied to production. Current status: applied through `20260615020000`.
+- Deploy required Edge Functions: `connect-channel`, `webchat-inbound`, `webchat-poll`, `send-draft`, `telegram-webhook`, `whatsapp-webhook`, and `google-voice-webhook`. Current status: deployed.
+- Confirm cost-first Supabase secrets are set: `AGENT_LLM_DISABLED=true`, `AGENT_LLM_MAX_TOKENS=180`.
 - Confirm StoreKit product ids match App Store Connect exactly.
 - Run `npm test`, `npm run typecheck`, `npm run lint`, and the selected Playwright suites.
 
 ## App Store Connect
 
-- `store/app-store-listing.md` is reviewed and placeholder reviewer credentials are replaced.
-- `store/privacy-policy.md` is hosted and placeholder domain/email values are replaced.
-- `store/terms-of-service.md` is hosted and placeholder domain/email values are replaced.
+- `store/app-store-listing.md` is reviewed. Reviewer email is `reviewer@nitime.app`; password lives in ignored `.env.reviewer.local`.
+- `store/privacy-policy.md` is hosted and domain/email values are replaced.
+- `store/terms-of-service.md` is hosted and domain/email values are replaced.
 - `store/revenuecat-config-checklist.md` StoreKit section is complete.
 - `store/submission-runbook.md` Day -3 through Day +14 tasks are assigned.
-- Privacy policy URL is live.
-- Support URL is live.
+- Privacy policy route is deployed. `https://nitime.app/privacy` goes live after Cloudflare DNS points to Vercel.
+- Support route is deployed. `https://nitime.app/support` goes live after Cloudflare DNS points to Vercel.
+- Terms route is deployed. `https://nitime.app/terms` goes live after Cloudflare DNS points to Vercel.
 - Account deletion instructions are live and reachable from support/privacy copy.
 - Subscription terms are filled in and match the in-app paywall.
 - Age rating answers match public-profile age-gate behavior and app content.
@@ -48,3 +50,14 @@ npm run release:audit
 npx eas build --platform ios --profile production
 npx eas submit --platform ios --profile production
 ```
+
+## Current External Blockers
+
+- Cloudflare DNS for `nitime.app` still needs:
+  - `A nitime.app 76.76.21.21`
+  - `A www.nitime.app 76.76.21.21`
+- EAS iOS build is blocked until Apple credential validation is completed interactively or an App Store Connect API key is configured.
+- App Store Connect app record and IAPs still need to be created:
+  - App name: Nitime
+  - Bundle ID: `com.nightime.agent`
+  - IAPs: `nitime_annual`, `nitime_monthly`

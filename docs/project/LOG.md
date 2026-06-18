@@ -1,5 +1,27 @@
 # Project Log
 
+## 2026-06-18
+
+### Nitime launch prep
+
+- Added hosted `/privacy`, `/terms`, and `/support` routes for App Store review.
+- Updated store docs to use `support@nitime.app` and reviewer email
+  `reviewer@nitime.app`; reviewer password is kept in ignored
+  `.env.reviewer.local`.
+- Deployed the web app to Vercel production and attached `nitime.app` plus
+  `www.nitime.app` to the `nightime-agent` project.
+- Remaining DNS action: in Cloudflare set `A nitime.app 76.76.21.21` and
+  `A www.nitime.app 76.76.21.21`.
+- Confirmed production Supabase migrations are applied through
+  `20260615020000_web_trial_entitlements.sql`.
+- Deployed production Edge Functions: `connect-channel`, `webchat-inbound`,
+  `webchat-poll`, `send-draft`, `telegram-webhook`, `whatsapp-webhook`, and
+  `google-voice-webhook`.
+- Set cost-first Supabase secrets: `AGENT_LLM_DISABLED=true` and
+  `AGENT_LLM_MAX_TOKENS=180`.
+- EAS iOS build remains blocked until Apple credential validation is completed
+  interactively or an App Store Connect API key is configured.
+
 ## 2026-06-15
 
 ### Remove setup chat and align lighter app branding

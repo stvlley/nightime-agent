@@ -363,9 +363,11 @@ or UAT.
   `DATABASE_URL` stay server-side.
 - Migrations applied via session pooler (port 5432), not transaction pooler
   (6543) — CLI prepared statements break on 6543.
-- Provider app deploys as static web export to Vercel
-  (`nightime-agent.vercel.app`). Portal deploys as separate Next.js project on
-  Vercel Hobby. Edge Functions deploy via `supabase functions deploy`.
+- Provider app deploys as static web export to Vercel. Final domain is
+  `nitime.app`; current working Vercel alias is `nightime-agent.vercel.app`
+  until Cloudflare DNS is pointed at Vercel. Portal deploys as separate Next.js
+  project on Vercel Hobby if the marketplace fork is explicitly chosen. Edge
+  Functions deploy via `supabase functions deploy`.
 
 ### 5.4 Cost posture
 - $0 until launch for local/dev usage (Supabase free tier, Vercel Hobby,

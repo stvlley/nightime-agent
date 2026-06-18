@@ -31,7 +31,8 @@ business operations suite.
 
 - **Stack:** Expo Router app (React 19, RN 0.81, Expo SDK 54), TypeScript,
   Supabase, and Supabase Edge Functions. The provider app deploys as a static
-  web export to Vercel (`nightime-agent.vercel.app`).
+  web export to Vercel. The final domain is `nitime.app`; the current working
+  Vercel alias is `nightime-agent.vercel.app` until Cloudflare DNS is pointed at Vercel.
 - **Provider app:** signed-out `/` renders the marketing landing page; signed-in
   providers route to `/(tabs)/dashboard`. Auth is centralized in `AuthProvider`,
   protected route groups use `AuthGate`, and demo-mode AsyncStorage fallback

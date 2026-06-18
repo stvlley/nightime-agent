@@ -23,6 +23,19 @@ npm run start
 
 The local static server serves `dist` on `http://localhost:3000` by default.
 
+Current production deployment:
+
+- Vercel project: `nightime-agent`
+- Current working production alias: `https://nightime-agent.vercel.app`
+- `nitime.app` and `www.nitime.app` are attached to the Vercel project but
+  still require Cloudflare DNS:
+  - `A nitime.app 76.76.21.21`
+  - `A www.nitime.app 76.76.21.21`
+- Legal/support routes are deployed:
+  - `/privacy`
+  - `/terms`
+  - `/support`
+
 ## Native Store Builds
 
 The app is configured for EAS native builds with stable identifiers:
@@ -50,6 +63,11 @@ Build production binaries with:
 npx eas build --platform ios --profile production
 npx eas build --platform android --profile production
 ```
+
+Current iOS build blocker: EAS requires Apple credential validation. Complete
+interactive Apple login/2FA or configure an App Store Connect API key before
+rerunning the production iOS build. A prior attempt incremented the remote iOS
+build number to `4` before stopping at credential validation.
 
 Submit after the store listings, privacy forms, screenshots, and review/demo
 credentials are ready:
@@ -85,6 +103,9 @@ tables, portal/tenancy fields, public profile view, services, availability, and
 booking payment placeholders, agent runtime tables, webchat channel support, and
 Google Voice channel metadata.
 
+Current production status: remote migrations are applied through
+`20260615020000_web_trial_entitlements.sql`.
+
 Apply migrations through the session pooler when using `DATABASE_URL`:
 
 ```bash
@@ -94,6 +115,7 @@ supabase db push --db-url "$(echo "$DATABASE_URL" | sed 's/:6543/:5432/')"
 Deploy the agent runtime functions after migrations:
 
 ```bash
+supabase functions deploy connect-channel
 supabase functions deploy telegram-webhook
 supabase functions deploy whatsapp-webhook
 supabase functions deploy send-draft
@@ -102,9 +124,12 @@ supabase functions deploy webchat-poll
 supabase functions deploy google-voice-webhook
 ```
 
+Current production status: all functions above are active.
+
 Set server-side Supabase function secrets for runtime-only credentials:
 
 ```bash
+supabase secrets set AGENT_LLM_DISABLED=true AGENT_LLM_MAX_TOKENS=180 # cost-first TestFlight default
 supabase secrets set ANTHROPIC_API_KEY=... # optional LLM fallback
 supabase secrets set GOOGLE_OAUTH_CLIENT_ID=... GOOGLE_OAUTH_CLIENT_SECRET=... # Google Voice-over-Gmail
 supabase secrets set WHATSAPP_VERIFY_TOKEN=... WHATSAPP_APP_SECRET=... # WhatsApp Cloud API webhook verification

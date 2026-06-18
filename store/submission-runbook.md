@@ -3,17 +3,22 @@
 ## Day -3
 
 - Copy reviewer credentials from `.env.reviewer.local` into App Store Connect.
-- Host privacy policy at `https://nitime.app/privacy`.
-- Host terms at `https://nitime.app/terms`.
-- Host support page at `https://nitime.app/support`.
+- Finish Cloudflare DNS for Vercel:
+  - `A nitime.app 76.76.21.21`
+  - `A www.nitime.app 76.76.21.21`
+- Confirm hosted pages resolve on the final domain:
+  - `https://nitime.app/privacy`
+  - `https://nitime.app/terms`
+  - `https://nitime.app/support`
 - Confirm App Store Connect app record uses bundle ID `com.nightime.agent`.
 - Confirm age rating answers reflect provider profiles, AI-assisted messaging, and age-gated public pages.
 - Confirm export compliance matches `ITSAppUsesNonExemptEncryption=false`.
 - Confirm StoreKit products are Ready to Submit.
-- Confirm production Supabase migrations are applied.
-- Deploy production Edge Functions.
+- Confirm production Supabase migrations are applied. Current status: applied through `20260615020000`.
+- Confirm production Edge Functions are deployed. Current status: `connect-channel`, `webchat-inbound`, `webchat-poll`, `send-draft`, `telegram-webhook`, `whatsapp-webhook`, and `google-voice-webhook` are active.
 - For the lowest-cost beta, set `AGENT_LLM_DISABLED=true` and leave paid model
   API keys unset until approval flow and FAQ hit rate are validated.
+  Current status: `AGENT_LLM_DISABLED=true`, `AGENT_LLM_MAX_TOKENS=180`.
 
 ## Day -2
 
@@ -40,6 +45,9 @@ npm run release:audit
 eas build --profile production --platform ios
 ```
 
+- If EAS asks for Apple credentials, complete the interactive Apple login/2FA
+  or configure an App Store Connect API key first. The current local attempt
+  stopped at Apple credential validation.
 - Install/TestFlight the build on a physical device.
 - Run StoreKit sandbox purchase and restore.
 - Confirm no bypass env vars are enabled.
