@@ -55,7 +55,7 @@ export function functionsBaseFromSupabaseUrl(supabaseUrl: string): string {
 }
 
 export interface WebchatLinkOptions {
-  /** Where public/chat.html is hosted, e.g. https://nightime-agent.vercel.app/chat.html */
+  /** Where public/chat.html is hosted, e.g. https://nitime.app/chat.html */
   widgetBase: string;
   slug: string;
   functionsBase: string;

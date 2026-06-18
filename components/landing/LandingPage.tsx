@@ -27,8 +27,8 @@ import { styles } from './styles';
 
 const SEO_TITLE = 'nitime';
 const SEO_DESCRIPTION =
-  'Nightime Agent acts like a discreet front desk across messaging channels: it answers questions, qualifies intent, offers available times, and keeps the provider in control.';
-const SEO_URL = 'https://nightime-agent.vercel.app/';
+  'Nitime acts like a discreet front desk across messaging channels: it answers questions, qualifies intent, offers available times, and keeps the provider in control.';
+const SEO_URL = 'https://nitime.app/';
 
 const initialSignupForm: LandingSignupForm = {
   email: '',

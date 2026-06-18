@@ -1,6 +1,6 @@
 {
-  "name": "Nightime Agent",
-  "short_name": "Nightime",
+  "name": "Nitime",
+  "short_name": "Nitime",
   "description": "AI-powered messaging and booking assistant for service providers",
   "start_url": "/",
   "display": "standalone",

@@ -507,7 +507,7 @@ export async function signUpThroughPaywallToDashboard(page, options) {
 
   await clickButton(page, 'Create provider account', { exact: false });
   await page.getByText('Create your provider account', { exact: true }).waitFor({ state: 'visible' });
-  await page.getByPlaceholder('Nightime Studio').fill(businessName);
+  await page.getByPlaceholder('Nitime Studio').fill(businessName);
   await page.getByPlaceholder('you@example.com').fill(email);
   await page.getByPlaceholder('At least 8 characters').fill(password);
   await screenshot(page, runId, '02-signup-modal');

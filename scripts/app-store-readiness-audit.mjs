@@ -192,9 +192,9 @@ if (!annualId || !monthlyId) {
 } else {
   pass('StoreKit product ids configured', 'Annual and monthly product ids are present.');
   if (annualId === 'nightime_annual' || monthlyId === 'nightime_monthly') {
-    warn('StoreKit product ids are not defaults', 'Default ids are acceptable only if they exactly match App Store Connect.');
+    warn('StoreKit product ids use old brand defaults', 'Use Nitime product ids unless the old ids already exist in App Store Connect.');
   } else {
-    pass('StoreKit product ids are not defaults', 'Product ids are custom values.');
+    pass('StoreKit product ids do not use old brand defaults', 'Product ids are ready to verify against App Store Connect.');
   }
 }
 

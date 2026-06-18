@@ -212,7 +212,7 @@ export default function SettingsScreen() {
       </Section>
 
       <XStack justifyContent="center">
-        <Text fontSize={12} color={colors.textMuted}>Nightime Agent version 1.0.0</Text>
+        <Text fontSize={12} color={colors.textMuted}>Nitime version 1.0.0</Text>
       </XStack>
     </Screen>
   );

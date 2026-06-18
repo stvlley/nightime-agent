@@ -1,9 +1,10 @@
 // Cheap-model fallback for messages the FAQ pre-filter can't answer (IO, Deno).
 //
 // Cost control by design: this is only called when `decideResponse` returns
-// needsLlm. It is gated entirely on ANTHROPIC_API_KEY — with no key the caller
-// uses the deterministic FALLBACK_REPLY instead, so the runtime still works at
-// $0 before launch. Drafts produced here always require human approval in v1.
+// needsLlm. It is gated on AGENT_LLM_DISABLED and ANTHROPIC_API_KEY — with no
+// key the caller uses the deterministic FALLBACK_REPLY instead, so the runtime
+// still works at $0 before launch. Drafts produced here always require human
+// approval in v1.
 
 import type { FaqEntry } from './agentLogic.ts';
 
@@ -21,6 +22,12 @@ export interface LlmResult {
   error?: string;
 }
 
+function maxTokens(): number {
+  const parsed = Number(Deno.env.get('AGENT_LLM_MAX_TOKENS') ?? '180');
+  if (!Number.isFinite(parsed)) return 180;
+  return Math.max(32, Math.min(320, Math.round(parsed)));
+}
+
 function buildSystemPrompt(ctx: LlmContext): string {
   const lines: string[] = [
     `You are a messaging assistant replying on behalf of ${ctx.businessName || 'an independent service provider'}.`,
@@ -33,7 +40,7 @@ function buildSystemPrompt(ctx: LlmContext): string {
   const enabledFaqs = ctx.faqs.filter((f) => f.enabled !== false && f.trigger && f.reply);
   if (enabledFaqs.length) {
     lines.push('Known answers you may use when relevant:');
-    for (const f of enabledFaqs.slice(0, 20)) {
+    for (const f of enabledFaqs.slice(0, 5)) {
       lines.push(`- Q: ${f.trigger} | A: ${f.reply}`);
     }
   }
@@ -41,6 +48,10 @@ function buildSystemPrompt(ctx: LlmContext): string {
 }
 
 export async function generateReply(ctx: LlmContext): Promise<LlmResult> {
+  if (Deno.env.get('AGENT_LLM_DISABLED') === 'true') {
+    return { text: null, model: null, error: 'llm_disabled' };
+  }
+
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   const model = Deno.env.get('AGENT_MODEL') ?? 'claude-haiku-4-5';
   if (!apiKey) return { text: null, model: null, error: 'no_api_key' };
@@ -55,7 +66,7 @@ export async function generateReply(ctx: LlmContext): Promise<LlmResult> {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 320,
+        max_tokens: maxTokens(),
         system: buildSystemPrompt(ctx),
         messages: [{ role: 'user', content: ctx.inboundText }],
       }),

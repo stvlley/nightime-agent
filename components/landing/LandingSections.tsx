@@ -79,7 +79,7 @@ export function HeroSection({ isNarrow, onOpenSignup }: LandingSectionProps) {
             Your booking inbox, answered before clients go cold.
           </Text>
           <Text style={styles.heroBody}>
-            Nightime Agent turns inbound messages into a controlled approval queue: draft replies,
+            Nitime turns inbound messages into a controlled approval queue: draft replies,
             availability context, and client handoff stay in one provider workspace.
           </Text>
           <DualCta isNarrow={isNarrow} onOpenSignup={onOpenSignup} withIcons />

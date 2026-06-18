@@ -21,7 +21,7 @@ export function CookieConsentBanner({
   return (
     <View style={[styles.cookieBanner, isNarrow && styles.cookieBannerMobile]}>
       <Text style={styles.cookieText}>
-        Nightime Agent uses essential storage for this page and will only add optional analytics after consent.
+        Nitime uses essential storage for this page and will only add optional analytics after consent.
       </Text>
       <View style={styles.cookieActions}>
         <Pressable

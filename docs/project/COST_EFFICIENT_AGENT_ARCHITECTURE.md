@@ -1,17 +1,16 @@
-# Nightime Agent — Cost-Efficient Agent Architecture
+# Nitime — Cost-Efficient Agent Architecture
 
 > Goal: support real provider messaging at low and predictable cost. The default architecture is not a swarm of agents. It is one deterministic message loop with narrow model calls only when deterministic handling cannot produce a safe draft.
 
 ## Cost posture
 
-Nightime should optimize for **cost per resolved conversation**, not model quality in isolation.
+Nitime should optimize for **cost per resolved conversation**, not model quality in isolation.
 
-Current external cost facts to design around:
+Current external cost facts to design around as of June 18, 2026:
 
-- OpenAI's GPT-4.1 mini is a viable low-cost live default candidate; OpenAI's pricing page lists it in the pricing calculator and should be checked at implementation time before locking the default.
-- Gemini Flash-class models are viable low-cost live default candidates; Google's Gemini API pricing page should be checked at implementation time because model/version pricing changes.
+- OpenAI's GPT-4.1 mini is a viable low-cost live default candidate; OpenAI's pricing page should be checked again before locking production defaults.
+- Gemini Flash-Lite is the cheapest paid live-draft candidate found in this pass: Google's Gemini API pricing page lists a Flash-Lite paid tier at **$0.05 / 1M input tokens** and **$0.20 / 1M output tokens**.
 - Claude Haiku 4.5 remains a viable cheap draft model; Anthropic lists `claude-haiku-4-5` at **$1 / 1M input tokens** and **$5 / 1M output tokens**.
-- GPT-5.5 is priced as an escalation-class model, not a live default: OpenAI lists **$5 / 1M input tokens** and **$30 / 1M output tokens**.
 - Anthropic prompt caching can reduce cached input cost by up to **90%**, and batch processing can reduce cost by **50%** for non-real-time work.
 - Supabase Edge Functions include **500,000 free monthly invocations** on Free and **2M monthly invocations** on Pro; overage is **$2 / 1M invocations**.
 - Supabase bills function invocations regardless of response status, but preflight `OPTIONS` requests are not billed.
@@ -109,7 +108,7 @@ Keep prompt input small and cacheable.
 
 Split prompt context into:
 
-- **Static system policy:** Nightime assistant rules, marketplace boundary, never-invent constraints.
+- **Static system policy:** Nitime assistant rules, marketplace boundary, never-invent constraints.
 - **Provider profile block:** business name, tone, boundaries, approval mode.
 - **Relevant knowledge block:** only top 3-5 FAQ/template matches, not the full FAQ table.
 - **Conversation block:** latest inbound plus optionally the last 2 short turns.
@@ -197,7 +196,7 @@ Initial production recommendation:
 
 ```text
 FAQ/template hit          -> no model
-Normal miss               -> GPT-4.1 mini OR Gemini Flash OR Claude Haiku 4.5
+Normal miss               -> no model for TestFlight; Claude Haiku 4.5 when already wired; Gemini Flash-Lite after provider swap
 Flagged/sensitive miss    -> no model, human approval
 Repeated unresolved loop  -> no model live; batch review later
 Weekly FAQ mining         -> batch/offline cheapest acceptable summarizer
@@ -230,15 +229,16 @@ interface ModelRouter {
 
 ## Implementation order
 
-1. Add usage/cost ledger around existing `runAgentTurn()`.
-2. Add a model-router config with lanes for `live_draft`, `offline_summary`, and `high_risk_review`.
-3. Set `live_draft` to GPT-4.1 mini, Gemini Flash, or Claude Haiku 4.5 after a small quality/cost bakeoff.
-4. Reduce default `max_tokens` for normal drafts from 320 to a smaller production default.
-5. Add daily/monthly/thread caps and `AGENT_LLM_DISABLED`.
-6. Add provider templates and improve FAQ aliases.
-7. Add dashboard usage/cost cards.
-8. Add prompt caching once token accounting proves the static prompt is stable.
-9. Add offline FAQ-mining batch job from approved replies.
+1. Keep `AGENT_LLM_DISABLED=true` for TestFlight until the deterministic flow is validated.
+2. Add usage/cost ledger around existing `runAgentTurn()`.
+3. Add a model-router config with lanes for `live_draft`, `offline_summary`, and `high_risk_review`.
+4. Set `live_draft` to Claude Haiku 4.5 first because it is already wired; switch to Gemini Flash-Lite only after a small provider bakeoff proves quality is acceptable.
+5. Keep default `AGENT_LLM_MAX_TOKENS=180`; 320 is the hard ceiling, not the default.
+6. Add daily/monthly/thread caps.
+7. Add provider templates and improve FAQ aliases.
+8. Add dashboard usage/cost cards.
+9. Add prompt caching once token accounting proves the static prompt is stable.
+10. Add offline FAQ-mining batch job from approved replies.
 
 ## Success metric
 

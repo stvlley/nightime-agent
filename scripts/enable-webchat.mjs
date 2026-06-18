@@ -44,7 +44,7 @@ if (!URL || !KEY) {
 
 const FUNCTIONS_BASE = env.FUNCTIONS_BASE_URL || URL.replace('.supabase.co', '.functions.supabase.co');
 // Where the static widget is hosted (defaults to the app origin /chat.html).
-const WIDGET_BASE = env.WEBCHAT_WIDGET_BASE || 'https://nightime-agent.vercel.app/chat.html';
+const WIDGET_BASE = env.WEBCHAT_WIDGET_BASE || 'https://nitime.app/chat.html';
 
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 

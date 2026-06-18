@@ -101,7 +101,7 @@ export default function ChannelsScreen() {
     const widgetBase =
       Platform.OS === 'web' && typeof window !== 'undefined'
         ? `${window.location.origin}/chat.html`
-        : 'https://nightime-agent.vercel.app/chat.html';
+        : 'https://nitime.app/chat.html';
     return buildWebchatLink({
       widgetBase,
       slug,

@@ -17,8 +17,8 @@ export type SubscriptionEntitlementInput = {
 };
 
 export const STOREKIT_PRODUCT_IDS: Record<PlanId, string> = {
-  annual: process.env.EXPO_PUBLIC_STOREKIT_ANNUAL_PRODUCT_ID ?? 'nightime_annual',
-  monthly: process.env.EXPO_PUBLIC_STOREKIT_MONTHLY_PRODUCT_ID ?? 'nightime_monthly',
+  annual: process.env.EXPO_PUBLIC_STOREKIT_ANNUAL_PRODUCT_ID ?? 'nitime_annual',
+  monthly: process.env.EXPO_PUBLIC_STOREKIT_MONTHLY_PRODUCT_ID ?? 'nitime_monthly',
 };
 
 export const STOREKIT_SUBSCRIPTION_IDS = Object.values(STOREKIT_PRODUCT_IDS);

@@ -14,6 +14,11 @@ Use this alongside `npm run release:audit`. The script catches mechanical blocke
 
 ## App Store Connect
 
+- `store/app-store-listing.md` is reviewed and placeholder reviewer credentials are replaced.
+- `store/privacy-policy.md` is hosted and placeholder domain/email values are replaced.
+- `store/terms-of-service.md` is hosted and placeholder domain/email values are replaced.
+- `store/revenuecat-config-checklist.md` StoreKit section is complete.
+- `store/submission-runbook.md` Day -3 through Day +14 tasks are assigned.
 - Privacy policy URL is live.
 - Support URL is live.
 - Account deletion instructions are live and reachable from support/privacy copy.

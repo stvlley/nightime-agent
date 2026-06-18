@@ -43,7 +43,7 @@ const DEMO_CONVERSATIONS: InboxItem[] = [
   {
     id: '2',
     clientName: 'Mia Client',
-    lastMessage: 'Nightime Agent: Tomorrow at 3 PM is open. Should I hold it?',
+    lastMessage: 'Nitime: Tomorrow at 3 PM is open. Should I hold it?',
     timestamp: '15 min ago',
     type: 'ai',
     platform: 'telegram',

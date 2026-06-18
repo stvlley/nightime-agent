@@ -94,7 +94,7 @@ async function main() {
     method: 'PATCH',
     body: JSON.stringify({
       slug: 'nightime-demo',
-      display_name: 'Nightime Demo',
+      display_name: 'Nitime Demo',
       headline: 'Massage & bodywork',
       bio: 'Relaxation and deep tissue by appointment. Discreet, professional, by-appointment only.',
       location_label: 'Downtown',

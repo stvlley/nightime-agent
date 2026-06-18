@@ -220,7 +220,7 @@ export function useStoreKitSubscription({ onEntitlementGranted }: UseStoreKitSub
     );
 
     if (!restored) {
-      setError('No active Nightime subscription was found for this Apple ID.');
+      setError('No active Nitime subscription was found for this Apple ID.');
       setStatus('idle');
       return;
     }

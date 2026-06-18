@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nightime Agent",
+    "name": "Nitime",
     "slug": "nightime-agent",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nightime.agent",
       "infoPlist": {
-        "NSDocumentsFolderUsageDescription": "Nightime Agent accesses selected documents only when you choose files to import conversation history.",
+        "NSDocumentsFolderUsageDescription": "Nitime opens only the conversation files you choose so it can extract FAQ and reply suggestions for your workspace.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

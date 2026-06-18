@@ -13,7 +13,7 @@ export const howItWorks = [
   },
   {
     title: 'Agent replies',
-    body: 'Nightime Agent qualifies requests, answers basics, and offers real availability.',
+    body: 'Nitime qualifies requests, answers basics, and offers real availability.',
     icon: Bot,
   },
   {
@@ -58,7 +58,7 @@ export function getSignupRoleCopy(role: LandingSignupRole): SignupRoleCopy {
       title: 'Create your provider account',
       intro: 'Start with the inbox workspace, then run a short setup checkup so the assistant can draft useful replies.',
       nameLabel: 'Business or display name',
-      namePlaceholder: 'Nightime Studio',
+      namePlaceholder: 'Nitime Studio',
       action: 'Create account',
     };
   }

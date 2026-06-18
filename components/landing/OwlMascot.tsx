@@ -23,7 +23,7 @@ export function OwlMascot({ size = 200, glow = true }: OwlMascotProps) {
       width={size}
       height={size}
       viewBox="0 0 256 256"
-      accessibilityLabel="Nightime Agent owl mascot"
+      accessibilityLabel="Nitime owl mascot"
     >
       <Defs>
         <LinearGradient id="owlBody" x1="0" y1="0" x2="0" y2="1">

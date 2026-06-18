@@ -1,6 +1,6 @@
 # Agent runtime — Supabase Edge Functions (Phase 2)
 
-The message loop that turns Nightime Agent from a demo into a thing that
+The message loop that turns Nitime from a demo into a thing that
 processes a real message.
 
 ```
