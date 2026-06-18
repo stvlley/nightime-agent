@@ -2,7 +2,7 @@
 
 Effective date: June 18, 2026
 
-These Terms govern use of Nitime ("Nitime", "we", "us"). Replace `<support-email>` before hosting these Terms.
+These Terms govern use of Nitime ("Nitime", "we", "us").
 
 ## Service
 
@@ -16,7 +16,7 @@ You must be legally able to operate the provider workflow you manage through Nit
 
 ## Accounts
 
-You are responsible for keeping account credentials secure and for all activity under your account. Contact `<support-email>` if you believe your account has been compromised.
+You are responsible for keeping account credentials secure and for all activity under your account. Contact `support@nitime.app` if you believe your account has been compromised.
 
 ## Provider Responsibility
 
@@ -85,4 +85,4 @@ We may update these Terms. Continued use after an update means you accept the re
 ## Contact
 
 - Website: https://nitime.app
-- Support: <support-email>
+- Support: support@nitime.app

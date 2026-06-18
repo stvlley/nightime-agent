@@ -47,8 +47,8 @@ Some public provider profiles may show an age confirmation screen before reveali
 
 If reviewer access is needed:
 
-- Demo account: <reviewer-email>
-- Demo password: <reviewer-password>
+- Demo account: reviewer@nitime.app
+- Demo password: from `.env.reviewer.local` / App Store Connect review notes
 - Production Supabase project: confirm configured before submission
 - StoreKit sandbox products: confirm `nitime_annual` and `nitime_monthly` are Ready to Submit
 
@@ -100,7 +100,7 @@ Both products must be created in the same auto-renewable subscription group and 
 - Support URL: https://nitime.app/support
 - Privacy Policy URL: https://nitime.app/privacy
 - Terms of Service URL: https://nitime.app/terms
-- Support email: <support-email>
+- Support email: support@nitime.app
 
 ## Screenshot Captions
 
@@ -113,7 +113,6 @@ Both products must be created in the same auto-renewable subscription group and 
 
 ## Submission Blockers
 
-- Replace support email and reviewer credential placeholders.
-- Add reviewer credentials or a reviewer walkthrough.
+- Copy reviewer password from `.env.reviewer.local` into App Store Connect review notes.
 - Confirm App Store Connect IAP products and subscription group.
 - Run a StoreKit sandbox purchase and restore on a physical iOS device.

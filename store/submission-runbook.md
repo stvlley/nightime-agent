@@ -2,7 +2,7 @@
 
 ## Day -3
 
-- Replace `<support-email>`, `<reviewer-email>`, and `<reviewer-password>` placeholders in store docs and App Store Connect.
+- Copy reviewer credentials from `.env.reviewer.local` into App Store Connect.
 - Host privacy policy at `https://nitime.app/privacy`.
 - Host terms at `https://nitime.app/terms`.
 - Host support page at `https://nitime.app/support`.

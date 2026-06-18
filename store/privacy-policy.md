@@ -4,8 +4,6 @@ Effective date: June 18, 2026
 
 Nitime ("Nitime", "we", "us") provides a messaging workspace for independent providers. This policy explains what information we collect, how we use it, and what choices users have.
 
-Replace `<support-email>` before hosting this policy.
-
 ## Information We Collect
 
 ### Account Information
@@ -65,11 +63,11 @@ We do not sell provider or client message content.
 
 ## Data Retention
 
-We retain account, workspace, message, and subscription records while the account is active or as needed for service, legal, tax, audit, security, and backup purposes. Providers may request deletion by contacting `<support-email>`.
+We retain account, workspace, message, and subscription records while the account is active or as needed for service, legal, tax, audit, security, and backup purposes. Providers may request deletion by contacting `support@nitime.app`.
 
 ## Account Deletion
 
-To request account deletion, contact `<support-email>` from the account email address. Include "Delete my Nitime account" in the subject. We will delete or de-identify eligible account data, subject to legal, security, billing, and backup retention requirements.
+To request account deletion, contact `support@nitime.app` from the account email address. Include "Delete my Nitime account" in the subject. We will delete or de-identify eligible account data, subject to legal, security, billing, and backup retention requirements.
 
 ## Security
 
@@ -90,4 +88,4 @@ We may update this policy. If changes are material, we will provide notice throu
 ## Contact
 
 - Website: https://nitime.app
-- Support: <support-email>
+- Support: support@nitime.app
