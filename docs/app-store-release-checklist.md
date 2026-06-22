@@ -2,6 +2,8 @@
 
 Use this alongside `npm run release:audit`. The script catches mechanical blockers; this file tracks review material that requires a human decision or App Store Connect data.
 
+For account-owner-only tasks, use `store/user-only-launch-checklist.md`.
+
 ## Before EAS Production Build
 
 - Confirm `.env` or the selected `RELEASE_ENV_FILE` has `EXPO_PUBLIC_BYPASS_PAYWALL=false` or unset.
@@ -47,9 +49,16 @@ Use this alongside `npm run release:audit`. The script catches mechanical blocke
 
 ```bash
 npm run release:audit
-npx eas build --platform ios --profile production
-npx eas submit --platform ios --profile production
+EAS_BUILD_NO_EXPO_GO_WARNING=true npx eas-cli build --profile production --platform ios
+npx eas-cli submit --profile production --platform ios --latest
 ```
+
+## Build Number Guidance
+
+- Keep EAS remote versioning enabled: `cli.appVersionSource="remote"` and production `autoIncrement=true`.
+- Current remote iOS build-number drift, last observed around `9`, is cosmetic unless App Store Connect rejects a duplicate.
+- Avoid repeated build attempts until Apple credentials and App Store Connect setup are ready.
+- If App Store Connect rejects a duplicate build number, run `npx eas-cli build:version:set`, choose iOS, keep remote version source, set the build number to the highest iOS build number already accepted for version `1.0.0`, then rebuild once.
 
 ## Current External Blockers
 

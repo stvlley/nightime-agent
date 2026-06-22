@@ -60,21 +60,23 @@ RELEASE_ENV_FILE=.env.production npm run release:audit
 Build production binaries with:
 
 ```bash
-npx eas build --platform ios --profile production
-npx eas build --platform android --profile production
+EAS_BUILD_NO_EXPO_GO_WARNING=true npx eas-cli build --profile production --platform ios
+npx eas-cli build --profile production --platform android
 ```
 
 Current iOS build blocker: EAS requires Apple credential validation. Complete
 interactive Apple login/2FA or configure an App Store Connect API key before
-rerunning the production iOS build. A prior attempt incremented the remote iOS
-build number to `4` before stopping at credential validation.
+rerunning the production iOS build. Prior failed or aborted attempts incremented
+the remote iOS build number; last observed drift was around `9`. Keep remote
+versioning enabled and only run `npx eas-cli build:version:set` if App Store
+Connect rejects a duplicate build number.
 
 Submit after the store listings, privacy forms, screenshots, and review/demo
 credentials are ready:
 
 ```bash
-npx eas submit --platform ios --profile production
-npx eas submit --platform android --profile production
+npx eas-cli submit --profile production --platform ios --latest
+npx eas-cli submit --profile production --platform android --latest
 ```
 
 Before submitting, make sure hosted Supabase services and Edge Functions are

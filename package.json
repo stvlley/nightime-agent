@@ -11,6 +11,7 @@
     "test": "PATH=/opt/homebrew/opt/node@22/bin:$PATH vitest run",
     "typecheck": "PATH=/opt/homebrew/opt/node@22/bin:$PATH tsc --noEmit",
     "release:audit": "node scripts/app-store-readiness-audit.mjs",
+    "storekit:asc": "node scripts/asc-storekit.mjs",
     "e2e:install": "playwright install chromium",
     "e2e:verify:webchat": "node scripts/verify-remote-functions.mjs webchat-inbound webchat-poll",
     "e2e:faq-hit": "node scripts/verify-remote-functions.mjs webchat-inbound webchat-poll && node scripts/.env.load EXPO_PUBLIC_BYPASS_PAYWALL -- node scripts/playwright-faq-hit-flow.mjs",

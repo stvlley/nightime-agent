@@ -72,9 +72,14 @@ Current production Supabase status:
 
 ```sh
 npm run release:audit
-eas build --profile production --platform ios
-eas submit --profile production --platform ios
+EAS_BUILD_NO_EXPO_GO_WARNING=true npx eas-cli build --profile production --platform ios
+npx eas-cli submit --profile production --platform ios --latest
 ```
+
+Keep EAS remote versioning enabled. Do not reset the iOS build number unless App
+Store Connect rejects a duplicate; if that happens, run
+`npx eas-cli build:version:set`, choose iOS, keep remote version source, and set
+the value to the highest accepted App Store Connect build number for `1.0.0`.
 
 ## Manual Checks Before Submit
 

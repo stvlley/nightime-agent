@@ -42,7 +42,7 @@ npm run release:audit
 - Build iOS production binary:
 
 ```sh
-eas build --profile production --platform ios
+EAS_BUILD_NO_EXPO_GO_WARNING=true npx eas-cli build --profile production --platform ios
 ```
 
 - If EAS asks for Apple credentials, complete the interactive Apple login/2FA
@@ -61,7 +61,7 @@ eas build --profile production --platform ios
 - Submit binary:
 
 ```sh
-eas submit --profile production --platform ios
+npx eas-cli submit --profile production --platform ios --latest
 ```
 
 - In App Store Connect, attach the binary to the app version.
