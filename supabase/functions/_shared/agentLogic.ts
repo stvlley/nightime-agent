@@ -47,6 +47,20 @@ export interface AgentDecision {
   autoSendEligible: boolean;
 }
 
+export interface AgentBudgetCaps {
+  dailyCents?: number | null;
+  monthlyCents?: number | null;
+  threadCents?: number | null;
+}
+
+export interface AgentBudgetSpend {
+  dailyCents: number;
+  monthlyCents: number;
+  threadCents: number;
+}
+
+export type AgentCapKind = 'daily' | 'monthly' | 'thread';
+
 /** Deterministic holding reply used when no FAQ matches and the LLM is unavailable. */
 export const FALLBACK_REPLY =
   "Thanks for reaching out! I've passed this along and you'll hear back shortly.";
@@ -153,6 +167,26 @@ export function screenContent(text: string, level: AgentPreferences['moderationL
  * `auto_eligible` and the message passed moderation. Anything else (LLM-drafted
  * or fallback) always routes to the approval queue in v1.
  */
+function positiveCap(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export function exceededAgentCaps(
+  caps: AgentBudgetCaps,
+  spend: AgentBudgetSpend,
+): AgentCapKind[] {
+  const exceeded: AgentCapKind[] = [];
+  const daily = positiveCap(caps.dailyCents);
+  const monthly = positiveCap(caps.monthlyCents);
+  const thread = positiveCap(caps.threadCents);
+
+  if (daily !== null && spend.dailyCents >= daily) exceeded.push('daily');
+  if (monthly !== null && spend.monthlyCents >= monthly) exceeded.push('monthly');
+  if (thread !== null && spend.threadCents >= thread) exceeded.push('thread');
+
+  return exceeded;
+}
+
 export function decideResponse(params: {
   inboundText: string;
   faqs: FaqEntry[];

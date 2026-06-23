@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyIntent,
   decideResponse,
+  exceededAgentCaps,
   matchFaq,
   normalizeText,
   screenContent,
@@ -85,6 +86,26 @@ describe('decideResponse', () => {
   });
 
   it('keeps FAQ answers in the approval queue under manual mode', () => {
+describe('exceededAgentCaps', () => {
+  it('treats zero or missing caps as unlimited', () => {
+    expect(
+      exceededAgentCaps(
+        { dailyCents: 0, monthlyCents: null, threadCents: undefined },
+        { dailyCents: 100, monthlyCents: 100, threadCents: 100 }
+      )
+    ).toEqual([]);
+  });
+
+  it('returns every reached positive cap', () => {
+    expect(
+      exceededAgentCaps(
+        { dailyCents: 50, monthlyCents: 1000, threadCents: 25 },
+        { dailyCents: 50, monthlyCents: 200, threadCents: 30 }
+      )
+    ).toEqual(['daily', 'thread']);
+  });
+});
+
     const d = decideResponse({
       inboundText: 'what are your rates?',
       faqs: FAQS,

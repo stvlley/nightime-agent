@@ -19,6 +19,9 @@ export interface LlmContext {
 export interface LlmResult {
   text: string | null;
   model: string | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  estimatedCostCents?: number | null;
   error?: string;
 }
 
@@ -45,6 +48,18 @@ function buildSystemPrompt(ctx: LlmContext): string {
     }
   }
   return lines.join('\n');
+}
+
+function envCostCents(name: string): number {
+  const parsed = Number(Deno.env.get(name) ?? '0');
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function estimateCostCents(inputTokens: number | null, outputTokens: number | null): number | null {
+  if (inputTokens === null && outputTokens === null) return null;
+  const inputPerMillion = envCostCents('AGENT_INPUT_COST_PER_1M_CENTS');
+  const outputPerMillion = envCostCents('AGENT_OUTPUT_COST_PER_1M_CENTS');
+  return ((inputTokens ?? 0) / 1_000_000) * inputPerMillion + ((outputTokens ?? 0) / 1_000_000) * outputPerMillion;
 }
 
 export async function generateReply(ctx: LlmContext): Promise<LlmResult> {
@@ -76,7 +91,15 @@ export async function generateReply(ctx: LlmContext): Promise<LlmResult> {
     }
     const data = await res.json();
     const text = data?.content?.[0]?.text;
-    return { text: typeof text === 'string' ? text.trim() : null, model };
+    const inputTokens = typeof data?.usage?.input_tokens === 'number' ? data.usage.input_tokens : null;
+    const outputTokens = typeof data?.usage?.output_tokens === 'number' ? data.usage.output_tokens : null;
+    return {
+      text: typeof text === 'string' ? text.trim() : null,
+      model,
+      inputTokens,
+      outputTokens,
+      estimatedCostCents: estimateCostCents(inputTokens, outputTokens),
+    };
   } catch (e) {
     return { text: null, model, error: String(e) };
   }
