@@ -38,6 +38,20 @@ describe('matchFaq', () => {
     expect(m!.confidence).toBeGreaterThanOrEqual(0.95);
   });
 
+  it('matches common pricing wording to a saved rates response', () => {
+    const m = matchFaq('how much is a session?', FAQS);
+    expect(m?.faq.id).toBe('1');
+    expect(m!.confidence).toBeGreaterThanOrEqual(FAQ_AUTO_THRESHOLD);
+  });
+
+  it('matches availability wording to a saved availability response', () => {
+    const m = matchFaq('are you free tomorrow afternoon?', [
+      { trigger: 'What is your availability?', reply: 'I have openings this week.', enabled: true },
+    ]);
+    expect(m?.faq.reply).toContain('openings');
+    expect(m!.confidence).toBeGreaterThanOrEqual(FAQ_AUTO_THRESHOLD);
+  });
+
   it('skips disabled FAQs', () => {
     const m = matchFaq('where are you located', FAQS);
     expect(m).toBeNull();
@@ -72,20 +86,6 @@ describe('screenContent', () => {
   });
 });
 
-describe('decideResponse', () => {
-  it('answers from FAQ and auto-sends when auto_eligible + clean', () => {
-    const d = decideResponse({
-      inboundText: 'what are your rates?',
-      faqs: FAQS,
-      preferences: { approvalMode: 'auto_eligible', moderationLevel: 'medium' },
-    });
-    expect(d.source).toBe('faq');
-    expect(d.draftText).toContain('$80');
-    expect(d.needsLlm).toBe(false);
-    expect(d.autoSendEligible).toBe(true);
-  });
-
-  it('keeps FAQ answers in the approval queue under manual mode', () => {
 describe('exceededAgentCaps', () => {
   it('treats zero or missing caps as unlimited', () => {
     expect(
@@ -106,6 +106,20 @@ describe('exceededAgentCaps', () => {
   });
 });
 
+describe('decideResponse', () => {
+  it('answers from FAQ and auto-sends when auto_eligible + clean', () => {
+    const d = decideResponse({
+      inboundText: 'what are your rates?',
+      faqs: FAQS,
+      preferences: { approvalMode: 'auto_eligible', moderationLevel: 'medium' },
+    });
+    expect(d.source).toBe('faq');
+    expect(d.draftText).toContain('$80');
+    expect(d.needsLlm).toBe(false);
+    expect(d.autoSendEligible).toBe(true);
+  });
+
+  it('keeps FAQ answers in the approval queue under manual mode', () => {
     const d = decideResponse({
       inboundText: 'what are your rates?',
       faqs: FAQS,

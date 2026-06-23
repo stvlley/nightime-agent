@@ -67,6 +67,7 @@ export const FALLBACK_REPLY =
 
 /** Minimum FAQ confidence to treat a match as an answer (rather than fall through to the LLM). */
 export const FAQ_AUTO_THRESHOLD = 0.62;
+const INTENT_MATCH_CONFIDENCE = 0.72;
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'am', 'was', 'were', 'be',
@@ -106,6 +107,7 @@ function round2(n: number): number {
 export function matchFaq(text: string, faqs: FaqEntry[]): FaqMatch | null {
   const msgTokens = new Set(tokenize(text));
   const normMsg = normalizeText(text);
+  const msgIntent = classifyIntent(text);
   let best: FaqMatch | null = null;
 
   for (const faq of faqs) {
@@ -121,6 +123,11 @@ export function matchFaq(text: string, faqs: FaqEntry[]): FaqMatch | null {
     const normTrigger = normalizeText(faq.trigger);
     if (normTrigger && normMsg.includes(normTrigger)) {
       confidence = Math.max(confidence, 0.95);
+    }
+
+    const triggerIntent = classifyIntent(faq.trigger);
+    if (triggerIntent !== 'other' && triggerIntent === msgIntent) {
+      confidence = Math.max(confidence, INTENT_MATCH_CONFIDENCE);
     }
 
     if (confidence > 0 && (!best || confidence > best.confidence)) {
@@ -160,13 +167,6 @@ export function screenContent(text: string, level: AgentPreferences['moderationL
   return list.some((term) => t.includes(normalizeText(term)));
 }
 
-/**
- * Decide how to respond to one inbound message.
- *
- * Policy: a confident FAQ match can auto-send when the provider opted into
- * `auto_eligible` and the message passed moderation. Anything else (LLM-drafted
- * or fallback) always routes to the approval queue in v1.
- */
 function positiveCap(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 }
@@ -187,6 +187,13 @@ export function exceededAgentCaps(
   return exceeded;
 }
 
+/**
+ * Decide how to respond to one inbound message.
+ *
+ * Policy: a confident FAQ match can auto-send when the provider opted into
+ * `auto_eligible` and the message passed moderation. Anything else (LLM-drafted
+ * or fallback) always routes to the approval queue in v1.
+ */
 export function decideResponse(params: {
   inboundText: string;
   faqs: FaqEntry[];
