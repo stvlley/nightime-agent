@@ -16,6 +16,7 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { XStack, YStack, Text, Button, ListRow, PageHeader, Screen, Section, Surface, ToggleRow, colors } from '@/components/ui';
+import { FeedbackWidget } from '@/components/FeedbackWidget';
 import { useAuth } from '@/hooks/useAuth';
 import { preferencesService } from '@/lib/preferences';
 import { confirmAsync } from '@/utils/confirm';
@@ -201,6 +202,20 @@ export default function SettingsScreen() {
                 </Text>
               </YStack>
             </XStack>
+          </Surface>
+          <Surface>
+            <YStack gap={12}>
+              <XStack alignItems="center" gap={12}>
+                <HelpCircle size={20} color={colors.primary} />
+                <YStack flex={1} gap={3}>
+                  <Text fontSize={15} fontWeight="700" color={colors.text}>Feedback</Text>
+                  <Text fontSize={13} color={colors.textSecondary}>
+                    Send product feedback, bug reports, or support requests from inside the app.
+                  </Text>
+                </YStack>
+              </XStack>
+              <FeedbackWidget route="/(tabs)/settings" />
+            </YStack>
           </Surface>
         </YStack>
       </Section>
