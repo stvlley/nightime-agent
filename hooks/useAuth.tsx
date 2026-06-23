@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import {
   isSupabaseConfigured,
   missingSupabaseConfigMessage,
@@ -8,6 +10,9 @@ import {
 } from '@/lib/supabase';
 import { Database, Profile } from '@/types/database';
 import { USER_LOGGED_IN_KEY } from '@/utils/onboarding';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthUser {
   id: string;
@@ -31,6 +36,15 @@ interface SignInResult {
   error?: string;
 }
 
+interface GoogleSignInResult {
+  success: boolean;
+  userId?: string;
+  email?: string;
+  displayName?: string;
+  profileCreated?: boolean;
+  error?: string;
+}
+
 type ProfilePatch = Omit<Partial<Database['public']['Tables']['profiles']['Insert']>, 'id'>;
 
 interface UpdateProfileResult {
@@ -44,12 +58,14 @@ interface AuthContextValue {
   isSupabaseConfigured: boolean;
   signUp: (email: string, password: string, businessName: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  signInWithGoogle: () => Promise<GoogleSignInResult>;
   signOut: () => Promise<void>;
   updateProfile: (patch: ProfilePatch) => Promise<UpdateProfileResult>;
 }
 
 const DEMO_USER_KEY = '@demo_user';
 const AUTH_TIMEOUT_MS = 15000;
+const GOOGLE_OAUTH_NATIVE_REDIRECT_URL = 'nightime-agent://auth/callback';
 
 function shouldAllowDemoAuthFallback(): boolean {
   return process.env.NODE_ENV !== 'production';
@@ -92,6 +108,56 @@ function createDemoUser(email: string, businessName: string, id = `demo-${Date.n
       age_gate_required: true,
     },
   };
+}
+
+function getGoogleOAuthRedirectUrl(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  return GOOGLE_OAUTH_NATIVE_REDIRECT_URL;
+}
+
+function getStringMetadata(user: SupabaseUser, keys: string[]): string | null {
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function displayNameFromOAuthUser(user: SupabaseUser): string {
+  const metadataName = getStringMetadata(user, ['full_name', 'name', 'display_name']);
+  if (metadataName) return metadataName;
+
+  const emailLocalPart = user.email?.split('@')[0]?.trim();
+  return emailLocalPart || 'Nitime Provider';
+}
+
+function getOAuthParam(url: string, key: string): string | null {
+  const parsed = new URL(url);
+  const queryValue = parsed.searchParams.get(key);
+  if (queryValue) return queryValue;
+
+  const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+  return hashParams.get(key);
+}
+
+function getOAuthCodeFromUrl(url: string): string {
+  const error = getOAuthParam(url, 'error_description') ?? getOAuthParam(url, 'error');
+  if (error) {
+    throw new Error(error);
+  }
+
+  const code = getOAuthParam(url, 'code');
+  if (!code) {
+    throw new Error('Google sign-in did not return an authorization code.');
+  }
+
+  return code;
 }
 
 async function withAuthTimeout<T>(operation: Promise<T>, label: string): Promise<T> {
@@ -149,6 +215,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const ensureOAuthProfile = async (
+    authUser: SupabaseUser
+  ): Promise<{ profile: Profile; profileCreated: boolean; displayName: string }> => {
+    const existingProfile = await profileService.getProfile(authUser.id);
+    const displayName = existingProfile?.display_name ?? displayNameFromOAuthUser(authUser);
+
+    if (existingProfile) {
+      return { profile: existingProfile, profileCreated: false, displayName };
+    }
+
+    const profile = await withAuthTimeout(
+      profileService.upsertProfile({
+        id: authUser.id,
+        email: authUser.email,
+        business_name: displayName,
+        display_name: displayName,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
+      'Profile setup'
+    );
+
+    return { profile, profileCreated: true, displayName };
   };
 
   useEffect(() => {
@@ -312,6 +402,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
+    setLoading(true);
+    try {
+      if (!supabase) {
+        return { success: false, error: missingSupabaseConfigMessage };
+      }
+
+      const redirectTo = getGoogleOAuthRedirectUrl();
+      const { data, error } = await withAuthTimeout(
+        supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+          },
+        }),
+        'Google sign-in setup'
+      );
+
+      if (error) throw error;
+      if (!data.url) {
+        throw new Error('Google sign-in could not start.');
+      }
+
+      const browserResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (browserResult.type !== 'success' || !('url' in browserResult)) {
+        return { success: false, error: 'Google sign-in was canceled.' };
+      }
+
+      const code = getOAuthCodeFromUrl(browserResult.url);
+      const { data: sessionData, error: sessionError } = await withAuthTimeout(
+        supabase.auth.exchangeCodeForSession(code),
+        'Google sign-in'
+      );
+
+      if (sessionError) throw sessionError;
+      if (!sessionData.user) {
+        throw new Error('Google sign-in did not return a user.');
+      }
+
+      const { profile, profileCreated, displayName } = await ensureOAuthProfile(sessionData.user);
+      const email = sessionData.user.email ?? profile.email ?? '';
+
+      await AsyncStorage.removeItem(DEMO_USER_KEY);
+      await AsyncStorage.setItem(USER_LOGGED_IN_KEY, 'true');
+      setUser({
+        id: sessionData.user.id,
+        email,
+        profile,
+      });
+
+      return {
+        success: true,
+        userId: sessionData.user.id,
+        email,
+        displayName,
+        profileCreated,
+      };
+    } catch (error: any) {
+      return { success: false, error: error?.message ?? 'Unable to sign in with Google.' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     if (supabase) {
       await withAuthTimeout(supabase.auth.signOut({ scope: 'local' }), 'Sign out');
@@ -353,6 +508,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isSupabaseConfigured,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     updateProfile,
   };

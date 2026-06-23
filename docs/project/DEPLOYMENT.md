@@ -28,9 +28,8 @@ Current production deployment:
 - Vercel project: `nightime-agent`
 - Current working production alias: `https://nightime-agent.vercel.app`
 - `nitime.app` and `www.nitime.app` are attached to the Vercel project but
-  still require Cloudflare DNS:
-  - `A nitime.app 76.76.21.21`
-  - `A www.nitime.app 76.76.21.21`
+  still require the Cloudflare DNS owner steps in
+  `store/user-only-launch-checklist.md`.
 - Legal/support routes are deployed:
   - `/privacy`
   - `/terms`
@@ -96,6 +95,27 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
 Only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are required for persistent Supabase auth.
+
+## Google OAuth
+
+Google login uses Supabase Auth with the Expo scheme
+`nightime-agent://auth/callback` for native and the production origin
+`https://nitime.app` for web. Google provider config lives in
+`supabase/config.toml`; the checked-in config already includes the redirect
+allow-list:
+
+```text
+https://nitime.app
+nightime-agent://auth/callback
+http://localhost:8081
+http://localhost:8082
+http://127.0.0.1:8081
+http://127.0.0.1:8082
+```
+
+Google OAuth cannot be fully tested with dummy Supabase env vars. See
+`docs/auth-oauth-setup.md` for the current-state notes and manual validation
+steps.
 
 ## Supabase
 

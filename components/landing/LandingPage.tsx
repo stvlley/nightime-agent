@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Head from 'expo-router/head';
 import { router } from 'expo-router';
@@ -51,9 +51,10 @@ async function getSignedInStartRoute(
 export function LandingPage() {
   const { width } = useWindowDimensions();
   const isNarrow = width < 760;
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
   const userId = user?.id;
   const { preference, loaded: consentLoaded, savePreference } = useCookieConsent();
+  const showCookieConsent = Platform.OS === 'web' && consentLoaded && !preference;
   const [authMode, setAuthMode] = useState<LandingAuthMode>('signup');
   const [signupRole, setSignupRole] = useState<LandingSignupRole>('provider');
   const [signupVisible, setSignupVisible] = useState(false);
@@ -219,6 +220,47 @@ export function LandingPage() {
     }
   };
 
+  const submitGoogleAuth = async () => {
+    setSubmitting(true);
+    setAuthRedirectPaused(true);
+    setErrors({});
+
+    try {
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        setSubmitting(false);
+        setAuthRedirectPaused(false);
+        setErrors({ submit: result.error ?? 'Unable to continue with Google.' });
+        return;
+      }
+
+      if (authMode === 'signup' && signupRole === 'provider' && result.email) {
+        void recordLandingIntent({
+          role: 'provider',
+          email: result.email,
+          name: result.displayName ?? '',
+        });
+      }
+
+      await onboardingUtils.setUserLoggedIn(true);
+      setSubmitting(false);
+      setSignupVisible(false);
+      resetSignup();
+
+      if (result.profileCreated) {
+        await onboardingUtils.resetOnboardingCompletion();
+        router.replace('/(onboarding)/onboarding');
+        return;
+      }
+
+      router.replace(result.userId ? await getSignedInStartRoute(result.userId) : '/(onboarding)/onboarding');
+    } catch (error: any) {
+      setSubmitting(false);
+      setAuthRedirectPaused(false);
+      setErrors({ submit: error?.message ?? 'Unable to continue with Google.' });
+    }
+  };
+
   return (
     <>
       <Head>
@@ -248,7 +290,7 @@ export function LandingPage() {
 
         <CookieConsentBanner
           isNarrow={isNarrow}
-          visible={consentLoaded && !preference}
+          visible={showCookieConsent}
           onSavePreference={savePreference}
         />
 
@@ -265,6 +307,7 @@ export function LandingPage() {
           onFormChange={updateForm}
           onModeChange={changeAuthMode}
           onRoleChange={changeSignupRole}
+          onGoogleAuth={submitGoogleAuth}
           onSubmit={submitSignup}
         />
       </SafeAreaView>

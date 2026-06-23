@@ -17,6 +17,7 @@ type RoleSignupModalProps = {
   visible: boolean;
   onClose: () => void;
   onFormChange: (field: keyof LandingSignupForm, value: string) => void;
+  onGoogleAuth: () => void;
   onModeChange: (mode: LandingAuthMode) => void;
   onRoleChange: (role: LandingSignupRole) => void;
   onSubmit: () => void;
@@ -33,6 +34,7 @@ export function RoleSignupModal({
   visible,
   onClose,
   onFormChange,
+  onGoogleAuth,
   onModeChange,
   onSubmit,
 }: RoleSignupModalProps) {
@@ -43,6 +45,7 @@ export function RoleSignupModal({
     ? 'Access your provider workspace, inbox, setup, and booking controls.'
     : roleCopy.intro;
   const action = isLogin ? 'Log in' : roleCopy.action;
+  const showProviderAuth = isLogin || role === 'provider';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -96,6 +99,28 @@ export function RoleSignupModal({
             </View>
           ) : (
             <View style={styles.form}>
+              {showProviderAuth ? (
+                <>
+                  <Pressable
+                    style={[styles.googleAuthButton, submitting && styles.disabledButton]}
+                    disabled={submitting}
+                    onPress={onGoogleAuth}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue with Google"
+                    accessibilityState={{ disabled: submitting }}
+                  >
+                    <Text style={styles.googleAuthIcon}>G</Text>
+                    <Text style={styles.googleAuthLabel}>
+                      {submitting ? 'Opening Google...' : 'Continue with Google'}
+                    </Text>
+                  </Pressable>
+                  <View style={styles.authDivider}>
+                    <View style={styles.authDividerLine} />
+                    <Text style={styles.authDividerText}>or use email</Text>
+                    <View style={styles.authDividerLine} />
+                  </View>
+                </>
+              ) : null}
               {!isLogin ? (
                 <LabeledInput
                   label={roleCopy.nameLabel}
