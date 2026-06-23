@@ -114,14 +114,17 @@ export default function AISettingsScreen() {
   };
 
   const handleAddFAQ = async () => {
-    if (!newTrigger.trim() || !newResponse.trim()) {
+    const trigger = newTrigger.trim();
+    const response = newResponse.trim();
+
+    if (!trigger || !response) {
       setFormError('Add both a client phrase and a response.');
       return;
     }
     setFormError(null);
 
     if (!isSupabaseConfigured || !user) {
-      setFaqs([...faqs, { id: Date.now().toString(), trigger: newTrigger, reply: newResponse, enabled: true }]);
+      setFaqs([...faqs, { id: Date.now().toString(), trigger, reply: response, enabled: true }]);
       setNewTrigger('');
       setNewResponse('');
       setShowAddForm(false);
@@ -130,7 +133,7 @@ export default function AISettingsScreen() {
 
     setSaving(true);
     try {
-      const created = await faqService.create(user.id, newTrigger, newResponse);
+      const created = await faqService.create(user.id, trigger, response);
       setFaqs([...faqs, created]);
       setNewTrigger('');
       setNewResponse('');
