@@ -3,9 +3,7 @@
 ## Day -3
 
 - Copy reviewer credentials from `.env.reviewer.local` into App Store Connect.
-- Finish Cloudflare DNS for Vercel:
-  - `A nitime.app 76.76.21.21`
-  - `A www.nitime.app 76.76.21.21`
+- Finish the Cloudflare DNS owner steps in `store/user-only-launch-checklist.md`.
 - Confirm hosted pages resolve on the final domain:
   - `https://nitime.app/privacy`
   - `https://nitime.app/terms`

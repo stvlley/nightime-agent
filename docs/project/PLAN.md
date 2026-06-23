@@ -211,8 +211,8 @@ message setup and approval, not public portal readiness.
       locally; no optional tracking added
 - [x] Refactored landing into `components/landing/` and
       `hooks/useCookieConsent.ts`
-- [x] Docs updated in `CORE_FEATURES.md`, `PLAN.md`, `DESIGN_SYSTEM.md`,
-      `DEPLOYMENT.md`, and `LOG.md`
+- [x] Docs updated in `CORE_FEATURES.md`, `PLAN.md`, `DESIGN_SYSTEM.md`, and
+      `DEPLOYMENT.md`
 - [x] `npm run typecheck`, `npm run lint`, `npm run build:web`
 
 ### Phase 1.8 — Conversion onboarding and provider dashboard  _(Expo app + existing schema)_ 🔄 IN PROGRESS
