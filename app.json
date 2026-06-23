@@ -30,7 +30,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "origin": "https://nitime.app",
+          "headOrigin": "https://nitime.app"
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       "expo-iap"
