@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { router, Tabs } from 'expo-router';
-import { CalendarDays, Home, Inbox, Settings2 } from 'lucide-react-native';
+import { CalendarDays, Inbox, LayoutDashboard, Settings2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/components/ui';
 import { AuthGate } from '@/components/AuthGate';
 import { useAuth } from '@/hooks/useAuth';
 import { draftService } from '@/lib/data';
-import { hasSubscriptionEntitlement } from '@/lib/subscriptions';
-import { onboardingUtils } from '@/utils/onboarding';
+import { type OnboardingAccessState, onboardingUtils } from '@/utils/onboarding';
 
 const PENDING_POLL_MS = 30000;
 const VISIBLE_TABS = ['dashboard', 'inbox', 'calendar', 'settings'] as const;
@@ -24,7 +23,7 @@ const SECONDARY_PARENT: Record<string, (typeof VISIBLE_TABS)[number]> = {
   upload: 'settings',
 };
 const TAB_ICONS = {
-  dashboard: Home,
+  dashboard: LayoutDashboard,
   inbox: Inbox,
   calendar: CalendarDays,
   settings: Settings2,
@@ -90,19 +89,21 @@ function WorkspaceTabs() {
     }),
     [pendingCount]
   );
-  const [accessState, setAccessState] = useState<{
-    onboardingCompleted: boolean;
-    subscriptionEntitled: boolean;
-  } | null>(null);
+  const [accessState, setAccessState] = useState<OnboardingAccessState | null>(null);
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      onboardingUtils.isOnboardingCompleted(),
-      userId ? hasSubscriptionEntitlement(userId) : Promise.resolve(false),
-    ])
-      .then(([onboardingCompleted, subscriptionEntitled]) => {
-        if (active) setAccessState({ onboardingCompleted, subscriptionEntitled });
+    if (!userId) {
+      setAccessState({ onboardingCompleted: false, subscriptionEntitled: false });
+      return () => {
+        active = false;
+      };
+    }
+
+    onboardingUtils
+      .getAccessState(userId)
+      .then((nextAccessState) => {
+        if (active) setAccessState(nextAccessState);
       })
       .catch(() => {
         if (active) setAccessState({ onboardingCompleted: false, subscriptionEntitled: false });
@@ -176,14 +177,14 @@ function WorkspaceTabs() {
 }
 
 function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
   const currentName = state.routes[state.index]?.name;
   const activeName = SECONDARY_PARENT[currentName] ?? currentName;
   const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name as any));
 
   return (
-    <View pointerEvents="box-none" style={styles.tabWrap}>
+    <View pointerEvents="box-none" style={[styles.tabWrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.tabBar}>
-        {Platform.OS === 'ios' ? <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} /> : null}
         <View style={styles.tabInner}>
           {visibleRoutes.map((route) => {
             const options = descriptors[route.key]?.options;
@@ -196,6 +197,12 @@ function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                   ? options.tabBarLabel
                   : route.name;
             const badge = options?.tabBarBadge;
+            const badgeLabel =
+              typeof badge === 'number' && badge > 9
+                ? '9+'
+                : typeof badge === 'number' || typeof badge === 'string'
+                  ? String(badge)
+                  : '';
 
             const onPress = () => {
               const event = navigation.emit({
@@ -216,6 +223,7 @@ function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 accessibilityRole="button"
                 accessibilityLabel={label}
                 accessibilityState={focused ? { selected: true } : undefined}
+                hitSlop={4}
                 onPress={onPress}
                 style={({ pressed }) => [
                   styles.tabButton,
@@ -224,13 +232,17 @@ function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 ]}
               >
                 <Icon
-                  size={focused ? 25 : 23}
-                  color={focused ? colors.primary : colors.textSecondary}
-                  strokeWidth={focused ? 2.7 : 2.25}
+                  size={focused ? 21 : 20}
+                  color={focused ? colors.primaryActive : colors.textSecondary}
+                  strokeWidth={focused ? 2.5 : 2.2}
                 />
                 {badge ? (
                   <View style={styles.badge}>
-                    <View style={styles.badgeDot} />
+                    {badgeLabel ? (
+                      <Text style={styles.badgeText}>{badgeLabel}</Text>
+                    ) : (
+                      <View style={styles.badgeFallbackDot} />
+                    )}
                   </View>
                 ) : null}
               </Pressable>
@@ -255,43 +267,40 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
-    paddingBottom: 14,
   },
   tabBar: {
-    width: '72%',
-    maxWidth: 360,
-    minWidth: 288,
-    height: 64,
-    borderRadius: 24,
+    width: '60%',
+    maxWidth: 288,
+    minWidth: 232,
+    height: 46,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.76)' : colors.surface,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
-    shadowColor: '#161334',
-    shadowOpacity: 0.14,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   tabInner: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
   },
   tabButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabButtonActive: {
-    backgroundColor: '#f0edff',
-    borderWidth: 1,
-    borderColor: '#ded6ff',
+    backgroundColor: colors.accentDim,
   },
   tabButtonPressed: {
     opacity: 0.78,
@@ -299,21 +308,35 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.warning,
+    top: 3,
+    right: 3,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.danger,
     borderWidth: 2,
     borderColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.danger,
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
-  badgeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  badgeText: {
+    color: colors.onPrimary,
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 11,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  badgeFallbackDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: colors.onPrimary,
   },
 });

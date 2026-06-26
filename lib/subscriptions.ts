@@ -126,6 +126,33 @@ export async function hasSubscriptionEntitlement(userId: string): Promise<boolea
   }
 }
 
+export async function hasRecordedSubscriptionEntitlement(userId: string): Promise<boolean> {
+  if (isAutoEntitled()) {
+    return true;
+  }
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('subscription_entitlements')
+      .select('user_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      return false;
+    }
+
+    return Boolean(data);
+  }
+
+  try {
+    return Boolean(await AsyncStorage.getItem(entitlementKey(userId)));
+  } catch {
+    return false;
+  }
+}
+
 export async function grantDemoEntitlement(userId: string, plan: PlanId): Promise<void> {
   await grantSubscriptionEntitlement({
     userId,

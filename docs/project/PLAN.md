@@ -50,8 +50,8 @@ business operations suite.
 - **Agent cost architecture:** `docs/project/COST_EFFICIENT_AGENT_ARCHITECTURE.md`
   formalizes the v1 posture: one deterministic loop, no live agent swarm, model
   calls only on misses, approval-gated LLM drafts, provider-level cost caps, and
-  a model-router policy: GPT-4.1 mini / Gemini Flash / Haiku-class live draft,
-  cheapest acceptable offline summarizer, GPT-5.5 only for rare high-risk review.
+  a model-router policy: OpenRouter `openrouter/free` for cost-first live drafts,
+  paid OpenRouter models only after bakeoff, and cheapest acceptable offline summarizer.
 - **Channel setup:** web chat and Telegram are self-serve in the app
   (Settings → Channels: one-tap web chat with shareable link/embed snippet,
   paste-a-token Telegram connect). WhatsApp and Google Voice remain
@@ -108,7 +108,7 @@ message setup and approval, not public portal readiness.
 | Dev loop | **Local Supabase stack (needs Docker)** → fall back to remote (free) until Docker is set up | $0 |
 | First channel | **Telegram** | Free API, no per-message fees, simple webhook |
 | V1 provider target | **Message providers** | Keeps setup and product promise focused on inbound conversations before portal/booking breadth |
-| AI strategy | **Provider-controlled message assistant** with **free keyword/FAQ pre-filter** + cheap draft model fallback | Candidate live defaults: GPT-4.1 mini, Gemini Flash, or Haiku-class. Most messages should avoid the LLM entirely. |
+| AI strategy | **Provider-controlled message assistant** with **free keyword/FAQ pre-filter** + OpenRouter draft fallback | Default model route is `openrouter/free`; paid OpenRouter models require a quality/cost bakeoff. Most messages should avoid the LLM entirely. |
 | Agent architecture | **One deterministic loop; no live multi-agent swarm** | Every additional model call compounds cost and latency. Specialized analysis runs offline/batch, not per inbound message. |
 | Lead model | Inbound replies + re-engage past clients (consent-based) + post/manage ads. **No cold contact.** | Cold outreach = bans + legal exposure |
 | Customer surface | **Conversational channel first; portal later** | Current priority is message-provider UAT and agent control, not public booking UX |
@@ -232,9 +232,10 @@ message setup and approval, not public portal readiness.
       → LLM fallback) → DB write → reply/draft.
       `supabase/functions/telegram-webhook/` with shared pure logic in
       `_shared/agentLogic.ts` (FAQ pre-filter, intent, moderation, decision) and
-      `_shared/telegramParser.ts`. LLM fallback (`_shared/llm.ts`, `claude-haiku-4-5`)
-      is gated on `ANTHROPIC_API_KEY`; without it the runtime uses a deterministic
-      holding reply. The free pre-filter runs first; the model is only hit on a miss.
+      `_shared/telegramParser.ts`. LLM fallback (`_shared/llm.ts`, default
+      `openrouter/free`) is gated on `OPENROUTER_API_KEY`; without it the runtime
+      uses a deterministic holding reply. The free pre-filter runs first; the
+      model is only hit on a miss.
 - [x] Provider approval queue for outbound messages before autonomous send.
       Drafts land in `messages` with `approval_status='pending'`; the Inbox shows a
       **Needs your approval** section (Approve & send / Reject). `send-draft`

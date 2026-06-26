@@ -177,7 +177,7 @@ if (requireValue(env.EXPO_PUBLIC_SUPABASE_URL, 'Production Supabase URL configur
 requireValue(env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'Supabase anon key configured', 'EXPO_PUBLIC_SUPABASE_ANON_KEY');
 
 for (const key of Object.keys(env)) {
-  if (/SERVICE_ROLE|DATABASE_URL|OAUTH_CLIENT_SECRET|APP_SECRET|ANTHROPIC_API_KEY/i.test(key) && key.startsWith('EXPO_PUBLIC_')) {
+  if (/SERVICE_ROLE|DATABASE_URL|OAUTH_CLIENT_SECRET|APP_SECRET|OPENROUTER_API_KEY/i.test(key) && key.startsWith('EXPO_PUBLIC_')) {
     fail('No public client secrets', `${key} must not be exposed with EXPO_PUBLIC_.`);
   }
 }

@@ -17,8 +17,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.55.0';
 import type { NormalizedInbound } from './telegramParser.ts';
 import {
   decideResponse,
+  exceededAgentCallCaps,
   exceededAgentCaps,
   FALLBACK_REPLY,
+  llmReplyPassesAutoSendSafety,
+  resolveAgentModeConfig,
   type FaqEntry,
   type MessageIntent,
   type ResponseSource,
@@ -104,6 +107,7 @@ async function getAgentSpend(
       .select('estimated_cost_cents')
       .eq('user_id', userId)
       .eq('source', 'llm')
+      .eq('kind', 'llm_called')
       .gte('created_at', startOfDayISO())
       .limit(1000),
     admin
@@ -111,6 +115,7 @@ async function getAgentSpend(
       .select('estimated_cost_cents')
       .eq('user_id', userId)
       .eq('source', 'llm')
+      .eq('kind', 'llm_called')
       .gte('created_at', startOfMonthISO())
       .limit(1000),
     admin
@@ -119,6 +124,7 @@ async function getAgentSpend(
       .eq('user_id', userId)
       .eq('thread_id', threadId)
       .eq('source', 'llm')
+      .eq('kind', 'llm_called')
       .limit(1000),
   ]);
 
@@ -127,6 +133,53 @@ async function getAgentSpend(
     monthlyCents: sumEstimatedCost(monthlyRes.data as any[] | null),
     threadCents: sumEstimatedCost(threadRes.data as any[] | null),
   };
+}
+
+async function countLlmCalls(
+  admin: Admin,
+  userId: string,
+  sinceIso: string,
+  threadId?: string,
+): Promise<number> {
+  let query = admin
+    .from('agent_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('source', 'llm')
+    .eq('kind', 'llm_called')
+    .gte('created_at', sinceIso);
+
+  if (threadId) query = query.eq('thread_id', threadId);
+
+  const { count } = await query;
+  return count ?? 0;
+}
+
+async function getAgentCallUsage(
+  admin: Admin,
+  userId: string,
+  threadId: string,
+): Promise<{ dailyCalls: number; monthlyCalls: number; threadCalls: number }> {
+  const day = startOfDayISO();
+  const month = startOfMonthISO();
+  const [dailyCalls, monthlyCalls, threadCalls] = await Promise.all([
+    countLlmCalls(admin, userId, day),
+    countLlmCalls(admin, userId, month),
+    countLlmCalls(admin, userId, day, threadId),
+  ]);
+
+  return { dailyCalls, monthlyCalls, threadCalls };
+}
+
+function nullablePositiveNumber(value: unknown): number | null {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+function capOrDefault(value: unknown, fallback: number): number {
+  if (value === 0) return 0;
+  const explicit = nullablePositiveNumber(value);
+  return explicit ?? fallback;
 }
 
 async function upsertThread(
@@ -214,7 +267,7 @@ export async function runAgentTurn(
     admin
       .from('provider_preferences')
       .select(
-        'approval_mode, moderation_level, agent_tone, response_boundaries, llm_enabled, ai_daily_cap_cents, ai_monthly_cap_cents, ai_thread_cap_cents, ai_cap_behavior'
+        'approval_mode, moderation_level, agent_mode, agent_tone, response_boundaries, llm_enabled, ai_daily_cap_cents, ai_monthly_cap_cents, ai_thread_cap_cents, ai_daily_call_cap, ai_monthly_call_cap, ai_thread_call_cap, ai_cap_behavior'
       )
       .eq('user_id', userId)
       .maybeSingle(),
@@ -236,23 +289,42 @@ export async function runAgentTurn(
     preferences: {
       approvalMode: (prefs?.approval_mode as any) ?? 'manual',
       moderationLevel: (prefs?.moderation_level as any) ?? 'medium',
+      agentMode: (prefs?.agent_mode as any) ?? 'keep_up',
     },
+  });
+  const modeConfig = resolveAgentModeConfig(prefs?.agent_mode as any, {
+    AGENT_MODEL_KEEP_UP: Deno.env.get('AGENT_MODEL_KEEP_UP') ?? undefined,
+    AGENT_MODEL_HELP_RESPOND: Deno.env.get('AGENT_MODEL_HELP_RESPOND') ?? undefined,
+    AGENT_MODEL_TALK_FOR_ME: Deno.env.get('AGENT_MODEL_TALK_FOR_ME') ?? undefined,
+    AGENT_MODEL: Deno.env.get('AGENT_MODEL') ?? undefined,
   });
 
   let draftText = decision.draftText;
   let source: ResponseSource = decision.source;
   let model: string | null = null;
+  let llmAutoSendCandidate = false;
 
   if (decision.needsLlm) {
-    const llmEnabled = prefs?.llm_enabled === true;
-    const spend = await getAgentSpend(admin, userId, thread.id);
-    const exceededCaps = exceededAgentCaps(
+    const llmEnabled = prefs?.llm_enabled !== false;
+    const [spend, usage] = await Promise.all([
+      getAgentSpend(admin, userId, thread.id),
+      getAgentCallUsage(admin, userId, thread.id),
+    ]);
+    const exceededCostCaps = exceededAgentCaps(
       {
         dailyCents: prefs?.ai_daily_cap_cents,
         monthlyCents: prefs?.ai_monthly_cap_cents,
         threadCents: prefs?.ai_thread_cap_cents,
       },
       spend,
+    );
+    const exceededCallCaps = exceededAgentCallCaps(
+      {
+        dailyCalls: capOrDefault(prefs?.ai_daily_call_cap, modeConfig.dailyCallCap),
+        monthlyCalls: capOrDefault(prefs?.ai_monthly_call_cap, modeConfig.monthlyCallCap),
+        threadCalls: capOrDefault(prefs?.ai_thread_call_cap, modeConfig.threadCallCap),
+      },
+      usage,
     );
 
     if (!llmEnabled) {
@@ -266,7 +338,7 @@ export async function runAgentTurn(
         channel,
         detail: { reason: 'provider_llm_disabled' },
       });
-    } else if (exceededCaps.length > 0) {
+    } else if (exceededCostCaps.length > 0 || exceededCallCaps.length > 0) {
       draftText = FALLBACK_REPLY;
       source = 'fallback';
       await logEvent(admin, {
@@ -275,7 +347,13 @@ export async function runAgentTurn(
         kind: 'cap_reached',
         source: 'fallback',
         channel,
-        detail: { caps: exceededCaps, spend, behavior: prefs?.ai_cap_behavior ?? 'fallback' },
+        detail: {
+          costCaps: exceededCostCaps,
+          callCaps: exceededCallCaps,
+          spend,
+          usage,
+          behavior: prefs?.ai_cap_behavior ?? 'fallback',
+        },
       });
     } else {
       const llm = await generateReply({
@@ -284,6 +362,8 @@ export async function runAgentTurn(
         agentTone: prefs?.agent_tone,
         responseBoundaries: prefs?.response_boundaries,
         faqs,
+        model: modeConfig.model,
+        maxTokens: modeConfig.maxTokens,
       });
       model = llm.model;
       await logEvent(admin, {
@@ -301,6 +381,8 @@ export async function runAgentTurn(
       if (llm.text) {
         draftText = llm.text;
         source = 'llm';
+        llmAutoSendCandidate =
+          decision.autoSendEligible && llmReplyPassesAutoSendSafety(draftText);
       } else {
         draftText = FALLBACK_REPLY;
         source = 'fallback';
@@ -315,9 +397,20 @@ export async function runAgentTurn(
         });
       }
     }
+  } else if (source === 'fallback') {
+    await logEvent(admin, {
+      userId,
+      threadId: thread.id,
+      kind: 'fallback_used',
+      source: 'fallback',
+      channel,
+      detail: { reason: decision.reason },
+    });
   }
 
-  const autoSend = decision.autoSendEligible && source === 'faq';
+  const autoSend =
+    (source === 'faq' && decision.autoSendEligible) ||
+    (source === 'llm' && llmAutoSendCandidate);
   const approvalStatus = autoSend ? 'auto_sent' : 'pending';
 
   const { data: draftMsg } = await admin
@@ -351,6 +444,7 @@ export async function runAgentTurn(
     model,
     autoSend,
     approvalStatus,
+    detail: { reason: decision.reason, mode: modeConfig.mode },
   });
 
   let deliveryOk = true;

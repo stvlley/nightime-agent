@@ -1,53 +1,43 @@
-// Conversion-flow theme — a deliberate LIGHT, colorful, gradient-rich palette
-// for the diagnostic onboarding + paywall. This is an intentional exception to
-// the app-wide dark night theme: the persuasion surface should feel bright,
-// energetic, and airy (vivid gradient panels, white floating cards, lots of
-// color), while the provider workflow app (inbox/dashboard/settings) stays calm
-// and dark. Keep this palette scoped to `app/(onboarding)/onboarding.tsx` and
-// `pricing.tsx`; do not leak it into workflow screens.
+import { colors } from '@/components/ui';
+
+// Conversion-flow theme aliases. Onboarding now uses the same warm paper +
+// muted purple system as the rest of the app; keep this file as the scoped
+// bridge for older onboarding helpers.
 
 export const onb = {
-  // Light surfaces
-  bg: '#f5f6ff',
-  bgTint: '#eef0ff',
-  card: '#ffffff',
-  cardAlt: '#f8f9ff',
+  bg: colors.background,
+  bgTint: colors.surfaceMuted,
+  card: colors.surface,
+  cardAlt: colors.surfaceMuted,
 
-  // Ink (text on light)
-  ink: '#161334',
-  inkSoft: '#5a5780',
-  inkFaint: '#9794b6',
+  ink: colors.text,
+  inkSoft: colors.textSecondary,
+  inkFaint: colors.textMuted,
 
-  border: '#e8e8f6',
-  borderStrong: '#d9d8ef',
+  border: colors.border,
+  borderStrong: colors.borderStrong,
 
-  // Brand violet (kept) + on-color text
-  primary: '#7c5cff',
-  primaryDeep: '#6442f0',
-  onColor: '#ffffff',
+  primary: colors.primary,
+  primaryDeep: colors.primaryActive,
+  onColor: colors.onPrimary,
 
-  // Rich multi-stop gradients — colorful but light-feeling.
-  gradHero: ['#8d6bff', '#6f8dff', '#57c9ff'] as readonly [string, string, string], // violet→blue→sky
-  gradWarm: ['#ff8fb6', '#c372ff', '#8d6bff'] as readonly [string, string, string], // pink→violet
-  gradMint: ['#5fe3c4', '#57c9ff'] as readonly [string, string], // mint→sky
-  gradCta: ['#7c5cff', '#9a63ff', '#c372ff'] as readonly [string, string, string], // violet→purple→pink
-  gradSun: ['#ffd166', '#ff9f6b'] as readonly [string, string], // amber→coral
+  gradHero: [colors.surface, colors.surfaceMuted, colors.accentDim] as readonly [string, string, string],
+  gradWarm: [colors.surface, colors.warningBg, colors.accentDim] as readonly [string, string, string],
+  gradMint: [colors.surface, colors.infoBg] as readonly [string, string],
+  gradCta: [colors.primary, colors.accent, colors.primaryActive] as readonly [string, string, string],
+  gradSun: [colors.warningBg, colors.surfaceMuted] as readonly [string, string],
 
-  // Colorful accents for answer rows / categories / icons.
-  swatches: ['#7c5cff', '#3fa9ff', '#21c997', '#ffb43f', '#ff6f9c', '#9a63ff'] as const,
+  swatches: [colors.primary, colors.info, colors.success, colors.warning, colors.danger, colors.accent] as const,
 
-  // Soft pastel wash for marketing hero/footer backdrops (light, colorful).
-  gradWash: ['#eef1ff', '#f4eaff', '#e9f7ff'] as readonly [string, string, string],
+  gradWash: [colors.background, colors.surface, colors.surfaceMuted] as readonly [string, string, string],
 
-  // Semantics
-  successInk: '#119e6b',
-  successBg: '#e2f8ef',
-  warnInk: '#c77a12',
-  warnBg: '#fdf1dd',
-  danger: '#e5484d',
+  successInk: colors.success,
+  successBg: colors.successBg,
+  warnInk: colors.warning,
+  warnBg: colors.warningBg,
+  danger: colors.danger,
 
-  // Soft elevation (allowed in the conversion theme; workflow screens stay flat).
-  shadow: 'rgba(74, 58, 140, 0.18)',
+  shadow: 'rgba(33, 27, 24, 0.14)',
 };
 
 export type Swatch = (typeof onb.swatches)[number];

@@ -185,8 +185,8 @@ export default function SettingsScreen() {
               <YStack flex={1} gap={3}>
                 <Text fontSize={15} fontWeight="700" color={colors.text}>Privacy</Text>
                 <Text fontSize={13} color={colors.textSecondary}>
-                  Your conversations stay in your account. AI replies are always disclosed to
-                  clients on the web chat surface. A full privacy policy ships with launch.
+                  Your conversations stay in your account. Internal labels identify saved replies,
+                  drafted replies, and fallbacks for provider review.
                 </Text>
               </YStack>
             </XStack>
@@ -227,7 +227,7 @@ export default function SettingsScreen() {
       </Section>
 
       <XStack justifyContent="center">
-        <Text fontSize={12} color={colors.textMuted}>Nitime version 1.0.0</Text>
+        <Text fontSize={12} color={colors.textMuted}>nitime version 1.0.0</Text>
       </XStack>
     </Screen>
   );

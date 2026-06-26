@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors } from '@/components/ui';
 import { useCanAnimate } from '@/hooks/useCanAnimate';
+import { landingPalette } from './styles';
 
 // Deterministic pseudo-random so SSR and CSR match and stars don't reshuffle on every render.
 function seeded(seed: number) {
@@ -50,6 +50,7 @@ function buildClouds(seed = 17): Cloud[] {
 
 const STARS = buildStars();
 const CLOUDS = buildClouds();
+const starGlow = 'rgba(139, 118, 230, 0.26)';
 
 const KEYFRAMES = `
 @keyframes nightime-twinkle {
@@ -156,15 +157,15 @@ const styles = StyleSheet.create({
   },
   star: {
     position: 'absolute',
-    backgroundColor: colors.accent,
+    backgroundColor: landingPalette.purpleAccent,
     opacity: 0.6,
     ...(Platform.OS === 'web'
-      ? ({ boxShadow: `0 0 6px ${colors.starGlow}` } as unknown as ViewStyle)
+      ? ({ boxShadow: `0 0 6px ${starGlow}` } as unknown as ViewStyle)
       : {}),
   },
   cloud: {
     position: 'absolute',
-    backgroundColor: colors.accent,
+    backgroundColor: landingPalette.purpleAccent,
     borderRadius: 999,
     ...(Platform.OS === 'web'
       ? ({ filter: 'blur(28px)' } as unknown as ViewStyle)
@@ -177,11 +178,11 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 999,
-    backgroundColor: colors.accent,
+    backgroundColor: landingPalette.purpleAccent,
     opacity: 0.18,
     ...(Platform.OS === 'web'
       ? ({
-          boxShadow: `0 0 80px 20px ${colors.starGlow}`,
+          boxShadow: `0 0 80px 20px ${starGlow}`,
           filter: 'blur(1px)',
         } as unknown as ViewStyle)
       : {}),

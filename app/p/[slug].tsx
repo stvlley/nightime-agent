@@ -68,7 +68,7 @@ export default function PublicProfileScreen() {
     return (
       <Screen>
         <PageHeader title="Profile" subtitle="Loading public profile." />
-        <LoadingState />
+        <LoadingState variant="card" />
       </Screen>
     );
   }

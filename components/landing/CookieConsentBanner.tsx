@@ -21,7 +21,7 @@ export function CookieConsentBanner({
   return (
     <View style={[styles.cookieBanner, isNarrow && styles.cookieBannerMobile]}>
       <Text style={styles.cookieText}>
-        Nitime uses essential storage for this page and will only add optional analytics after consent.
+        nitime uses essential storage for this page and will only add optional analytics after consent.
       </Text>
       <View style={styles.cookieActions}>
         <Pressable

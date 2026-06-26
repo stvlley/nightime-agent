@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
   let q = admin
     .from('messages')
-    .select('id, text, direction, approval_status, created_at, ai_generated')
+    .select('id, text, direction, approval_status, created_at')
     .eq('thread_id', thread.id)
     .order('created_at', { ascending: true });
   if (body.afterIso) q = q.gt('created_at', body.afterIso);
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       id: m.id,
       text: m.text,
       role: m.direction === 'in' ? 'visitor' : 'agent',
-      aiGenerated: !!m.ai_generated,
+      aiGenerated: false,
       createdAt: m.created_at,
     }));
 

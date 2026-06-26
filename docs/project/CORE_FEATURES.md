@@ -1,406 +1,266 @@
-# Nightime Agent — Core Features
+# nitime Core Features
 
-> Forward-looking engineering spec. Describes the target feature set we are building
-> toward, not current implementation status. For phase/status see `PLAN.md`; for
-> repo conventions see `AGENTS.md`; for visual conventions see `DESIGN_SYSTEM.md`.
+> Current product state as of June 26, 2026. This document describes what the
+> app actually contains today, plus explicitly labeled gaps and gated future
+> work. For repo conventions see `AGENTS.md`; for visual conventions see
+> `DESIGN_SYSTEM.md`; for release planning see the App Store and deployment docs.
 
 ## Product in one line
 
-A provider-controlled messaging assistant for **message providers**: it helps
-handle inbound client conversations, answer common questions, preserve provider
-boundaries, and route messages that need human attention. Booking and public
-portal features remain planned, but v1 starts with the message workflow.
+nitime is a provider-controlled messaging workspace: it connects a provider's
+own client channels, drafts replies, lets the provider approve or reject those
+drafts, and keeps direct payments and provider/client service delivery outside
+the platform.
 
-## Product positioning & strategy (locked)
+## Product boundaries
 
-**Nightime Agent is a communication tool, not a marketplace. Not the marketplace
-first.** This is a product *and* legal/regulatory decision, and it gates the
-roadmap below.
+- nitime is a tool, not a marketplace. It does not sell provider services, hold
+  client funds, escrow payments, confirm a booking of record, or run public
+  provider discovery.
+- Direct payment links are allowed because they point to the provider's own
+  PayPal, Venmo, Cash App, or Zelle handles. Money never moves through nitime.
+- Public profile pages exist only as a lightweight provider profile and web-chat
+  entry point. They are not a directory, checkout, or self-serve booking flow.
+- Booking tables and calendar views exist as provider workflow context. Any
+  marketplace-style booking or checkout expansion remains a deliberate future
+  decision.
 
-- **We are a tool.** We move and assist with messages on the provider's own
-  channels under their rules. The provider and client transact however they
-  already do — **off our platform**. We never take money for a service, never
-  own the booking of record, and never publicly list a provider's services as
-  our own surface.
-- **No sales of services.** The moment money for a service flows through us, or
-  we become the system that books/confirms/lists the service, we stop being a
-  tool and become a **marketplace** that *intermediates the service*. As a pure
-  communication tool with no sales of services, "we are a tool then we are fine."
-- **Why this matters (Germany / EU):** going the marketplace way pulls in
-  marketplace/intermediary regulation now — and the companion/massage vertical
-  raises that exposure further (public listings, age-gating, processor ToS). A
-  communication tool sidesteps that. We do not take on the marketplace
-  regulatory burden unless and until we deliberately choose to.
-- **The strategy:** launch the communication piece → get providers hooked across
-  all the sites they already use → *then* choose a fork: **(a)** sell the tool to
-  the companies / create a bidding war, or **(b)** add a marketplace (and accept
-  the German/EU marketplace work that comes with it). Both forks are deliberate
-  later decisions. **The default path is and remains the communication tool.**
+## Current surfaces
 
-### The marketplace line
-
-Everything below is sorted by which side of the line it sits on. Tool-side work
-is the active product. Marketplace-side work stays in the schema/roadmap so we
-lose no optionality, but is **explicitly gated**: do **not** build it until we
-make a conscious decision to become a marketplace.
-
-| Side | Features | Build now? |
+| Surface | Route or location | Current role |
 |---|---|---|
-| **Tool** (active) | Provider app, conversion onboarding, inbox/approval, FAQ/automation, agent runtime on the provider's own channels, consent-based re-engagement, marketing landing page | Yes |
-| **Marketplace** (gated) | Public customer portal `/p/[slug]`, booking flow that creates/confirms bookings, **payments** (prepay/deposit/checkout), multi-provider directory/discovery | No — only after an explicit "become a marketplace" decision |
+| Landing page | `/` | Public marketing page, provider signup/login, client/provider intent capture, cookie consent |
+| Auth | `app/(auth)` and landing modal | Supabase email/password, Google auth path, demo fallback when Supabase is absent |
+| Onboarding | `app/(onboarding)` | Conversion diagnostic, StoreKit/web/demo entitlement gate, handoff to dashboard |
+| Provider app | `app/(tabs)` | Dashboard, inbox, thread review, calendar, channels, settings, billing, profile, uploads, direct payment links |
+| Public profile | `/p/[slug]` | Published profile shell with age gate and web-chat entry point |
+| Web chat widget | `public/chat.html` | Embeddable client chat UI that posts to Supabase Edge Functions |
+| Agent runtime | `supabase/functions` | Channel webhooks, FAQ prefilter, optional LLM fallback, draft queue, channel delivery |
 
-Treat the public **portal**, the **booking flow**, and **payments** as the line.
-They are kept schema-ready (§1.5/§3) for optionality, but they are not the
-default next step and must not ship by default.
+## Implemented app features
 
-## Surfaces
+### Landing and auth
 
-| Surface | Stack | Audience | Role |
-|---|---|---|---|
-| **Marketing landing page** | Expo Router (this repo), web export to Vercel | Anonymous public, providers, booking clients | Product explanation, provider/client intent capture, early access CTAs, consent banner |
-| **Provider app** | Expo Router (this repo), web export to Vercel | Authenticated provider | Control panel: dashboard, train message replies, watch conversations, manage automation, billing |
-| **Customer portal** | Separate Next.js app (App Router), SSR | Anonymous public + booking client | Future discovery / "ad" surface + self-serve booking; payments-ready |
-| **Agent runtime** | Supabase Edge Functions + `pg_cron` | Background (no UI) | Handles channel webhooks, applies message rules, drafts/sends replies |
+- Signed-out `/` renders a branded landing page with night-sky hero, app mockup,
+  provider CTA, client updates CTA, footer links, SEO metadata, and cookie
+  consent.
+- Provider signup creates/uses Supabase auth when configured, records landing
+  intent best-effort, resets onboarding completion, and routes into onboarding.
+- Client signup currently records intent only; client account/portal access is
+  not implemented.
+- Signed-in users are routed by access state: onboarding first, then pricing if
+  no entitlement, then dashboard.
+- Demo mode remains explorable without Supabase using local/mock data where
+  practical.
 
-All product surfaces share one Supabase project (auth, Postgres, RLS, storage).
+### Onboarding and subscription gate
 
-The marketing landing page is distinct from the future customer portal
-`/p/[slug]`. The landing page explains Nightime Agent and captures
-provider/client intent; the first app workflow is for providers who live in
-messages.
+- Onboarding uses `ConversionOnboardingFlow`, a multi-step diagnostic covering
+  provider type, channels, message volume, reply speed, client value, FAQ
+  categories, approval mode, result, trial education, paywall, handoff, and a
+  dashboard preview.
+- The onboarding brand lockup is `nitime` only, with no `ai` suffix.
+- Access state combines local onboarding completion with durable subscription
+  entitlement records. A recorded or active entitlement marks onboarding
+  complete for that user.
+- StoreKit product ids default to `nitime_annual` and `nitime_monthly`.
+  Entitlements are persisted in `subscription_entitlements` and locally in
+  AsyncStorage. Web trial, demo entitlement, and dev bypass paths exist for
+  non-iOS flows and testing.
+- Entitlement grant updates the profile plan to `premium` for annual or `pro`
+  for monthly.
 
----
+### Provider dashboard
 
-## 1. Marketing landing page (Expo, this repo)
+- Dashboard shows provider operations overview, auto-send toggle, pending draft
+  warning, daily stats, connected channel status, and quick actions.
+- Live stats come from `messages` and `bookings`: messages today, bookings this
+  week, AI replies today, and AI response rate.
+- Auto-send writes `provider_preferences.approval_mode` as `auto_eligible` or
+  `manual`.
+- Channel rows are read from `agent_channels`; active, paused, and empty states
+  are represented.
 
-### 1.1 Public home route
-- Signed-out `/` renders a product landing page rather than redirecting straight
-  to login.
-- Signed-in providers still route to the authenticated provider dashboard.
-- Navigation keeps direct access to existing provider login/register routes.
-- CTAs support `Log in`, `Start as provider`, and `Continue as client`.
+### Inbox and thread review
 
-### 1.2 Content sections
-- Hero: Nightime Agent promise, product preview, primary provider CTA, and client
-  CTA.
-- Role split: provider and client panels open the same signup modal with the
-  selected role preloaded.
-- How it works: connect channels, agent handles conversations, bookings land in
-  calendar.
-- Provider workflow: inbox, availability, calendar, saved replies, moderation.
-- Client experience: public profile, services, availability, booking request,
-  confirmation.
-- Trust/privacy: discreet profiles, consent-based follow-ups, AI disclosure, and
-  age-gate support.
-- Early access/pricing: simple launch positioning; no complex billing
-  integration on the landing page.
-- FAQ and final CTA repeat the provider/client entry points.
+- Inbox lists provider threads from `threads` with latest message preview,
+  unread heuristic, channel badge, and derived type (`manual`, `ai`, or
+  `booking`).
+- Pending outbound drafts from `messages.approval_status = 'pending'` appear in
+  a "Needs your approval" queue with source, intent, confidence context, inbound
+  message excerpt, and draft text.
+- Providers can approve and send a draft through the `send-draft` Edge Function
+  or reject it so it never sends.
+- Thread detail shows the full message history, AI/source badges, pending/failed
+  draft review controls, rejected state, and a manual reply composer.
+- Manual provider replies are inserted as pending outbound messages and then
+  delivered through the same `send-draft` path. If delivery fails, the reply is
+  retained in the approval queue.
 
-### 1.3 Dual signup modal
-- Role intent type: `provider | client`.
-- Toggle switches between Provider and Client copy/fields.
-- Provider fields: email, password, business/display name. Submission can use the
-  current provider auth/register path.
-- Client fields: email, password, name/handle. Until the client portal has
-  account auth, submission is intent capture or a placeholder success state.
-- No database schema change or Supabase role enforcement is required for this
-  pass.
+### Agent settings
 
-### 1.4 Cookie consent
-- Landing page shows a simple bottom consent banner with `Accept all` and
-  `Reject optional`.
-- Store the local preference in AsyncStorage or equivalent local storage.
-- Do not load optional tracking until tracking exists and consent is granted.
-- GEO-aware consent behavior is deferred until analytics/ads or regional
-  compliance requirements make it necessary.
+- Saved responses are backed by the `faq` table. Providers can list, add, enable
+  or disable, and delete reusable responses.
+- Automation controls include auto-send for confident saved-response matches and
+  moderation level (`low`, `medium`, `strict`) on `provider_preferences`.
+- Current UI does not yet edit full persona/system prompt, response boundaries,
+  LLM enablement, or budget caps, though the runtime reads several of those
+  fields when present.
 
-### 1.5 Brand surface (night theme + owl mascot)
-- The whole product runs on a deep-purple **night theme** sourced from
-  `components/ui` `colors`. No light variant in this pass; an opt-in toggle is
-  a tracked follow-up.
-- **Owl mascot** (`components/landing/OwlMascot.tsx`) is the visual identity.
-  Hero variant (~280px, with soft glow) on the hero; small bust (~36px, no
-  glow) in the nav. Built as a single react-native-svg component so it works
-  on web and native without a raster asset.
-- **NightSky backdrop** (`components/landing/NightSky.tsx`) sits behind the hero
-  and final CTA: a deterministically-seeded star field, a moon, and a few soft
-  blurred clouds. On web with normal motion preferences, stars twinkle and
-  clouds drift via CSS keyframes; on native or with `prefers-reduced-motion`,
-  the layout renders static. The backdrop is decorative and aria-hidden.
-- SEO meta (`<title>`, description, og:*, twitter:*, canonical) injected via
-  `expo-router/head` from the landing component.
-- `assets/images/icon.png` and `favicon.png` will be refreshed to match the owl
-  mascot — tracked separately.
+### Channels
 
----
+- Web chat is self-serve. Enabling it ensures the provider has a valid public
+  slug, upserts an `agent_channels` row, and exposes a shareable link plus iframe
+  embed snippet.
+- Telegram is self-serve. The provider pastes a BotFather token, the app
+  validates it with Telegram, stores the channel row, and registers the webhook.
+- WhatsApp and Google Voice are visible as assisted setup channels. Runtime code
+  and support scripts exist, but app-level self-serve credential setup is not
+  implemented.
+- Channels can be paused/resumed or disconnected. Client-side reads only safe
+  channel columns; secrets such as bot tokens and webhook secrets are not shown.
 
-## 2. Provider app (Expo, this repo)
+### Public profile and web chat
 
-### 2.1 Authentication & conversion onboarding
-- Email/password auth via Supabase (`hooks/useAuth.ts`), with AsyncStorage demo
-  fallback when env vars are absent.
-- First-run onboarding is the conversion diagnostic in
-  `app/(onboarding)/onboarding.tsx`, ending in the provider dashboard rather
-  than a second setup-chat flow.
-- V1 remains message-provider-first: profile, channels, saved replies,
-  moderation, approval mode, follow-up preference, and billing are edited from
-  the main app screens after onboarding.
-- Availability and booking details are optional context only. They should not
-  dominate the first provider path.
-- Profile maps to `profiles`; message/automation preferences map to
-  `provider_preferences`; services and availability are saved only as relevant
-  message context until portal work resumes.
+- `/p/[slug]` reads `public_provider_profiles` and renders the provider display
+  name, handle, headline, location label, optional age confirmation gate, and a
+  web-chat CTA.
+- The public profile requires Supabase. Without Supabase it shows an unavailable
+  state.
+- `public/chat.html` is a standalone, embeddable chat UI. It stores a per-slug
+  client session id locally, posts inbound messages to `webchat-inbound`, polls
+  `webchat-poll`, and displays an AI disclosure.
+- Web-chat replies are only visible when they are auto-sent FAQ replies or
+  provider-approved/sent messages. Pending, rejected, and failed drafts are not
+  exposed to visitors.
 
-### 2.2 Dashboard (`app/(tabs)/dashboard.tsx`)
-- Live counts from Supabase: open threads, bookings today/week, agent reply
-  count, conversion %, monthly usage vs `usage_limit`.
-- AI insights card surfaces recent agent activity, top FAQ matches, missed-reply
-  warnings.
-- Quick links to inbox + calendar.
+### Calendar
 
-### 2.3 Inbox (`app/(tabs)/inbox.tsx`)
-- List of `threads` ordered by `last_activity_at`, grouped by `state` (open,
-  qualifying, offering, awaiting_client, tentative, confirmed, cancelled,
-  abandoned). DB lowercase state vocabulary is the source of truth — reconcile
-  `types/booking.ts` uppercase enum during runtime build.
-- Thread detail: message stream (`messages` with `direction` in/out, `sender`,
-  `ai_generated`, `ai_confidence`, `ai_label`).
-- Provider can: take over (mute agent), send manual message, approve a queued
-  outbound message, label/tag, mark abandoned.
-- "Approve before send" mode for new providers; flips to autonomous once trust
-  is established (`BookingAgentConfig.requireManualApproval`).
-- V1 UAT should prove message triage and approval, not end-to-end public portal
-  booking.
+- Calendar reads upcoming `bookings` for the provider and shows today's
+  appointment count, minutes booked, unique clients, schedule rows, and a simple
+  availability slot display.
+- The `Add` button is present but manual booking creation is not implemented in
+  the current UI.
+- Booking records are context for provider workflow; there is no client-facing
+  self-serve booking flow.
 
-### 2.4 Calendar (`app/(tabs)/calendar.tsx`)
-- Calendar is secondary in v1. It supports message providers who book from
-  conversations, but setup and onboarding should not force every provider into a
-  booking-first model.
-- Read view of `bookings` (tentative / confirmed / cancelled) joined to
-  `services` + `threads` (so each booking shows service name + client handle +
-  channel).
-- Block-out / exception editor → writes availability exceptions (per
-  `types/booking.ts` `AvailabilityException`; needs a table — not yet in schema).
-- Manual booking create (source = `manual`).
-- Optional Google Calendar mirror via `calendar_event_id`.
+### Profile, settings, support, and feedback
 
-### 2.5 AI training & settings (`app/(tabs)/ai-settings.tsx`)
-- FAQ editor (`faq` table): trigger phrase + reply text + enabled toggle.
-  Hits before LLM to keep token cost down.
-- Agent persona: system prompt, voice/tone, hard guardrails (what the agent must
-  never say), AI-disclosure copy.
-- Booking policy: min notice, buffer minutes, max offered slots, allow same-day,
-  cancellation policy, follow-up cadence.
-- Content filter level (low / medium / strict) for inbound NSFW/abuse before
-  classification.
-- Long-form training uploads are deferred until retrieval exists.
+- Profile editing updates business name, display name, headline, location label,
+  and public chat handle/slug.
+- Settings groups account links, business tools, automation preferences,
+  privacy/help copy, in-app feedback, and sign out.
+- Notification and follow-up toggles write `provider_preferences` when Supabase
+  is configured.
+- `FeedbackWidget` creates support feedback/tickets through `utils/supportFeedback`.
+- Support, privacy, and terms routes are implemented in the Expo app.
 
-### 2.6 Channels
-- Provider connects messaging channels in the app (Settings -> Channels, also
-  reachable from the dashboard). Self-serve today: **web chat** (one tap;
-  shareable link + iframe embed snippet) and **Telegram** (paste a BotFather
-  token; the app validates it and registers the webhook). Channels can be
-  paused, resumed, and disconnected in place. **WhatsApp** and **Google Voice**
-  show as "assisted setup" -- they need Meta/Google Cloud credentials and stay
-  script-first (`scripts/connect-whatsapp.mjs`,
-  `scripts/connect-google-voice.mjs`). Operator scripts remain for support.
-- Each channel = a webhook + credential bundle stored server-side (NOT
-  `EXPO_PUBLIC_*`). Per-channel toggle for auto-reply + business-hours-only.
-- Inbound webhook handlers live in the agent runtime (§4), not the client.
+### Billing and direct payment links
 
-### 2.7 Billing (`app/(tabs)/billing.tsx`)
-- Plan tier (`starter` / `pro` / `premium`) on `profiles.plan`.
-- Monthly usage meter against `usage_limit` (agent replies + LLM calls).
-- Upgrade / downgrade flow (payment integration deferred — see §3.4).
+- Billing screen shows early-access status, current plan from `profiles.plan`,
+  monthly usage from `profiles.usage_month_count` and `usage_limit`, planned
+  launch tiers, and "no payment method needed yet" copy.
+- Paid checkout is not implemented in the provider app. StoreKit/paywall
+  entitlement logic exists in onboarding/subscription utilities.
+- Payment links are a direct provider tool, stored locally with AsyncStorage.
+  Providers can enter PayPal, Venmo, Cash App, and Zelle handles, then show a
+  client view with QR codes/open links. nitime does not process those payments.
 
-### 2.8 Settings (`app/(tabs)/settings.tsx`)
-- Edit public portal fields → `profiles`.
-- Toggle `published` (controls portal visibility via `public_provider_profiles`
-  view).
-- Toggle `age_gate_required`.
-- Manage services (`services`) and weekly availability (`availability`).
-- Timezone and notification preferences.
+### Training imports
 
-### 2.9 Notifications
-- Push (FCM) for: new inbound message needing approval, new booking, cancellation,
-  agent error / channel disconnect.
+- Training imports accept WhatsApp text, email text/CSV, and Telegram JSON/text
+  exports via Expo DocumentPicker.
+- Files are parsed client-side, converted into local training data, and shown in
+  a recent-imports list.
+- Imported conversations are not yet persisted to Supabase or wired into
+  retrieval for runtime generation.
 
----
+## Agent runtime
 
-## 3. Customer portal (separate Next.js app, GATED — marketplace fork)
+### Shared message loop
 
-> ⚠️ **This whole section is marketplace-side work (see "The marketplace line").**
-> A public listing + booking + payments turns us from a communication tool into
-> a marketplace that intermediates the service, with the German/EU regulatory
-> burden that comes with it. **Do not build this until we explicitly decide to
-> become a marketplace.** It stays documented and schema-ready only to preserve
-> optionality for that later fork. The default path does not include it.
+All supported inbound channels run the same core flow:
 
-The portal is deferred until the message-provider loop is usable. Keep schema
-and public profile work intact, but do not let portal readiness drive v1 setup
-or UAT.
+1. Resolve the provider/channel and upsert a `threads` row.
+2. Insert the inbound `messages` row.
+3. Load `provider_preferences`, enabled `faq` entries, and profile context.
+4. Run deterministic intent classification, moderation screening, and FAQ
+   matching in `_shared/agentLogic.ts`.
+5. If a saved response matches confidently, use it as the draft.
+6. If no FAQ matches and LLM is enabled and under configured caps, call the LLM
+   helper; otherwise use a deterministic fallback reply.
+7. Insert an outbound draft message with source, intent, confidence,
+   `approval_status`, and `reply_to_message_id`.
+8. Auto-send only confident FAQ replies when approval mode permits it; otherwise
+   hold the draft for provider approval.
+9. Log agent events and update thread state/activity.
 
-### 3.1 Public provider page `/p/[slug]`
-- SSR for SEO and fast first paint (this is the "ad").
-- Pulls from `public_provider_profiles` VIEW (column-subset projection — never
-  reads `profiles` directly, so private columns stay private).
-- Renders: display name, headline, bio, avatar, location, services (active rows
-  of published providers, public-read RLS), weekly availability summary.
+### Runtime functions
 
-### 3.2 Booking flow (no auth)
-- Pick service → see real availability (services × availability minus existing
-  bookings, server-computed).
-- Pick slot → enter client name + contact → create tentative `bookings` row
-  (`source = 'portal'`, `status = 'tentative'`, no `thread_id`).
-- Confirmation page + email/SMS confirmation (via agent runtime).
-- Provider sees the portal booking in inbox/calendar same as agent bookings.
+| Function | Purpose |
+|---|---|
+| `telegram-webhook` | Telegram inbound webhook, provider resolved by webhook secret |
+| `whatsapp-webhook` | Meta WhatsApp Cloud API webhook, provider resolved by phone number id |
+| `google-voice-webhook` | Gmail Pub/Sub push for Google Voice notification emails |
+| `webchat-inbound` | Public web-chat inbound endpoint |
+| `webchat-poll` | Public web-chat polling endpoint for visible replies |
+| `send-draft` | Authenticated provider approval/delivery endpoint |
+| `connect-channel` | Server-side channel connection helper for selected channel setup paths |
 
-### 3.3 Age-gate + AI-disclosure
-- Interstitial honoring `profiles.age_gate_required` before profile/booking is
-  shown.
-- AI-disclosure copy on any agent-driven channel handoff link from the portal.
+### Safety, moderation, cost, and delivery
 
-### 3.4 Payments (GATED — this is the marketplace line itself)
-- **Taking money for a service through us is the single brightest line between
-  "tool" and "marketplace."** Activating payments = selling/intermediating the
-  service = "sales of services" = we are a marketplace. Do **not** build this
-  unless the marketplace decision has been made and the German/EU + processor-ToS
-  work is explicitly accepted.
-- Schema-ready only: `bookings` already carries `amount_cents`, `deposit_cents`,
-  `currency`, `payment_status`, `payment_provider`, `payment_ref`. These columns
-  are dormant; their presence does not change our positioning as long as no money
-  for a service moves through the platform.
-- Processor choice gated on ToS review for the vertical.
-- Flows to design (only post-decision): full prepay, deposit hold, pay-on-arrival.
+- FAQ matching and intent classification are dependency-free and covered by
+  Vitest.
+- Moderation flags underage/illegal terms at all levels and adds stricter terms
+  at `strict`. Flagged messages never auto-send.
+- LLM fallback defaults to server-side OpenRouter configuration when enabled.
+  Without a usable LLM path, the runtime still creates a safe holding draft.
+- Agent cost metadata is logged in `agent_events`; provider preferences include
+  daily, monthly, and per-thread AI cap fields.
+- Telegram, WhatsApp, Google Voice, and web chat differ only in transport.
+  Web chat "delivery" is database visibility through polling.
 
-### 3.5 Multi-tenancy
-- Schema is keyed by provider id throughout; portal routes are `/p/[slug]`.
-- Discovery / directory page is **not** in scope yet — one provider at launch,
-  schema avoids a later rewrite.
+## Data model snapshot
 
----
+Primary provider-owned tables and views used by the current app:
 
-## 4. Agent runtime (Supabase Edge Functions)
+- `profiles`: provider identity, plan, usage, slug, display/public profile fields.
+- `provider_preferences`: approval mode, moderation, notification/follow-up
+  toggles, LLM/cost cap fields, and related automation settings.
+- `faq`: saved responses used by the free prefilter.
+- `agent_channels`: provider channel credentials/state; client reads safe
+  columns only.
+- `threads`: provider/client conversation containers.
+- `messages`: inbound messages, outbound drafts, approval status, AI metadata,
+  reply linkage, and delivery metadata.
+- `bookings`: upcoming appointment/context rows used by calendar and stats.
+- `agent_events`: observability, model/cost metadata, and agent audit trail.
+- `subscription_entitlements`: StoreKit/web/demo entitlement records.
+- `landing_intents`: provider/client landing signup intent capture.
+- `public_provider_profiles`: public-safe profile projection for `/p/[slug]`.
 
-### 4.1 Inbound pipeline
-1. Channel webhook → Edge Function endpoint (one per channel).
-2. Resolve / create `threads` row by `(channel, external_thread_id)`.
-3. Insert inbound `messages` row (`direction = 'in'`).
-4. Content filter → `filtered_text` (per provider's filter level).
-5. **Free pre-filter:** keyword + FAQ table match. If hit, reply directly.
-6. **LLM fallback:** Claude Haiku 4.5 (cheap workhorse) for intent classification
-   + response generation. Token cost is the real launch cost driver.
-7. Drive the state machine (§4.2), persist new `state`, append outbound
-   `messages` row (`direction = 'out'`, `ai_generated = true`,
-   `ai_confidence`, `ai_label`).
-8. Send via the channel connector.
+Public service listing, availability, and payment-ready booking columns exist in
+the schema for optionality, but current UI does not ship marketplace discovery,
+client booking, or platform-managed payments.
 
-### 4.2 Booking state machine
-- States (lowercase, DB-canonical): `open` → `qualifying` → `offering` →
-  `awaiting_client` → `tentative` → `confirmed`. Side branches: `cancelled`,
-  `abandoned`. The Phase 2 message runtime uses these lowercase DB states
-  directly. The older uppercase `types/booking.ts` model should be retired or
-  rewritten before booking/portal work resumes.
-- `offering` writes a `TimeSlotOffer` (slots derived from `availability` minus
-  existing `bookings` for the provider).
-- `tentative` writes a `bookings` row with `source = 'ai'` and links
-  `thread_id`.
-- `confirmed` flips status and (optionally) creates the calendar event.
+## Explicit gaps and future work
 
-### 4.3 Outbound sending
-- Outbound messages go through an approval queue when
-  approval mode requires it (provider taps approve in inbox).
-- Only confident, clean FAQ matches can auto-send under `auto_eligible`; LLM and
-  deterministic fallback drafts stay pending for human approval. Delivery is
-  channel-aware: Telegram uses the Bot API, web chat flips visibility in the DB,
-  and Google Voice-over-Gmail replies through Gmail.
+- Self-serve WhatsApp and Google Voice setup in the app.
+- Provider-editable persona, boundaries, LLM enablement, and AI budget caps.
+- Persistent training import storage and retrieval-backed generation.
+- Manual booking creation from calendar.
+- Push notifications for drafts needing approval, channel errors, and handoffs.
+- Production subscription checkout/restore polish across all target platforms.
+- Scheduled follow-up/re-engagement jobs.
+- Public directory, client self-serve booking, and platform-managed service
+  payments remain gated marketplace work and should not be built without an
+  explicit product/legal decision.
 
-### 4.4 Re-engagement & follow-ups (`pg_cron`)
-- Past-client follow-ups (consent-based only — no cold contact).
-- No-show / abandoned-cart nudges.
-- Post-booking review request.
-- Cadence per `BookingAgentConfig.followUpSettings`.
+## Non-goals for the current app
 
-### 4.5 Ad post / refresh helper (Phase 4)
-- Helper to (re)post the portal link to the provider's ad surfaces.
-- Mind per-platform ToS — out of scope for the agent itself.
-
-### 4.6 Channel coverage
-- Web chat is the zero-setup default surface: embeddable widget, provider
-  resolved by public slug, pending drafts hidden until approved.
-- Telegram is implemented and free per message, but requires a provider-created
-  BotFather bot token.
-- WhatsApp Cloud API is wired through Meta webhooks and Graph API delivery. It
-  needs a Meta app, phone number id, access token, webhook verify token, and
-  hosted live UAT.
-- Google Voice-over-Gmail is code-wired through Gmail Pub/Sub/OAuth because
-  Google Voice has no direct SMS API. It is credential-heavy and still needs
-  hosted live UAT.
-- SMS remains a later paid channel.
-
----
-
-## 5. Cross-cutting
-
-### 5.1 Data model (Supabase, single project)
-- Provider-owned tables (owner-only RLS): `profiles`, `threads`, `messages`,
-  `bookings`, `faq`.
-- Public-read tables (RLS gated on **published** providers): `services`,
-  `availability`. Public reads of provider profile go through the
-  `public_provider_profiles` VIEW, never the `profiles` table.
-- `Database` interface in `types/database.ts` is the source of truth for DB
-  shape; `types/booking.ts` is the agent domain model (reconcile state casing
-  during runtime build).
-
-### 5.2 Authorization model
-- Provider auth: Supabase Auth (email/password now; OAuth later).
-- Portal: anonymous; reads only the public view + active services/availability
-  for published providers; writes only tentative bookings.
-- Agent runtime: service role inside Edge Functions; never shipped to client.
-
-### 5.3 Secrets & deploy
-- `EXPO_PUBLIC_*` only for non-sensitive values. `SUPABASE_SERVICE_ROLE_KEY` and
-  `DATABASE_URL` stay server-side.
-- Migrations applied via session pooler (port 5432), not transaction pooler
-  (6543) — CLI prepared statements break on 6543.
-- Provider app deploys as static web export to Vercel. Final domain is
-  `nitime.app`; current working Vercel alias is `nightime-agent.vercel.app`
-  until Cloudflare DNS is pointed at Vercel. Portal deploys as separate Next.js
-  project on Vercel Hobby if the marketplace fork is explicitly chosen. Edge
-  Functions deploy via `supabase functions deploy`.
-
-### 5.4 Cost posture
-- $0 until launch for local/dev usage (Supabase free tier, Vercel Hobby,
-  webchat, Telegram).
-- At launch the cost drivers are LLM tokens (mitigated by FAQ/keyword
-  pre-filter + Haiku) and per-message channel fees for paid transports such as
-  WhatsApp/SMS. Web chat and Telegram avoid per-message channel fees.
-
-### 5.5 Compliance constraints (named, not blockers)
-- **Tool vs. marketplace is the primary compliance lever.** Staying a pure
-  communication tool — no sales of services, no money for a service through us,
-  no booking-of-record, no public service listing — is what keeps us out of
-  marketplace/intermediary regulation (notably Germany/EU). Crossing into any of
-  those makes us a marketplace and opts us into that regulatory burden. See
-  "Product positioning & strategy" and "The marketplace line."
-- Public listing of massage/companion services raises exposure: **age-gate**
-  and processor **ToS** are real gates — and they only apply once we choose the
-  marketplace fork (§3).
-- Agent-as-provider raises an **AI-disclosure** obligation; copy must be
-  decided before any channel goes live.
-- No cold outreach — re-engagement is consent-only.
-
----
-
-## 6. Explicit non-goals (for now)
-
-- **Being a marketplace.** No sales of services, no money for a service through
-  the platform, no booking-of-record, no public service listing — until a
-  deliberate marketplace decision (and its German/EU regulatory work) is made.
-- Public customer portal / booking flow / payments (§3) — gated behind that
-  marketplace decision; schema-ready, not built.
-- Multi-provider directory / discovery surface (schema is ready, UI is not).
-- Native mobile builds — web export only until product-market fit.
-- In-house payment processing UI — schema ready, processor TBD.
-- A separate provider mobile app — Expo web doubles as the dashboard.
-- Cold outbound prospecting on any channel.
+- Marketplace discovery or public multi-provider directory.
+- Selling, processing, escrowing, refunding, or mediating client service
+  payments.
+- Client account system.
+- Cold outbound prospecting.
+- Native-only workflows that cannot work through Expo web export.

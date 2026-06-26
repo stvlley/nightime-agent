@@ -95,7 +95,7 @@ export function FeedbackWidget({ route }: { route?: string }) {
                   </Text>
                   <Text fontSize={13} color={colors.textSecondary}>
                     {isRemoteSupportFeedbackConfigured()
-                      ? 'This creates a support ticket for the Nitime team.'
+                      ? 'This creates a support ticket for the nitime team.'
                       : 'Dev mode stores this locally until Stride Support is configured.'}
                   </Text>
                 </YStack>
@@ -174,18 +174,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
-    backgroundColor: 'rgba(22, 19, 52, 0.42)',
+    backgroundColor: 'rgba(33, 27, 24, 0.42)',
   },
   card: {
     width: '100%',
     maxWidth: 520,
     maxHeight: '90%',
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     padding: 18,
-    shadowColor: '#161334',
+    shadowColor: colors.text,
     shadowOpacity: 0.22,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 14 },
@@ -194,13 +194,13 @@ const styles = StyleSheet.create({
   typeButton: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: colors.surface,
   },
   typeButtonSelected: {
-    borderColor: '#d8d0ff',
-    backgroundColor: '#f0edff',
+    borderColor: colors.accentDim,
+    backgroundColor: colors.neutralBg,
   },
 });

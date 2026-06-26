@@ -80,9 +80,9 @@ Deno.serve(async (req) => {
       deliver: async () => ({ ok: true }),
     });
 
-    // Only an auto-sent FAQ reply is shown immediately; held drafts get a receipt.
+    // Only an auto-sent provider-visible reply is shown immediately; held drafts get a receipt.
     if (result.autoSent && result.deliveryOk && result.draftText) {
-      return json({ status: 'answered', reply: result.draftText, aiGenerated: true });
+      return json({ status: 'answered', reply: result.draftText, aiGenerated: false });
     }
     return json({ status: 'received', reply: RECEIPT, aiGenerated: false });
   } catch (e) {

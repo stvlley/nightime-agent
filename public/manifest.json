@@ -1,6 +1,6 @@
 {
-  "name": "Nitime",
-  "short_name": "Nitime",
+  "name": "nitime",
+  "short_name": "nitime",
   "description": "AI-powered messaging and booking assistant for service providers",
   "start_url": "/",
   "display": "standalone",

@@ -8,26 +8,25 @@ import { useCookieConsent } from '@/hooks/useCookieConsent';
 import { validateLandingAuthForm } from '@/utils/landingAuthValidation';
 import { onboardingUtils } from '@/utils/onboarding';
 import { recordLandingIntent } from '@/lib/landingIntents';
-import { hasSubscriptionEntitlement } from '@/lib/subscriptions';
 import { CookieConsentBanner } from './CookieConsentBanner';
 import {
-  EarlyAccessSection,
-  FaqSection,
   FinalCtaSection,
   HeroSection,
-  HowItWorksSection,
   LandingNav,
-  RoleSplitSection,
-  TrustSection,
-  WorkflowSection,
+  ProductStorySection,
 } from './LandingSections';
 import { RoleSignupModal } from './RoleSignupModal';
-import { LandingAuthMode, LandingSignupErrors, LandingSignupForm, LandingSignupRole } from './types';
+import {
+  LandingAuthMode,
+  LandingSignupErrors,
+  LandingSignupForm,
+  LandingSignupRole,
+} from './types';
 import { styles } from './styles';
 
 const SEO_TITLE = 'nitime';
 const SEO_DESCRIPTION =
-  'Nitime acts like a discreet front desk across messaging channels: it answers questions, qualifies intent, offers available times, and keeps the provider in control.';
+  'nitime acts like a discreet front desk across messaging channels: it answers questions, qualifies intent, offers available times, and keeps the provider in control.';
 const SEO_URL = 'https://nitime.app/';
 
 const initialSignupForm: LandingSignupForm = {
@@ -37,12 +36,12 @@ const initialSignupForm: LandingSignupForm = {
 };
 
 async function getSignedInStartRoute(
-  userId: string
-): Promise<'/(onboarding)/onboarding' | '/(onboarding)/pricing' | '/(tabs)/dashboard'> {
-  const [onboardingCompleted, subscriptionEntitled] = await Promise.all([
-    onboardingUtils.isOnboardingCompleted(),
-    hasSubscriptionEntitlement(userId),
-  ]);
+  userId: string,
+): Promise<
+  '/(onboarding)/onboarding' | '/(onboarding)/pricing' | '/(tabs)/dashboard'
+> {
+  const { onboardingCompleted, subscriptionEntitled } =
+    await onboardingUtils.getAccessState(userId);
 
   if (!onboardingCompleted) return '/(onboarding)/onboarding';
   return subscriptionEntitled ? '/(tabs)/dashboard' : '/(onboarding)/pricing';
@@ -53,8 +52,13 @@ export function LandingPage() {
   const isNarrow = width < 760;
   const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
   const userId = user?.id;
-  const { preference, loaded: consentLoaded, savePreference } = useCookieConsent();
-  const showCookieConsent = Platform.OS === 'web' && consentLoaded && !preference;
+  const {
+    preference,
+    loaded: consentLoaded,
+    savePreference,
+  } = useCookieConsent();
+  const showCookieConsent =
+    Platform.OS === 'web' && consentLoaded && !preference;
   const [authMode, setAuthMode] = useState<LandingAuthMode>('signup');
   const [signupRole, setSignupRole] = useState<LandingSignupRole>('provider');
   const [signupVisible, setSignupVisible] = useState(false);
@@ -145,7 +149,11 @@ export function LandingPage() {
   };
 
   const submitSignup = async () => {
-    const validationErrors = validateLandingAuthForm(form, signupRole, authMode);
+    const validationErrors = validateLandingAuthForm(
+      form,
+      signupRole,
+      authMode,
+    );
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -171,7 +179,11 @@ export function LandingPage() {
         setSubmitting(false);
         setSignupVisible(false);
         resetSignup();
-        router.replace(result.userId ? await getSignedInStartRoute(result.userId) : '/(onboarding)/onboarding');
+        router.replace(
+          result.userId
+            ? await getSignedInStartRoute(result.userId)
+            : '/(onboarding)/onboarding',
+        );
       } catch (error: any) {
         setSubmitting(false);
         setAuthRedirectPaused(false);
@@ -230,7 +242,9 @@ export function LandingPage() {
       if (!result.success) {
         setSubmitting(false);
         setAuthRedirectPaused(false);
-        setErrors({ submit: result.error ?? 'Unable to continue with Google.' });
+        setErrors({
+          submit: result.error ?? 'Unable to continue with Google.',
+        });
         return;
       }
 
@@ -253,11 +267,17 @@ export function LandingPage() {
         return;
       }
 
-      router.replace(result.userId ? await getSignedInStartRoute(result.userId) : '/(onboarding)/onboarding');
+      router.replace(
+        result.userId
+          ? await getSignedInStartRoute(result.userId)
+          : '/(onboarding)/onboarding',
+      );
     } catch (error: any) {
       setSubmitting(false);
       setAuthRedirectPaused(false);
-      setErrors({ submit: error?.message ?? 'Unable to continue with Google.' });
+      setErrors({
+        submit: error?.message ?? 'Unable to continue with Google.',
+      });
     }
   };
 
@@ -276,16 +296,18 @@ export function LandingPage() {
         <link rel="canonical" href={SEO_URL} />
       </Head>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.page}
+          showsVerticalScrollIndicator={false}
+        >
           <LandingNav onOpenAuth={openAuth} onOpenSignup={openSignup} />
           <HeroSection isNarrow={isNarrow} onOpenSignup={openSignup} />
-          <RoleSplitSection isNarrow={isNarrow} onOpenSignup={openSignup} />
-          <HowItWorksSection isNarrow={isNarrow} />
-          <WorkflowSection isNarrow={isNarrow} />
-          <TrustSection isNarrow={isNarrow} />
-          <EarlyAccessSection isNarrow={isNarrow} />
-          <FaqSection />
-          <FinalCtaSection isNarrow={isNarrow} onOpenSignup={openSignup} />
+          <ProductStorySection isNarrow={isNarrow} onOpenSignup={openSignup} />
+          <FinalCtaSection
+            isNarrow={isNarrow}
+            onOpenAuth={openAuth}
+            onOpenSignup={openSignup}
+          />
         </ScrollView>
 
         <CookieConsentBanner

@@ -116,4 +116,4 @@ Either path stores the Gmail refresh token server-side and starts the Gmail
   complete Google's restricted-scope verification so tokens are long-lived.
 - Auto-translation applies to Google Voice too (inbound → English for you, your
   reply → the client's language) when `GOOGLE_TRANSLATE_API_KEY` (or
-  `ANTHROPIC_API_KEY`) is set.
+  `OPENROUTER_API_KEY`) is set.

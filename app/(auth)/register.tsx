@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Button, Field, Surface, Text, XStack, YStack, colors } from '@/components/ui';
 import { onboardingUtils } from '@/utils/onboarding';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -56,80 +48,68 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.gradient}
-      >
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Start automating your business</Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <YStack gap={22} style={styles.inner}>
+          <YStack gap={8} alignItems="center">
+            <Text fontSize={34} fontWeight="800" color={colors.text} textAlign="center" variant="display">
+              Create Account
+            </Text>
+            <Text fontSize={16} color={colors.textSecondary} textAlign="center">
+              Start automating your business
+            </Text>
+          </YStack>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Business Name</Text>
-              <TextInput
-                style={styles.input}
+          <Surface style={styles.form}>
+            <YStack gap={16}>
+              <Field
+                label="Business Name"
                 value={formData.businessName}
                 onChangeText={(value) => updateFormData('businessName', value)}
                 placeholder="Enter your business name"
               />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
+              <Field
+                label="Email"
                 value={formData.email}
                 onChangeText={(value) => updateFormData('email', value)}
                 placeholder="Enter your email"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
+              <Field
+                label="Password"
                 value={formData.password}
                 onChangeText={(value) => updateFormData('password', value)}
                 placeholder="Create a password"
                 secureTextEntry
               />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
+              <Field
+                label="Confirm Password"
                 value={formData.confirmPassword}
                 onChangeText={(value) => updateFormData('confirmPassword', value)}
                 placeholder="Confirm your password"
                 secureTextEntry
               />
-            </View>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
+              <Button onPress={handleRegister} loading={loading} disabled={loading}>
                 {loading ? 'Creating Account...' : 'Create Account'}
-              </Text>
-            </TouchableOpacity>
+              </Button>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
-              <Link href="/" style={styles.link}>
-                <Text style={styles.linkText}>Sign In</Text>
-              </Link>
-            </View>
-          </View>
-        </ScrollView>
-      </LinearGradient>
+              <XStack justifyContent="center" alignItems="center" gap={4} flexWrap="wrap">
+                <Text fontSize={14} color={colors.textSecondary}>
+                  Already have an account?
+                </Text>
+                <Link href="/" asChild>
+                  <Pressable accessibilityRole="link">
+                    <Text fontSize={14} fontWeight="800" color={colors.primaryActive}>
+                      Sign In
+                    </Text>
+                  </Pressable>
+                </Link>
+              </XStack>
+            </YStack>
+          </Surface>
+        </YStack>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -137,87 +117,19 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
+    backgroundColor: colors.background,
   },
   content: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+  inner: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
   form: {
-    backgroundColor: 'white',
-    borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: '#f9fafb',
-  },
-  button: {
-    backgroundColor: '#4f46e5',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    color: '#6b7280',
-  },
-  link: {
-    marginLeft: 4,
-  },
-  linkText: {
-    color: '#4f46e5',
-    fontWeight: '600',
   },
 });

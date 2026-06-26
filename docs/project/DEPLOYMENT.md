@@ -152,7 +152,7 @@ Set server-side Supabase function secrets for runtime-only credentials:
 
 ```bash
 supabase secrets set AGENT_LLM_DISABLED=true AGENT_LLM_MAX_TOKENS=180 # cost-first TestFlight default
-supabase secrets set ANTHROPIC_API_KEY=... # optional LLM fallback
+supabase secrets set OPENROUTER_API_KEY=... AGENT_MODEL=openrouter/free # optional LLM fallback
 supabase secrets set GOOGLE_OAUTH_CLIENT_ID=... GOOGLE_OAUTH_CLIENT_SECRET=... # Google Voice-over-Gmail
 supabase secrets set WHATSAPP_VERIFY_TOKEN=... WHATSAPP_APP_SECRET=... # WhatsApp Cloud API webhook verification
 ```

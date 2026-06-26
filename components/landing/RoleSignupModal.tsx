@@ -1,10 +1,14 @@
 import React from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Check, X } from 'lucide-react-native';
-import { colors } from '@/components/ui';
 import { getSignupRoleCopy } from './content';
-import { LandingAuthMode, LandingSignupErrors, LandingSignupForm, LandingSignupRole } from './types';
-import { styles } from './styles';
+import { landingPalette, styles } from './styles';
+import {
+  LandingAuthMode,
+  LandingSignupErrors,
+  LandingSignupForm,
+  LandingSignupRole,
+} from './types';
 
 type RoleSignupModalProps = {
   form: LandingSignupForm;
@@ -48,14 +52,19 @@ export function RoleSignupModal({
   const showProviderAuth = isLogin || role === 'provider';
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.modalBackdrop}>
         <View
           style={[styles.modalCard, isNarrow && styles.modalCardMobile]}
           accessibilityViewIsModal
         >
           <View style={styles.modalHeader}>
-            <View>
+            <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalTitle}>{title}</Text>
               <Text style={styles.modalIntro}>{intro}</Text>
             </View>
@@ -65,7 +74,7 @@ export function RoleSignupModal({
               accessibilityRole="button"
               accessibilityLabel="Close signup"
             >
-              <X size={18} color={colors.textSecondary} />
+              <X size={18} color={landingPalette.bodyText} />
             </Pressable>
           </View>
 
@@ -74,13 +83,23 @@ export function RoleSignupModal({
               {(['login', 'signup'] as LandingAuthMode[]).map((nextMode) => (
                 <Pressable
                   key={nextMode}
-                  style={[styles.segment, mode === nextMode && styles.segmentActive]}
+                  style={[
+                    styles.segment,
+                    mode === nextMode && styles.segmentActive,
+                  ]}
                   onPress={() => onModeChange(nextMode)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: mode === nextMode }}
-                  accessibilityLabel={nextMode === 'login' ? 'Log in' : 'Create account'}
+                  accessibilityLabel={
+                    nextMode === 'login' ? 'Log in' : 'Create account'
+                  }
                 >
-                  <Text style={[styles.segmentText, mode === nextMode && styles.segmentTextActive]}>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      mode === nextMode && styles.segmentTextActive,
+                    ]}
+                  >
                     {nextMode === 'login' ? 'Log in' : 'Create account'}
                   </Text>
                 </Pressable>
@@ -90,11 +109,11 @@ export function RoleSignupModal({
 
           {signupComplete ? (
             <View style={styles.successBox}>
-              <Check size={28} color={colors.accent} />
+              <Check size={28} color={landingPalette.purpleAccent} />
               <Text style={styles.successTitle}>Client early access saved</Text>
               <Text style={styles.successText}>
-                We saved your details. The full client portal signup flow opens after the provider
-                launch.
+                We saved your details. The full client portal signup flow opens
+                after the provider launch.
               </Text>
             </View>
           ) : (
@@ -102,7 +121,10 @@ export function RoleSignupModal({
               {showProviderAuth ? (
                 <>
                   <Pressable
-                    style={[styles.googleAuthButton, submitting && styles.disabledButton]}
+                    style={[
+                      styles.googleAuthButton,
+                      submitting && styles.disabledButton,
+                    ]}
                     disabled={submitting}
                     onPress={onGoogleAuth}
                     accessibilityRole="button"
@@ -111,7 +133,9 @@ export function RoleSignupModal({
                   >
                     <Text style={styles.googleAuthIcon}>G</Text>
                     <Text style={styles.googleAuthLabel}>
-                      {submitting ? 'Opening Google...' : 'Continue with Google'}
+                      {submitting
+                        ? 'Opening Google...'
+                        : 'Continue with Google'}
                     </Text>
                   </Pressable>
                   <View style={styles.authDivider}>
@@ -145,7 +169,9 @@ export function RoleSignupModal({
               {isLogin || role === 'provider' ? (
                 <LabeledInput
                   label="Password"
-                  placeholder={isLogin ? 'Enter your password' : 'At least 8 characters'}
+                  placeholder={
+                    isLogin ? 'Enter your password' : 'At least 8 characters'
+                  }
                   value={form.password}
                   onChangeText={(value) => onFormChange('password', value)}
                   secureTextEntry
@@ -154,9 +180,14 @@ export function RoleSignupModal({
                   error={errors.password}
                 />
               ) : null}
-              {errors.submit ? <Text style={styles.submitError}>{errors.submit}</Text> : null}
+              {errors.submit ? (
+                <Text style={styles.submitError}>{errors.submit}</Text>
+              ) : null}
               <Pressable
-                style={[styles.modalAction, submitting && styles.disabledButton]}
+                style={[
+                  styles.modalAction,
+                  submitting && styles.disabledButton,
+                ]}
                 disabled={submitting}
                 onPress={onSubmit}
                 accessibilityRole="button"
@@ -187,7 +218,7 @@ function LabeledInput({
     <View style={styles.inputGroup}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={landingPalette.textMuted}
         style={[styles.input, error && styles.inputError]}
         accessibilityLabel={label}
         accessibilityState={{ disabled: props.editable === false }}

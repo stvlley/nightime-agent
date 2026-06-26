@@ -80,44 +80,71 @@ function MessageBubble({
   const pending = outbound && message.approvalStatus === 'pending';
   const rejected = outbound && message.approvalStatus === 'rejected';
   const failed = outbound && message.approvalStatus === 'failed';
+  const needsReview = pending || failed;
 
   const sourceLabel =
     message.source === 'faq' ? 'saved reply' : message.source === 'llm' ? 'AI' : message.source;
+  const bubbleBackground = needsReview ? '#fffaf1' : outbound ? colors.primary : colors.surface;
+  const bubbleBorder = needsReview ? '#d7b56f' : colors.border;
+  const messageColor = needsReview || !outbound ? colors.text : colors.onPrimary;
+  const metaColor = needsReview || !outbound ? colors.textMuted : 'rgba(255,255,255,0.72)';
 
   return (
     <XStack justifyContent={outbound ? 'flex-end' : 'flex-start'}>
       <YStack
-        gap={6}
-        padding={12}
-        borderRadius={10}
+        gap={needsReview ? 10 : 6}
+        padding={needsReview ? 14 : 12}
+        borderRadius={needsReview ? 14 : 10}
         borderWidth={1}
-        borderColor={pending ? toneBorder('warning') : colors.border}
-        backgroundColor={outbound ? colors.primary : colors.surface}
-        style={{ maxWidth: '85%', opacity: rejected ? 0.55 : 1 }}
+        borderColor={bubbleBorder}
+        backgroundColor={bubbleBackground}
+        style={{
+          maxWidth: needsReview ? '92%' : '85%',
+          opacity: rejected ? 0.55 : 1,
+          shadowColor: needsReview ? '#8f6a18' : 'transparent',
+          shadowOpacity: needsReview ? 0.12 : 0,
+          shadowRadius: needsReview ? 14 : 0,
+          shadowOffset: { width: 0, height: 7 },
+          elevation: needsReview ? 2 : 0,
+        }}
       >
-        <Text fontSize={14} color={outbound ? colors.onPrimary : colors.text}>
+        {needsReview ? (
+          <XStack justifyContent="space-between" alignItems="center" gap={12}>
+            <Text fontSize={12} fontWeight="800" color={colors.warning}>
+              Draft ready for review
+            </Text>
+            {pending ? <Badge tone="warning">awaiting approval</Badge> : null}
+            {failed ? <Badge tone="danger">delivery failed</Badge> : null}
+          </XStack>
+        ) : null}
+
+        <Text fontSize={14} color={messageColor} style={{ lineHeight: 20 }}>
           {message.text}
         </Text>
+
         <XStack gap={6} flexWrap="wrap" alignItems="center">
           {message.createdAt ? (
-            <Text fontSize={11} color={colors.textMuted}>
+            <Text fontSize={11} color={metaColor}>
               {formatTime(message.createdAt)}
             </Text>
           ) : null}
           {message.aiGenerated && sourceLabel ? <Badge tone="info">{sourceLabel}</Badge> : null}
           {!message.aiGenerated && outbound ? <Badge tone="neutral">you</Badge> : null}
           {message.approvalStatus === 'auto_sent' ? <Badge tone="success">auto-sent</Badge> : null}
-          {pending ? <Badge tone="warning">awaiting approval</Badge> : null}
+          {pending && !needsReview ? <Badge tone="warning">awaiting approval</Badge> : null}
           {rejected ? <Badge tone="neutral">rejected</Badge> : null}
-          {failed ? <Badge tone="danger">delivery failed</Badge> : null}
+          {failed && !needsReview ? <Badge tone="danger">delivery failed</Badge> : null}
         </XStack>
-        {pending || failed ? (
-          <XStack gap={8} marginTop={2}>
-            <Button icon={Check} loading={busy} disabled={busy} onPress={() => onApprove(message.id)}>
-              {failed ? 'Retry send' : 'Approve & send'}
-            </Button>
+
+        {needsReview ? (
+          <XStack gap={10} marginTop={2} flexWrap="wrap" alignItems="center">
+            <YStack style={{ minWidth: 172 }}>
+              <Button icon={Check} loading={busy} disabled={busy} onPress={() => onApprove(message.id)}>
+                {failed ? 'Retry send' : 'Approve & send'}
+              </Button>
+            </YStack>
             {pending ? (
-              <Button icon={X} variant="secondary" disabled={busy} onPress={() => onReject(message.id)}>
+              <Button icon={X} variant="ghost" disabled={busy} onPress={() => onReject(message.id)}>
                 Reject
               </Button>
             ) : null}
@@ -126,10 +153,6 @@ function MessageBubble({
       </YStack>
     </XStack>
   );
-}
-
-function toneBorder(tone: 'warning'): string {
-  return tone === 'warning' ? '#f5d9a8' : colors.border;
 }
 
 export default function ThreadScreen() {
@@ -281,7 +304,7 @@ export default function ThreadScreen() {
       ) : null}
 
       {loading ? (
-        <LoadingState />
+        <LoadingState variant="messages" rows={4} />
       ) : !thread ? (
         <EmptyState
           title="Conversation not found"

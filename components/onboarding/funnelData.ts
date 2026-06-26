@@ -246,7 +246,7 @@ export const FUNNEL_SCREENS: FunnelScreen[] = [
     step: 9,
     eyebrow: 'Result',
     title: 'Your message assistant plan is ready',
-    body: 'Based on your answers, Nitime starts as a controlled inbox assistant — not a generic bot.',
+    body: 'Based on your answers, nitime starts as a controlled inbox assistant — not a generic bot.',
     event: FUNNEL_EVENTS.diagnosticCompleted,
     kind: 'result',
     cta: 'See trial options',

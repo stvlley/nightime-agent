@@ -10,6 +10,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import { colors } from '@/components/ui';
+import { landingPalette } from './styles';
 
 type OwlMascotProps = {
   size?: number;
@@ -23,25 +24,25 @@ export function OwlMascot({ size = 200, glow = true }: OwlMascotProps) {
       width={size}
       height={size}
       viewBox="0 0 256 256"
-      accessibilityLabel="Nitime owl mascot"
+      accessibilityLabel="nitime owl mascot"
     >
       <Defs>
         <LinearGradient id="owlBody" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={colors.primary} />
-          <Stop offset="1" stopColor={colors.primaryActive} />
+          <Stop offset="0" stopColor={landingPalette.purple} />
+          <Stop offset="1" stopColor={landingPalette.purpleActive} />
         </LinearGradient>
         <LinearGradient id="owlBelly" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={colors.accent} stopOpacity="0.95" />
-          <Stop offset="1" stopColor={colors.accentDim} stopOpacity="0.95" />
+          <Stop offset="0" stopColor={landingPalette.purpleAccent} stopOpacity="0.95" />
+          <Stop offset="1" stopColor={landingPalette.purpleDim} stopOpacity="0.95" />
         </LinearGradient>
         <RadialGradient id="owlGlow" cx="0.5" cy="0.5" r="0.5">
-          <Stop offset="0" stopColor={colors.accent} stopOpacity="0.35" />
-          <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
+          <Stop offset="0" stopColor={landingPalette.purpleAccent} stopOpacity="0.35" />
+          <Stop offset="1" stopColor={landingPalette.purpleAccent} stopOpacity="0" />
         </RadialGradient>
         <RadialGradient id="eyeShine" cx="0.5" cy="0.5" r="0.5">
           <Stop offset="0" stopColor="#ffffff" />
-          <Stop offset="0.7" stopColor={colors.accent} stopOpacity="0.85" />
-          <Stop offset="1" stopColor={colors.primaryActive} stopOpacity="0" />
+          <Stop offset="0.7" stopColor={landingPalette.purpleAccent} stopOpacity="0.85" />
+          <Stop offset="1" stopColor={landingPalette.purpleActive} stopOpacity="0" />
         </RadialGradient>
       </Defs>
 
@@ -80,8 +81,8 @@ export function OwlMascot({ size = 200, glow = true }: OwlMascotProps) {
       <Circle cx="160" cy="120" r="28" fill={colors.surface} />
 
       {/* Eye outer rims */}
-      <Circle cx="96" cy="120" r="28" fill="none" stroke={colors.accent} strokeWidth="3" />
-      <Circle cx="160" cy="120" r="28" fill="none" stroke={colors.accent} strokeWidth="3" />
+      <Circle cx="96" cy="120" r="28" fill="none" stroke={landingPalette.purpleAccent} strokeWidth="3" />
+      <Circle cx="160" cy="120" r="28" fill="none" stroke={landingPalette.purpleAccent} strokeWidth="3" />
 
       {/* Eye shine */}
       <Circle cx="96" cy="120" r="20" fill="url(#eyeShine)" />
@@ -94,22 +95,22 @@ export function OwlMascot({ size = 200, glow = true }: OwlMascotProps) {
       <Circle cx="159" cy="121" r="2.5" fill="#ffffff" />
 
       {/* Beak */}
-      <Path d="M128 142 L120 158 L136 158 Z" fill={colors.accent} />
+      <Path d="M128 142 L120 158 L136 158 Z" fill={landingPalette.purpleAccent} />
 
       {/* Wing tips (subtle curves on the sides) */}
       <Path
         d="M64 162 C 62 184, 74 200, 92 204 L 92 200 C 78 194, 70 180, 70 168 Z"
-        fill={colors.primaryActive}
+        fill={landingPalette.purpleActive}
         opacity="0.85"
       />
       <Path
         d="M192 162 C 194 184, 182 200, 164 204 L 164 200 C 178 194, 186 180, 186 168 Z"
-        fill={colors.primaryActive}
+        fill={landingPalette.purpleActive}
         opacity="0.85"
       />
 
       {/* Feet */}
-      <G fill={colors.accent}>
+      <G fill={landingPalette.purpleAccent}>
         <Path d="M108 224 L100 234 L108 234 L108 230 L114 234 L114 224 Z" />
         <Path d="M148 224 L142 234 L148 234 L148 230 L154 234 L154 224 Z" />
       </G>

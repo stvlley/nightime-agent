@@ -133,6 +133,7 @@ export interface Database {
           agent_tone: string | null;
           approval_mode: 'manual' | 'auto_eligible';
           moderation_level: 'low' | 'medium' | 'strict';
+          agent_mode: 'keep_up' | 'help_respond' | 'talk_for_me';
           follow_up_enabled: boolean;
           notifications_enabled: boolean;
           notification_permission: 'granted' | 'denied' | 'unsupported' | 'skipped';
@@ -140,6 +141,9 @@ export interface Database {
           ai_daily_cap_cents: number;
           ai_monthly_cap_cents: number;
           ai_thread_cap_cents: number;
+          ai_daily_call_cap: number | null;
+          ai_monthly_call_cap: number | null;
+          ai_thread_call_cap: number | null;
           ai_cap_behavior: 'fallback';
           message_channels: string[];
           common_questions: string[];
@@ -155,6 +159,7 @@ export interface Database {
           agent_tone?: string | null;
           approval_mode?: 'manual' | 'auto_eligible';
           moderation_level?: 'low' | 'medium' | 'strict';
+          agent_mode?: 'keep_up' | 'help_respond' | 'talk_for_me';
           follow_up_enabled?: boolean;
           notifications_enabled?: boolean;
           notification_permission?: 'granted' | 'denied' | 'unsupported' | 'skipped';
@@ -162,6 +167,9 @@ export interface Database {
           ai_daily_cap_cents?: number;
           ai_monthly_cap_cents?: number;
           ai_thread_cap_cents?: number;
+          ai_daily_call_cap?: number | null;
+          ai_monthly_call_cap?: number | null;
+          ai_thread_call_cap?: number | null;
           ai_cap_behavior?: 'fallback';
           message_channels?: string[];
           common_questions?: string[];

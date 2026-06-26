@@ -1,7 +1,11 @@
 import React, { ComponentType, ReactNode } from 'react';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
+  Platform,
   Pressable,
   ScrollView as RNScrollView,
   Switch,
@@ -16,31 +20,42 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LucideProps } from 'lucide-react-native';
 
-// Light app palette aligned with the conversion onboarding brand.
+// Warm paper palette shared by public, onboarding, auth, and provider surfaces.
 export const colors = {
-  background: '#f5f6ff',
-  surface: '#ffffff',
-  surfaceMuted: '#f8f9ff',
-  border: '#e8e8f6',
-  borderStrong: '#d9d8ef',
-  text: '#161334',
-  textSecondary: '#5a5780',
-  textMuted: '#9794b6',
-  primary: '#7c5cff',
-  primaryActive: '#6442f0',
-  success: '#119e6b',
-  successBg: '#e2f8ef',
-  warning: '#c77a12',
-  warningBg: '#fdf1dd',
-  danger: '#e5484d',
-  dangerBg: '#ffeff1',
-  info: '#2676d9',
-  infoBg: '#edf5ff',
-  neutralBg: '#f4f1ff',
-  accent: '#9a63ff',
-  accentDim: '#d8d3ee',
-  starGlow: 'rgba(124, 92, 255, 0.28)',
+  background: '#f6f0e6',
+  surface: '#fbf6ec',
+  surfaceMuted: '#eee6d8',
+  border: '#ddd2c0',
+  borderStrong: '#cfc1ad',
+  text: '#211b18',
+  textSecondary: '#675d55',
+  textMuted: '#8c8175',
+  primary: '#7460d6',
+  primaryActive: '#5f4cbd',
+  success: '#197a52',
+  successBg: '#e3f3e8',
+  warning: '#9a6115',
+  warningBg: '#f4e5c8',
+  danger: '#b23b45',
+  dangerBg: '#f3d9db',
+  info: '#346e9d',
+  infoBg: '#dceaf1',
+  neutralBg: '#eee6d8',
+  accent: '#8b76e6',
+  accentDim: '#d7cdea',
+  starGlow: 'rgba(139, 118, 230, 0.26)',
   onPrimary: '#ffffff',
+};
+
+export const fonts = {
+  display: Platform.select({
+    web: 'Georgia, "Times New Roman", serif',
+    default: 'serif',
+  }),
+  rounded: Platform.select({
+    web: 'ui-rounded, "SF Pro Rounded", "Avenir Next Rounded", "Nunito", system-ui, sans-serif',
+    default: undefined,
+  }),
 };
 
 export const spacing = {
@@ -49,16 +64,22 @@ export const spacing = {
   row: 12,
 };
 
+export const SCREEN_MIN_WIDTH = 0;
+export const SCREEN_MAX_WIDTH = 960;
+
 type IconComponent = ComponentType<LucideProps>;
 type Tone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
+type SkeletonAnimationValue = Animated.Value | Animated.AnimatedInterpolation<number>;
+
+const SkeletonAnimationContext = React.createContext<SkeletonAnimationValue | null>(null);
 
 const toneMap: Record<Tone, { bg: string; fg: string; border: string }> = {
   neutral: { bg: colors.neutralBg, fg: colors.textSecondary, border: colors.border },
-  primary: { bg: '#f0edff', fg: colors.primary, border: '#d8d0ff' },
-  success: { bg: colors.successBg, fg: colors.success, border: '#bdeed9' },
-  warning: { bg: colors.warningBg, fg: colors.warning, border: '#f5d9a8' },
-  danger: { bg: colors.dangerBg, fg: colors.danger, border: '#ffc8cf' },
-  info: { bg: colors.infoBg, fg: colors.info, border: '#c9e0ff' },
+  primary: { bg: '#ece7fb', fg: colors.primaryActive, border: colors.accentDim },
+  success: { bg: colors.successBg, fg: colors.success, border: '#bfdcc8' },
+  warning: { bg: colors.warningBg, fg: colors.warning, border: '#dec38f' },
+  danger: { bg: colors.dangerBg, fg: colors.danger, border: '#dfb5ba' },
+  info: { bg: colors.infoBg, fg: colors.info, border: '#b7d1df' },
 };
 
 function runHaptic(kind: 'selection' | 'success' | 'warning' | 'error' = 'selection') {
@@ -140,6 +161,7 @@ export function Text({
   textAlign,
   numberOfLines,
   flex,
+  variant,
   style,
 }: {
   children?: ReactNode;
@@ -149,8 +171,11 @@ export function Text({
   textAlign?: 'auto' | 'left' | 'right' | 'center' | 'justify';
   numberOfLines?: number;
   flex?: number;
+  variant?: 'auto' | 'display' | 'rounded';
   style?: TextProps['style'];
 }) {
+  const resolvedVariant = variant ?? (fontSize >= 20 ? 'display' : 'rounded');
+
   return (
     <RNText
       numberOfLines={numberOfLines}
@@ -161,6 +186,7 @@ export function Text({
           color,
           textAlign,
           flex,
+          fontFamily: resolvedVariant === 'display' ? fonts.display : fonts.rounded,
         },
         style,
       ]}
@@ -188,7 +214,17 @@ export function Screen({
   padded?: boolean;
 }) {
   const content = (
-    <YStack gap={18} padding={padded ? spacing.page : 0} style={!scroll ? { flex: 1 } : undefined}>
+    <YStack
+      gap={18}
+      padding={padded ? spacing.page : 0}
+      style={{
+        width: '100%',
+        minWidth: SCREEN_MIN_WIDTH,
+        maxWidth: SCREEN_MAX_WIDTH,
+        alignSelf: 'center',
+        ...(!scroll ? { flex: 1 } : {}),
+      }}
+    >
       {children}
     </YStack>
   );
@@ -198,7 +234,7 @@ export function Screen({
       {scroll ? (
         <RNScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 116 }}
+          contentContainerStyle={{ paddingBottom: 96 }}
           showsVerticalScrollIndicator={false}
         >
           {content}
@@ -214,7 +250,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <XStack alignItems="center" justifyContent="space-between" gap={16}>
       <YStack flex={1} gap={4}>
-        <Text fontSize={28} fontWeight="700" color={colors.text}>
+        <Text fontSize={28} fontWeight="700" color={colors.text} variant="display">
           {title}
         </Text>
         {subtitle ? (
@@ -234,7 +270,7 @@ export function Section({ title, action, children }: { title?: string; action?: 
       {title || action ? (
         <XStack alignItems="center" justifyContent="space-between" gap={12}>
           {title ? (
-            <Text fontSize={16} fontWeight="700" color={colors.text}>
+            <Text fontSize={16} fontWeight="700" color={colors.text} variant="rounded">
               {title}
             </Text>
           ) : (
@@ -333,7 +369,7 @@ export function Button({
         backgroundColor: variant === 'primary' && pressed ? colors.primaryActive : bg,
         borderColor: variant === 'primary' ? colors.primary : borderColor,
         borderWidth: variant === 'ghost' ? 0 : 1,
-        borderRadius: 10,
+        borderRadius: 8,
         paddingHorizontal: 16,
         paddingVertical: 11,
         shadowColor: variant === 'primary' ? colors.primaryActive : 'transparent',
@@ -419,9 +455,13 @@ export function Field({
   multiline,
   secureTextEntry,
   keyboardType,
+  autoCapitalize,
 }: {
   label?: string;
-} & Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'multiline' | 'secureTextEntry' | 'keyboardType'>) {
+} & Pick<
+  TextInputProps,
+  'value' | 'onChangeText' | 'placeholder' | 'multiline' | 'secureTextEntry' | 'keyboardType' | 'autoCapitalize'
+>) {
   return (
     <YStack gap={6}>
       {label ? (
@@ -437,6 +477,7 @@ export function Field({
         multiline={multiline}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
         style={{
           minHeight: multiline ? 92 : 44,
           borderWidth: 1,
@@ -446,6 +487,7 @@ export function Field({
           paddingVertical: 10,
           backgroundColor: colors.surface,
           color: colors.text,
+          fontFamily: fonts.rounded,
           fontSize: 15,
           textAlignVertical: multiline ? 'top' : 'center',
         }}
@@ -487,7 +529,7 @@ export function StatBlock({
     <Surface>
       <YStack gap={10}>
         {Icon ? <Icon size={20} color={c.fg} /> : null}
-        <Text fontSize={24} fontWeight="800" color={colors.text}>
+        <Text fontSize={24} fontWeight="800" color={colors.text} variant="display">
           {value}
         </Text>
         <Text fontSize={12} color={colors.textSecondary}>
@@ -520,7 +562,7 @@ export function ListRow({
           <XStack
             width={44}
             height={44}
-            borderRadius={12}
+            borderRadius={8}
             alignItems="center"
             justifyContent="center"
             backgroundColor={colors.surfaceMuted}
@@ -549,7 +591,7 @@ export function ListRow({
           <XStack
             minWidth={38}
             height={38}
-            borderRadius={12}
+            borderRadius={8}
             alignItems="center"
             justifyContent="center"
             backgroundColor={onPress ? colors.neutralBg : 'transparent'}
@@ -599,7 +641,7 @@ export function ToggleRow({
           value={value}
           onValueChange={handleValueChange}
           trackColor={{ false: colors.border, true: colors.accentDim }}
-          thumbColor={value ? colors.primary : '#ffffff'}
+          thumbColor={value ? colors.primary : colors.surface}
         />
       </XStack>
     </Surface>
@@ -616,15 +658,203 @@ export function ProgressBar({ value, tone = 'primary' }: { value: number; tone?:
   );
 }
 
-export function LoadingState() {
+function SkeletonGroup({ children }: { children: ReactNode }) {
+  const shimmer = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+      { resetBeforeIteration: true }
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [shimmer]);
+
   return (
-    <Surface>
-      <XStack alignItems="center" justifyContent="center" gap={10} paddingVertical={14}>
-        <ActivityIndicator color={colors.primary} />
-        <Text fontSize={14} color={colors.textSecondary}>
-          Loading
-        </Text>
-      </XStack>
-    </Surface>
+    <SkeletonAnimationContext.Provider value={shimmer}>
+      <View
+        pointerEvents="none"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ width: '100%' }}
+      >
+        {children}
+      </View>
+    </SkeletonAnimationContext.Provider>
+  );
+}
+
+export function SkeletonBlock({
+  width = '100%',
+  height,
+  borderRadius = 6,
+  style,
+}: {
+  width?: number | string;
+  height: number;
+  borderRadius?: number;
+  style?: ViewStyle;
+}) {
+  const shimmer = React.useContext(SkeletonAnimationContext);
+  const opacity = shimmer
+    ? shimmer.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0.88, 1, 0.88],
+      })
+    : 1;
+  const shimmerTranslate = shimmer
+    ? shimmer.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-140, 520],
+      })
+    : 0;
+
+  return (
+    <Animated.View
+      accessible={false}
+      style={[
+        {
+          width: width as ViewStyle['width'],
+          height,
+          borderRadius,
+          backgroundColor: colors.borderStrong,
+          opacity,
+          overflow: 'hidden',
+        },
+        style,
+      ]}
+    >
+      {shimmer ? (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: '65%',
+            minWidth: 96,
+            opacity: 0.75,
+            transform: [{ translateX: shimmerTranslate }],
+          }}
+        >
+          <LinearGradient
+            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.62)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ flex: 1 }}
+          />
+        </Animated.View>
+      ) : null}
+    </Animated.View>
+  );
+}
+
+export function LoadingState({
+  variant = 'list',
+  rows = 3,
+}: {
+  variant?: 'list' | 'card' | 'stats' | 'messages';
+  rows?: number;
+}) {
+  if (variant === 'stats') {
+    return (
+      <SkeletonGroup>
+        <XStack flexWrap="wrap" gap={12}>
+          {Array.from({ length: rows }).map((_, index) => (
+            <YStack key={index} flex={1} minWidth={150}>
+              <Surface>
+                <YStack gap={10}>
+                  <SkeletonBlock width={22} height={22} borderRadius={11} />
+                  <SkeletonBlock width={62} height={26} borderRadius={7} />
+                  <SkeletonBlock width="72%" height={12} />
+                </YStack>
+              </Surface>
+            </YStack>
+          ))}
+        </XStack>
+      </SkeletonGroup>
+    );
+  }
+
+  if (variant === 'messages') {
+    return (
+      <SkeletonGroup>
+        <YStack gap={10}>
+          {Array.from({ length: rows }).map((_, index) => {
+            const outbound = index % 2 === 1;
+            return (
+              <XStack key={index} justifyContent={outbound ? 'flex-end' : 'flex-start'}>
+                <YStack
+                  gap={8}
+                  padding={12}
+                  borderRadius={8}
+                  borderWidth={1}
+                  borderColor={colors.border}
+                  backgroundColor={colors.surface}
+                  style={{ width: outbound ? '68%' : '78%', maxWidth: '85%' }}
+                >
+                  <SkeletonBlock width="92%" height={13} />
+                  <SkeletonBlock width={outbound ? '64%' : '76%'} height={13} />
+                  <SkeletonBlock width={70} height={10} />
+                </YStack>
+              </XStack>
+            );
+          })}
+        </YStack>
+      </SkeletonGroup>
+    );
+  }
+
+  if (variant === 'card') {
+    return (
+      <SkeletonGroup>
+        <YStack gap={10}>
+          {Array.from({ length: rows }).map((_, index) => (
+            <Surface key={index}>
+              <YStack gap={12}>
+                <XStack alignItems="center" gap={12}>
+                  <SkeletonBlock width={40} height={40} borderRadius={8} />
+                  <YStack flex={1} gap={7}>
+                    <SkeletonBlock width="58%" height={14} />
+                    <SkeletonBlock width="84%" height={12} />
+                  </YStack>
+                </XStack>
+                <SkeletonBlock width="100%" height={index % 2 === 0 ? 82 : 54} borderRadius={8} />
+                <XStack gap={8}>
+                  <SkeletonBlock width={130} height={38} borderRadius={8} />
+                  <SkeletonBlock width={82} height={38} borderRadius={8} />
+                </XStack>
+              </YStack>
+            </Surface>
+          ))}
+        </YStack>
+      </SkeletonGroup>
+    );
+  }
+
+  return (
+    <SkeletonGroup>
+      <YStack gap={10}>
+        {Array.from({ length: rows }).map((_, index) => (
+          <Surface key={index}>
+            <XStack alignItems="center" gap={14}>
+              <SkeletonBlock width={44} height={44} borderRadius={8} />
+              <YStack flex={1} gap={8}>
+                <SkeletonBlock width={index % 2 === 0 ? '48%' : '62%'} height={14} />
+                <SkeletonBlock width="88%" height={12} />
+              </YStack>
+              <SkeletonBlock width={54} height={22} borderRadius={6} />
+            </XStack>
+          </Surface>
+        ))}
+      </YStack>
+    </SkeletonGroup>
   );
 }

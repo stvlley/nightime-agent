@@ -16,8 +16,9 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react-native';
-import { colors } from '@/components/ui';
+import { SCREEN_MAX_WIDTH, SCREEN_MIN_WIDTH, colors, fonts } from '@/components/ui';
 import { OwlMascot } from '@/components/landing/OwlMascot';
+import { useAuth } from '@/hooks/useAuth';
 import { useStoreKitSubscription } from '@/hooks/useStoreKitSubscription';
 import { onboardingUtils } from '@/utils/onboarding';
 import { BrandMark } from './BrandMark';
@@ -58,6 +59,7 @@ type FlowProps = {
 };
 
 export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProps) {
+  const { user } = useAuth();
   const initialIndex = Math.max(
     0,
     FUNNEL_SCREENS.findIndex((screen) => screen.id === initialScreenId)
@@ -94,7 +96,7 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
     });
 
   const completeAndOpenApp = async () => {
-    await onboardingUtils.completeOnboarding();
+    await onboardingUtils.completeOnboarding(user?.id);
     router.replace('/(tabs)/dashboard');
   };
 
@@ -172,10 +174,10 @@ export function ConversionOnboardingFlow({ initialScreenId = 'intro' }: FlowProp
             onPress={goNext}
             disabled={!canContinue}
           >
-            {paywallBusy ? <ActivityIndicator color="#ffffff" /> : null}
-            {!paywallBusy && screen.id === 'dashboard' ? <RotateCcw size={16} color="#ffffff" /> : null}
+            {paywallBusy ? <ActivityIndicator color={colors.onPrimary} /> : null}
+            {!paywallBusy && screen.id === 'dashboard' ? <RotateCcw size={16} color={colors.onPrimary} /> : null}
             <Text style={styles.ctaText}>{paywallBusy ? paywallStatusLabel(storeKit.status) : screen.cta}</Text>
-            {!paywallBusy && screen.id !== 'dashboard' ? <ChevronRight size={18} color="#ffffff" /> : null}
+            {!paywallBusy && screen.id !== 'dashboard' ? <ChevronRight size={18} color={colors.onPrimary} /> : null}
           </Pressable>
         </View>
       </View>
@@ -476,7 +478,7 @@ function Option({
   const content = (
     <>
       <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-        {selected ? <Check size={12} color="#ffffff" /> : null}
+        {selected ? <Check size={12} color={colors.onPrimary} /> : null}
       </View>
       <Text style={styles.optionText}>{label}</Text>
       {recommended ? (
@@ -545,8 +547,8 @@ function Notice({
 }) {
   const map = {
     primary: { fg: colors.primary, bg: appTint, border: appBorder },
-    warning: { fg: '#a85c00', bg: '#fff6e8', border: '#f0d8b8' },
-    success: { fg: '#11855a', bg: '#f0fff7', border: '#cdebdc' },
+    warning: { fg: colors.warning, bg: colors.warningBg, border: colors.borderStrong },
+    success: { fg: colors.success, bg: colors.successBg, border: colors.borderStrong },
   }[tone];
   return (
     <View style={[styles.notice, { backgroundColor: map.bg, borderColor: map.border }]}>
@@ -559,7 +561,7 @@ function Notice({
 function ValuePanel({ result }: { result: DiagnosticResult }) {
   return (
     <View style={styles.valuePanel}>
-      <TrendingUp size={22} color="#11855a" />
+      <TrendingUp size={22} color={colors.success} />
       <Text style={styles.valueLabel}>
         If {result.coldRequestsPerWeek} request{result.coldRequestsPerWeek === 1 ? '' : 's'} go cold each week
       </Text>
@@ -575,7 +577,7 @@ function TimelineRow({ day, label, last }: { day: string; label: string; last?: 
   return (
     <View style={styles.timelineRow}>
       <View style={styles.timelineMarker}>
-        <Bell size={13} color="#ffffff" />
+        <Bell size={13} color={colors.onPrimary} />
       </View>
       {!last ? <View style={styles.timelineLine} /> : null}
       <View style={styles.timelineText}>
@@ -671,8 +673,8 @@ function Metric({
 }) {
   const map =
     tone === 'success'
-      ? { fg: '#11855a', bg: '#f0fff7', border: '#cdebdc' }
-      : { fg: '#a85c00', bg: '#fff6e8', border: '#f0d8b8' };
+      ? { fg: colors.success, bg: colors.successBg, border: colors.borderStrong }
+      : { fg: colors.warning, bg: colors.warningBg, border: colors.borderStrong };
   return (
     <View style={[styles.metric, { borderColor: map.border, backgroundColor: map.bg }]}>
       <Text style={[styles.metricValue, { color: map.fg }]}>{value}</Text>
@@ -681,12 +683,20 @@ function Metric({
   );
 }
 
-const appInk = '#061016';
-const appMuted = '#77777b';
-const appPaper = '#fbfbfd';
-const appCard = '#ffffff';
-const appBorder = '#d7d7d9';
-const appTint = '#f4f0ff';
+const appInk = colors.text;
+const appMuted = colors.textSecondary;
+const appPaper = colors.background;
+const appCard = colors.surface;
+const appBorder = colors.border;
+const appTint = colors.neutralBg;
+
+const roundedText = {
+  fontFamily: fonts.rounded,
+};
+
+const displayText = {
+  fontFamily: fonts.display,
+};
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -696,7 +706,8 @@ const styles = StyleSheet.create({
   shell: {
     flex: 1,
     width: '100%',
-    maxWidth: 460,
+    minWidth: SCREEN_MIN_WIDTH,
+    maxWidth: SCREEN_MAX_WIDTH,
     alignSelf: 'center',
     backgroundColor: appPaper,
   },
@@ -732,6 +743,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   progressText: {
+    ...roundedText,
     width: 42,
     color: appMuted,
     fontSize: 12,
@@ -741,7 +753,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ebecef',
+    backgroundColor: colors.surfaceMuted,
     overflow: 'hidden',
   },
   progressFill: {
@@ -755,18 +767,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   eyebrow: {
+    ...roundedText,
     color: colors.primary,
     fontSize: 12,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
   title: {
+    ...displayText,
     color: appInk,
-    fontSize: 31,
-    lineHeight: 37,
+    fontSize: 34,
+    lineHeight: 39,
     fontWeight: '900',
   },
   body: {
+    ...roundedText,
     color: appMuted,
     fontSize: 15,
     lineHeight: 22,
@@ -785,10 +800,10 @@ const styles = StyleSheet.create({
   },
   heroHeader: {
     minHeight: 138,
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#ebe6ff',
+    borderColor: colors.accentDim,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -797,9 +812,9 @@ const styles = StyleSheet.create({
   owlStage: {
     width: 116,
     height: 116,
-    borderRadius: 22,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ded6ff',
+    borderColor: colors.accentDim,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -814,9 +829,10 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   heroTitle: {
+    ...displayText,
     color: appInk,
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 21,
+    lineHeight: 25,
     fontWeight: '900',
   },
   signalStack: {
@@ -824,7 +840,7 @@ const styles = StyleSheet.create({
   },
   signalRow: {
     minHeight: 64,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: appBorder,
     backgroundColor: appPaper,
@@ -837,7 +853,7 @@ const styles = StyleSheet.create({
   signalIcon: {
     width: 34,
     height: 34,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.neutralBg,
@@ -847,23 +863,27 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   signalTitle: {
+    ...roundedText,
     color: appInk,
     fontSize: 13,
     fontWeight: '900',
   },
   signalBody: {
+    ...roundedText,
     color: appMuted,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
   },
   featureTitle: {
+    ...displayText,
     color: appInk,
-    fontSize: 21,
-    lineHeight: 27,
+    fontSize: 23,
+    lineHeight: 29,
     fontWeight: '900',
   },
   featureBody: {
+    ...roundedText,
     color: appMuted,
     fontSize: 14,
     lineHeight: 21,
@@ -901,6 +921,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   optionText: {
+    ...roundedText,
     flex: 1,
     color: appInk,
     fontSize: 14,
@@ -908,13 +929,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   recommendedPill: {
-    borderRadius: 999,
-    backgroundColor: '#f0fff7',
+    borderRadius: 8,
+    backgroundColor: colors.successBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   recommendedText: {
-    color: '#11855a',
+    ...roundedText,
+    color: colors.success,
     fontSize: 10,
     fontWeight: '900',
   },
@@ -934,19 +956,20 @@ const styles = StyleSheet.create({
     backgroundColor: appCard,
   },
   chipRecommended: {
-    borderColor: '#cdebdc',
+    borderColor: colors.borderStrong,
   },
   chipSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
   chipText: {
+    ...roundedText,
     color: appInk,
     fontSize: 13,
     fontWeight: '900',
   },
   chipTextSelected: {
-    color: '#ffffff',
+    color: colors.onPrimary,
   },
   notice: {
     borderWidth: 1,
@@ -957,6 +980,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   noticeText: {
+    ...roundedText,
     flex: 1,
     color: appInk,
     fontSize: 13,
@@ -972,11 +996,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   recommendTitle: {
+    ...roundedText,
     color: colors.primary,
     fontSize: 13,
     fontWeight: '900',
   },
   recommendText: {
+    ...roundedText,
     color: appInk,
     fontSize: 13,
     lineHeight: 19,
@@ -984,22 +1010,25 @@ const styles = StyleSheet.create({
   valuePanel: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d9eadf',
-    backgroundColor: '#f0fff7',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.successBg,
     padding: 18,
     gap: 7,
   },
   valueLabel: {
-    color: '#11855a',
+    ...roundedText,
+    color: colors.success,
     fontSize: 13,
     fontWeight: '800',
   },
   valueAmount: {
+    ...displayText,
     color: appInk,
-    fontSize: 30,
+    fontSize: 33,
     fontWeight: '900',
   },
   valueCaption: {
+    ...roundedText,
     color: appMuted,
     fontSize: 11,
   },
@@ -1012,17 +1041,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   resultEyebrow: {
+    ...roundedText,
     color: colors.primary,
     fontSize: 12,
     fontWeight: '900',
   },
   resultTitle: {
+    ...displayText,
     color: appInk,
-    fontSize: 25,
-    lineHeight: 30,
+    fontSize: 28,
+    lineHeight: 33,
     fontWeight: '900',
   },
   resultBody: {
+    ...roundedText,
     color: appMuted,
     fontSize: 14,
     lineHeight: 21,
@@ -1032,8 +1064,9 @@ const styles = StyleSheet.create({
     backgroundColor: appBorder,
   },
   resultAmount: {
+    ...displayText,
     color: appInk,
-    fontSize: 28,
+    fontSize: 31,
     fontWeight: '900',
   },
   trustPanel: {
@@ -1045,8 +1078,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   panelTitle: {
+    ...displayText,
     color: appInk,
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '900',
   },
   timelineRow: {
@@ -1077,11 +1111,13 @@ const styles = StyleSheet.create({
     paddingTop: 1,
   },
   timelineDay: {
+    ...roundedText,
     color: appMuted,
     fontSize: 12,
     fontWeight: '800',
   },
   timelineLabel: {
+    ...roundedText,
     color: appInk,
     fontSize: 14,
     fontWeight: '800',
@@ -1132,17 +1168,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   planName: {
+    ...roundedText,
     color: colors.primary,
     fontSize: 13,
     fontWeight: '900',
   },
   planPrice: {
+    ...displayText,
     color: appInk,
-    fontSize: 25,
+    fontSize: 28,
     fontWeight: '900',
     marginTop: 6,
   },
   planDetail: {
+    ...roundedText,
     color: appMuted,
     fontSize: 12,
     marginTop: 6,
@@ -1150,11 +1189,12 @@ const styles = StyleSheet.create({
   },
   bestValue: {
     borderRadius: 8,
-    backgroundColor: '#5ae0a3',
+    backgroundColor: colors.successBg,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
   bestValueText: {
+    ...roundedText,
     color: appInk,
     fontSize: 10,
     fontWeight: '900',
@@ -1163,20 +1203,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: appBorder,
-    backgroundColor: '#f7f7f8',
+    backgroundColor: colors.surfaceMuted,
     padding: 14,
     gap: 10,
   },
   purchaseError: {
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#f0d8b8',
-    backgroundColor: '#fff6e8',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.warningBg,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   purchaseErrorText: {
-    color: '#8f4700',
+    ...roundedText,
+    color: colors.warning,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -1192,6 +1233,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   termText: {
+    ...roundedText,
     flex: 1,
     color: appMuted,
     fontSize: 12,
@@ -1199,6 +1241,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   restoreText: {
+    ...roundedText,
     color: appMuted,
     textAlign: 'center',
     fontSize: 12,
@@ -1219,13 +1262,14 @@ const styles = StyleSheet.create({
     borderColor: appInk,
   },
   chatText: {
+    ...roundedText,
     color: appInk,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
   },
   chatTextOutgoing: {
-    color: '#ffffff',
+    color: colors.onPrimary,
   },
   secondaryAction: {
     minHeight: 48,
@@ -1237,6 +1281,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryActionText: {
+    ...roundedText,
     color: appInk,
     fontSize: 14,
     fontWeight: '900',
@@ -1253,18 +1298,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   agentTitle: {
+    ...displayText,
     color: appInk,
-    fontSize: 20,
+    fontSize: 23,
     fontWeight: '900',
     marginTop: 6,
   },
   onPill: {
     borderRadius: 8,
-    backgroundColor: '#5ae0a3',
+    backgroundColor: colors.successBg,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   onPillText: {
+    ...roundedText,
     color: appInk,
     fontSize: 12,
     fontWeight: '900',
@@ -1282,10 +1329,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   metricValue: {
-    fontSize: 28,
+    ...displayText,
+    fontSize: 31,
     fontWeight: '900',
   },
   metricLabel: {
+    ...roundedText,
     color: appMuted,
     fontSize: 12,
     fontWeight: '800',
@@ -1296,12 +1345,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 18,
     borderTopWidth: 1,
-    borderTopColor: '#ebecef',
+    borderTopColor: colors.border,
     backgroundColor: appPaper,
   },
   cta: {
     minHeight: 54,
-    borderRadius: 10,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1317,7 +1366,8 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   ctaText: {
-    color: '#ffffff',
+    ...roundedText,
+    color: colors.onPrimary,
     fontSize: 15,
     fontWeight: '900',
   },

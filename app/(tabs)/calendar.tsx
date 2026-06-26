@@ -134,21 +134,25 @@ export default function CalendarScreen() {
         action={<Button icon={Plus}>Add</Button>}
       />
 
-      <XStack flexWrap="wrap" gap={12}>
-        <YStack flex={1} minWidth={150}>
-          <StatBlock label="Appointments" value={String(todaysAppointments.length)} icon={CalendarIcon} tone="info" />
-        </YStack>
-        <YStack flex={1} minWidth={150}>
-          <StatBlock label="Minutes booked" value={String(totalMinutes)} icon={Clock} tone="success" />
-        </YStack>
-        <YStack flex={1} minWidth={150}>
-          <StatBlock label="Clients" value={String(uniqueClients)} icon={User} tone="primary" />
-        </YStack>
-      </XStack>
+      {loading ? (
+        <LoadingState variant="stats" />
+      ) : (
+        <XStack flexWrap="wrap" gap={12}>
+          <YStack flex={1} minWidth={150}>
+            <StatBlock label="Appointments" value={String(todaysAppointments.length)} icon={CalendarIcon} tone="info" />
+          </YStack>
+          <YStack flex={1} minWidth={150}>
+            <StatBlock label="Minutes booked" value={String(totalMinutes)} icon={Clock} tone="success" />
+          </YStack>
+          <YStack flex={1} minWidth={150}>
+            <StatBlock label="Clients" value={String(uniqueClients)} icon={User} tone="primary" />
+          </YStack>
+        </XStack>
+      )}
 
       <Section title="Schedule">
         {loading ? (
-          <LoadingState />
+          <LoadingState rows={3} />
         ) : todaysAppointments.length === 0 ? (
           <EmptyState title="No appointments today" message="Confirmed and tentative bookings will appear here." />
         ) : (

@@ -69,7 +69,7 @@ export default function PaymentsScreen() {
     return (
       <Screen>
         <PageHeader title="Payment links" subtitle="A scannable card of your payment options." />
-        <LoadingState />
+        <LoadingState variant="card" />
       </Screen>
     );
   }
@@ -81,7 +81,7 @@ export default function PaymentsScreen() {
         <YStack flex={1}>
           <PageHeader
             title="Payment links"
-            subtitle="Clients scan to pay you directly — money never moves through Nitime."
+            subtitle="Clients scan to pay you directly — money never moves through nitime."
           />
         </YStack>
       </XStack>
@@ -135,7 +135,7 @@ export default function PaymentsScreen() {
             ))}
             <Text fontSize={12} color={colors.textMuted}>
               Show this screen to a client, or screenshot a code to share. Payments go straight to your
-              own PayPal, Venmo, Cash App, or Zelle — Nitime never touches the money.
+              own PayPal, Venmo, Cash App, or Zelle — nitime never touches the money.
             </Text>
           </YStack>
         </Section>
@@ -158,7 +158,7 @@ function SegmentedToggle({
       gap={4}
       style={{
         backgroundColor: colors.surfaceMuted,
-        borderRadius: 10,
+        borderRadius: 8,
         padding: 4,
       }}
     >
@@ -202,7 +202,7 @@ function PaymentCard({ method, handle }: { method: PaymentMethodDef; handle: str
         <View
           style={{
             backgroundColor: '#ffffff',
-            borderRadius: 12,
+            borderRadius: 8,
             padding: 10,
             borderWidth: 1,
             borderColor: colors.border,

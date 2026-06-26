@@ -5,7 +5,7 @@ processes a real message.
 
 ```
 Telegram / WhatsApp / web chat / Google Voice-over-Gmail
-  → channel webhook → FAQ pre-filter (free) → LLM fallback (Haiku, optional)
+  → channel webhook → FAQ pre-filter (free) → LLM fallback (OpenRouter, optional)
   → messages (inbound + draft) → approval queue → send-draft → channel delivery
 ```
 
@@ -26,10 +26,10 @@ and is unit-tested by vitest (`npm test`). The IO modules (`telegram.ts`,
 
 ## Cost model
 
-The FAQ pre-filter is free and handles most messages. The cheap model
-(`claude-haiku-4-5`) is only called on an FAQ miss, and only when
-`ANTHROPIC_API_KEY` is set — without it the runtime still works and uses a
-deterministic holding reply. Telegram has no per-message fee. Google Voice is
+The FAQ pre-filter is free and handles most messages. The OpenRouter model
+fallback defaults to `openrouter/free`, is only called on an FAQ miss, and only
+when `OPENROUTER_API_KEY` is set — without it the runtime still works and uses
+a deterministic holding reply. Telegram has no per-message fee. Google Voice is
 treated as interactive messaging only; avoid bulk sends or repeated unsolicited
 messages.
 
@@ -40,7 +40,7 @@ messages.
 supabase db push --db-url "$(echo "$DATABASE_URL" | sed 's/:6543/:5432/')"
 
 # 2. Set secrets (server-side; never EXPO_PUBLIC_)
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...   # optional, enables LLM fallback
+supabase secrets set OPENROUTER_API_KEY=sk-or-... AGENT_MODEL=openrouter/free   # optional LLM fallback
 #   SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 
 # 3. Deploy

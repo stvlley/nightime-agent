@@ -4,8 +4,8 @@
 //   1. Google Cloud Translation v2  — GOOGLE_TRANSLATE_API_KEY. Cheapest quality
 //      engine (~$20 / 1M chars) and returns the detected source language in the
 //      same call, so one request both detects and translates.
-//   2. Anthropic (Claude Haiku)     — ANTHROPIC_API_KEY. Reuses the model the
-//      agent already uses; returns JSON {detected, translation}.
+//   2. OpenRouter                  — OPENROUTER_API_KEY. Reuses the model router
+//      the agent already uses; returns JSON {detected, translation}.
 //   3. Passthrough                  — no engine configured: returns the text
 //      unchanged with detectedLang 'und' so callers cleanly skip translation.
 //
@@ -19,7 +19,7 @@ export interface TranslateResult {
   text: string;
   /** ISO code of the source language Google/LLM detected (e.g. 'es'); 'und' if unknown. */
   detectedLang: string;
-  engine: 'google' | 'anthropic' | 'none';
+  engine: 'google' | 'openrouter' | 'none';
 }
 
 /** True when a detected language means we should treat the message as non-English. */
@@ -56,34 +56,44 @@ async function googleTranslate(text: string, target: string, key: string): Promi
   };
 }
 
-async function anthropicTranslate(text: string, target: string, key: string): Promise<TranslateResult> {
-  const model = Deno.env.get('AGENT_MODEL') ?? 'claude-haiku-4-5';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function openRouterTranslate(text: string, target: string, key: string): Promise<TranslateResult> {
+  const model = Deno.env.get('AGENT_MODEL') ?? 'openrouter/free';
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    headers: {
+      authorization: `Bearer ${key}`,
+      'content-type': 'application/json',
+      'http-referer': Deno.env.get('OPENROUTER_HTTP_REFERER') ?? 'https://nitime.app',
+      'x-openrouter-title': Deno.env.get('OPENROUTER_APP_TITLE') ?? 'Nitime',
+    },
     body: JSON.stringify({
       model,
       max_tokens: 600,
-      system:
-        `Translate the user's message into ${languageName(target)}. ` +
-        `Detect the source language. Respond with ONLY minified JSON: ` +
-        `{"detected":"<iso-639-1>","translation":"<translated text>"}. No prose, no code fences.`,
-      messages: [{ role: 'user', content: text }],
+      messages: [
+        {
+          role: 'system',
+          content:
+            `Translate the user's message into ${languageName(target)}. ` +
+            `Detect the source language. Respond with ONLY minified JSON: ` +
+            `{"detected":"<iso-639-1>","translation":"<translated text>"}. No prose, no code fences.`,
+        },
+        { role: 'user', content: text },
+      ],
     }),
   });
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`openrouter ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const raw = data?.content?.[0]?.text;
+  const raw = data?.choices?.[0]?.message?.content;
   try {
     const parsed = JSON.parse(String(raw));
     return {
       text: typeof parsed.translation === 'string' ? parsed.translation : text,
       detectedLang: typeof parsed.detected === 'string' ? parsed.detected : 'und',
-      engine: 'anthropic',
+      engine: 'openrouter',
     };
   } catch {
     // If the model didn't return clean JSON, treat its whole output as the translation.
-    return { text: typeof raw === 'string' ? raw.trim() : text, detectedLang: 'und', engine: 'anthropic' };
+    return { text: typeof raw === 'string' ? raw.trim() : text, detectedLang: 'und', engine: 'openrouter' };
   }
 }
 
@@ -96,11 +106,11 @@ export async function translateText(text: string, target: string): Promise<Trans
   if (!trimmed) return { text, detectedLang: 'und', engine: 'none' };
 
   const googleKey = Deno.env.get('GOOGLE_TRANSLATE_API_KEY');
-  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+  const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
 
   try {
     if (googleKey) return await googleTranslate(trimmed, target, googleKey);
-    if (anthropicKey) return await anthropicTranslate(trimmed, target, anthropicKey);
+    if (openRouterKey) return await openRouterTranslate(trimmed, target, openRouterKey);
   } catch (_e) {
     // fall through to passthrough
   }

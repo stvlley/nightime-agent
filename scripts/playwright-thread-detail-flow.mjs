@@ -104,7 +104,7 @@ async function main() {
     await page.getByText('awaiting approval', { exact: true }).waitFor({ state: 'hidden', timeout: 15000 });
     await screenshot(page, runId, '13-thread-approved');
 
-    await widgetPage.getByText(/AI assistant|Provider/, { exact: false }).first().waitFor({ state: 'visible', timeout: 15000 });
+    await widgetPage.getByText('Provider', { exact: false }).first().waitFor({ state: 'visible', timeout: 15000 });
     const agentBubble = widgetPage
       .locator('.row.agent .bubble')
       .last();

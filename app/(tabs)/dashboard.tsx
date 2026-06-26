@@ -26,6 +26,7 @@ import {
   Badge,
   Button,
   ListRow,
+  LoadingState,
   PageHeader,
   Screen,
   Section,
@@ -61,6 +62,7 @@ export default function HomeScreen() {
       ? { messagesToday: 0, bookingsThisWeek: 0, aiResponsesToday: 0, responseRate: 0 }
       : DEMO_STATS
   );
+  const [statsLoaded, setStatsLoaded] = useState(!isSupabaseConfigured);
   const [channels, setChannels] = useState<ConnectedChannel[]>([]);
   const [channelsLoaded, setChannelsLoaded] = useState(!isSupabaseConfigured);
   const [pendingCount, setPendingCount] = useState(0);
@@ -68,7 +70,12 @@ export default function HomeScreen() {
 
   const refresh = useCallback(() => {
     if (!isSupabaseConfigured || !user) return;
-    statsService.getDashboardStats(user.id).then(setStats).catch(() => {});
+    setStatsLoaded(false);
+    statsService
+      .getDashboardStats(user.id)
+      .then(setStats)
+      .catch(() => {})
+      .finally(() => setStatsLoaded(true));
     channelService
       .list(user.id)
       .then(setChannels)
@@ -117,7 +124,7 @@ export default function HomeScreen() {
           title="Auto-send confident replies"
           subtitle={
             autoSend
-              ? 'Exact saved-response matches send instantly. Everything else still waits for your approval.'
+              ? 'Saved responses and eligible drafted replies can send according to your Agent Settings level.'
               : 'Every reply waits in the Inbox for your approval before it is sent.'
           }
           value={autoSend}
@@ -149,7 +156,7 @@ export default function HomeScreen() {
               alignItems="center"
               justifyContent="center"
               backgroundColor={colors.warningBg}
-              borderColor="#f5d9a8"
+              borderColor={colors.borderStrong}
               borderWidth={1}
             >
               <ChevronRight size={18} color={colors.warning} />
@@ -159,20 +166,24 @@ export default function HomeScreen() {
       ) : null}
 
       <Section title="Today">
-        <XStack flexWrap="wrap" gap={12}>
-          <YStack flex={1} minWidth={150}>
-            <StatBlock label="Messages" value={String(stats.messagesToday)} icon={MessageSquare} tone="success" />
-          </YStack>
-          <YStack flex={1} minWidth={150}>
-            <StatBlock label="Bookings this week" value={String(stats.bookingsThisWeek)} icon={Calendar} tone="info" />
-          </YStack>
-          <YStack flex={1} minWidth={150}>
-            <StatBlock label="Agent replies" value={String(stats.aiResponsesToday)} icon={Bot} tone="primary" />
-          </YStack>
-          <YStack flex={1} minWidth={150}>
-            <StatBlock label="Response rate" value={`${stats.responseRate}%`} icon={TrendingUp} tone="warning" />
-          </YStack>
-        </XStack>
+        {!statsLoaded ? (
+          <LoadingState variant="stats" rows={4} />
+        ) : (
+          <XStack flexWrap="wrap" gap={12}>
+            <YStack flex={1} minWidth={150}>
+              <StatBlock label="Messages" value={String(stats.messagesToday)} icon={MessageSquare} tone="success" />
+            </YStack>
+            <YStack flex={1} minWidth={150}>
+              <StatBlock label="Bookings this week" value={String(stats.bookingsThisWeek)} icon={Calendar} tone="info" />
+            </YStack>
+            <YStack flex={1} minWidth={150}>
+              <StatBlock label="Agent replies" value={String(stats.aiResponsesToday)} icon={Bot} tone="primary" />
+            </YStack>
+            <YStack flex={1} minWidth={150}>
+              <StatBlock label="Response rate" value={`${stats.responseRate}%`} icon={TrendingUp} tone="warning" />
+            </YStack>
+          </XStack>
+        )}
         {!isSupabaseConfigured ? (
           <Text fontSize={12} color={colors.textMuted}>
             Demo data — connect Supabase to see live numbers.
@@ -188,7 +199,9 @@ export default function HomeScreen() {
           </Button>
         }
       >
-        {!channelsLoaded ? null : channels.length === 0 ? (
+        {!channelsLoaded ? (
+          <LoadingState rows={2} />
+        ) : channels.length === 0 ? (
           <Surface>
             <YStack gap={10} alignItems="center" paddingVertical={10}>
               <Text fontSize={15} fontWeight="700" color={colors.text}>

@@ -43,7 +43,7 @@ const DEMO_CONVERSATIONS: InboxItem[] = [
   {
     id: '2',
     clientName: 'Mia Client',
-    lastMessage: 'Nitime: Tomorrow at 3 PM is open. Should I hold it?',
+    lastMessage: 'nitime: Tomorrow at 3 PM is open. Should I hold it?',
     timestamp: '15 min ago',
     type: 'ai',
     platform: 'telegram',
@@ -241,7 +241,7 @@ export default function InboxScreen() {
       {isSupabaseConfigured && (draftsLoading || drafts.length > 0) ? (
         <Section title={`Needs your approval${drafts.length ? ` (${drafts.length})` : ''}`}>
           {draftsLoading ? (
-            <LoadingState />
+            <LoadingState variant="card" />
           ) : (
             <YStack gap={10}>
               {draftError ? (
@@ -265,7 +265,7 @@ export default function InboxScreen() {
 
       <Section title="Conversations">
         {loading ? (
-          <LoadingState />
+          <LoadingState rows={4} />
         ) : filteredConversations.length === 0 ? (
           conversations.length === 0 ? (
             <YStack gap={10}>

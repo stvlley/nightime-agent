@@ -8,16 +8,16 @@ Nitime should optimize for **cost per resolved conversation**, not model quality
 
 Current external cost facts to design around as of June 18, 2026:
 
-- OpenAI's GPT-4.1 mini is a viable low-cost live default candidate; OpenAI's pricing page should be checked again before locking production defaults.
+- OpenRouter's `openrouter/free` router is the current default for optional live drafts; it selects from available free models behind OpenRouter's OpenAI-compatible API.
+- OpenAI's GPT-4.1 mini is a viable low-cost paid fallback candidate through OpenRouter; pricing should be checked again before locking production defaults.
 - Gemini Flash-Lite is the cheapest paid live-draft candidate found in this pass: Google's Gemini API pricing page lists a Flash-Lite paid tier at **$0.05 / 1M input tokens** and **$0.20 / 1M output tokens**.
-- Claude Haiku 4.5 remains a viable cheap draft model; Anthropic lists `claude-haiku-4-5` at **$1 / 1M input tokens** and **$5 / 1M output tokens**.
-- Anthropic prompt caching can reduce cached input cost by up to **90%**, and batch processing can reduce cost by **50%** for non-real-time work.
 - Supabase Edge Functions include **500,000 free monthly invocations** on Free and **2M monthly invocations** on Pro; overage is **$2 / 1M invocations**.
 - Supabase bills function invocations regardless of response status, but preflight `OPTIONS` requests are not billed.
 
 Sources:
 
-- https://www.anthropic.com/claude/haiku
+- https://openrouter.ai/openrouter/free
+- https://openrouter.ai/docs/quickstart
 - https://openai.com/api/pricing/
 - https://ai.google.dev/gemini-api/docs/pricing
 - https://supabase.com/docs/guides/functions/pricing
@@ -63,9 +63,9 @@ Output:
 
 Call one small model once. Candidate defaults:
 
-- GPT-4.1 mini
-- Gemini Flash
-- Claude Haiku 4.5, if staying with the current Anthropic implementation is operationally simpler
+- `openrouter/free` through OpenRouter for cost-first beta
+- GPT-4.1 mini through OpenRouter when a paid fallback is needed
+- Gemini Flash/Flash-Lite through OpenRouter or direct provider if quality/cost tests justify it
 
 Rules:
 
@@ -196,7 +196,7 @@ Initial production recommendation:
 
 ```text
 FAQ/template hit          -> no model
-Normal miss               -> no model for TestFlight; Claude Haiku 4.5 when already wired; Gemini Flash-Lite after provider swap
+Normal miss               -> no model for TestFlight; OpenRouter `openrouter/free` when enabled; paid OpenRouter model only after quality/cost bakeoff
 Flagged/sensitive miss    -> no model, human approval
 Repeated unresolved loop  -> no model live; batch review later
 Weekly FAQ mining         -> batch/offline cheapest acceptable summarizer
@@ -215,7 +215,7 @@ interface DraftModel {
 }
 ```
 
-That allows a later OpenAI/OpenRouter/local model swap without changing the message loop.
+That allows a later paid OpenRouter/local model swap without changing the message loop.
 
 Suggested abstraction:
 
@@ -232,7 +232,7 @@ interface ModelRouter {
 1. Keep `AGENT_LLM_DISABLED=true` for TestFlight until the deterministic flow is validated.
 2. Add usage/cost ledger around existing `runAgentTurn()`.
 3. Add a model-router config with lanes for `live_draft`, `offline_summary`, and `high_risk_review`.
-4. Set `live_draft` to Claude Haiku 4.5 first because it is already wired; switch to Gemini Flash-Lite only after a small provider bakeoff proves quality is acceptable.
+4. Set `live_draft` to OpenRouter `openrouter/free`; switch to a paid OpenRouter model only after a small provider bakeoff proves quality is acceptable.
 5. Keep default `AGENT_LLM_MAX_TOKENS=180`; 320 is the hard ceiling, not the default.
 6. Add daily/monthly/thread caps.
 7. Add provider templates and improve FAQ aliases.

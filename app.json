@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nitime",
+    "name": "nitime",
     "slug": "nightime-agent",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nightime.agent",
       "infoPlist": {
-        "NSDocumentsFolderUsageDescription": "Nitime opens only the conversation files you choose so it can extract FAQ and reply suggestions for your workspace.",
+        "NSDocumentsFolderUsageDescription": "nitime opens only the conversation files you choose so it can extract FAQ and reply suggestions for your workspace.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

@@ -30,6 +30,7 @@ const DEMO_FAQS: FaqItem[] = [
 ];
 
 type ModerationLevel = 'low' | 'medium' | 'strict';
+type AgentMode = 'keep_up' | 'help_respond' | 'talk_for_me';
 
 const MODERATION_LABELS: Record<ModerationLevel, string> = {
   low: 'Low',
@@ -37,10 +38,33 @@ const MODERATION_LABELS: Record<ModerationLevel, string> = {
   strict: 'Strict',
 };
 
+const AGENT_LEVELS: {
+  value: AgentMode;
+  title: string;
+  subtitle: string;
+}[] = [
+  {
+    value: 'keep_up',
+    title: 'Help me keep up',
+    subtitle: 'Light model use for clear routine misses. 40/day, 500/month, 2 per conversation.',
+  },
+  {
+    value: 'help_respond',
+    title: 'Help me respond',
+    subtitle: 'Balanced drafting and eligible auto-replies. 150/day, 2,000/month, 4 per conversation.',
+  },
+  {
+    value: 'talk_for_me',
+    title: 'Talk for me',
+    subtitle: 'Broader conversational coverage with strict rate limits. 300/day, 5,000/month, 6 per conversation.',
+  },
+];
+
 export default function AISettingsScreen() {
   const { user, isSupabaseConfigured } = useAuth();
   const [autoSend, setAutoSend] = useState(false);
   const [moderationLevel, setModerationLevel] = useState<ModerationLevel>('medium');
+  const [agentMode, setAgentMode] = useState<AgentMode>('keep_up');
   const [prefsError, setPrefsError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [newTrigger, setNewTrigger] = useState('');
@@ -69,6 +93,7 @@ export default function AISettingsScreen() {
         if (!active || !prefs) return;
         setAutoSend(prefs.approval_mode === 'auto_eligible');
         setModerationLevel(prefs.moderation_level);
+        setAgentMode(prefs.agent_mode ?? 'keep_up');
       })
       .catch(() => {});
     return () => {
@@ -86,6 +111,22 @@ export default function AISettingsScreen() {
       });
     } catch {
       setAutoSend(!value);
+      setPrefsError('Could not save the change. Try again.');
+    }
+  };
+
+  const handleAgentModeChange = async (mode: AgentMode) => {
+    const previous = agentMode;
+    setAgentMode(mode);
+    setPrefsError(null);
+    if (!isSupabaseConfigured || !user) return;
+    try {
+      await preferencesService.update(user.id, {
+        agent_mode: mode,
+        llm_enabled: true,
+      });
+    } catch {
+      setAgentMode(previous);
       setPrefsError('Could not save the change. Try again.');
     }
   };
@@ -166,11 +207,36 @@ export default function AISettingsScreen() {
 
       <Section title="Automation">
         <YStack gap={10}>
+          <Surface>
+            <YStack gap={12}>
+              <XStack alignItems="center" gap={10}>
+                <Bot size={20} color={colors.primary} />
+                <YStack flex={1}>
+                  <Text fontSize={15} fontWeight="700" color={colors.text}>Agent level</Text>
+                  <Text fontSize={13} color={colors.textSecondary}>Usage is capped daily, monthly, and per conversation.</Text>
+                </YStack>
+              </XStack>
+              <YStack gap={8}>
+                {AGENT_LEVELS.map((level) => (
+                  <Button
+                    key={level.value}
+                    variant={agentMode === level.value ? 'primary' : 'secondary'}
+                    onPress={() => handleAgentModeChange(level.value)}
+                  >
+                    {level.title}
+                  </Button>
+                ))}
+              </YStack>
+              <Text fontSize={13} color={colors.textSecondary}>
+                {AGENT_LEVELS.find((level) => level.value === agentMode)?.subtitle}
+              </Text>
+            </YStack>
+          </Surface>
           <ToggleRow
             title="Auto-send confident replies"
             subtitle={
               autoSend
-                ? 'Exact saved-response matches send instantly. AI drafts always wait for approval.'
+                ? 'Saved responses and eligible drafted replies can send according to the selected level.'
                 : 'Every reply waits in the Inbox for your approval before it is sent.'
             }
             value={autoSend}
@@ -231,7 +297,7 @@ export default function AISettingsScreen() {
           ) : null}
 
           {loading ? (
-            <LoadingState />
+            <LoadingState variant="card" rows={3} />
           ) : faqs.length === 0 ? (
             <EmptyState title="No saved responses" message="Add reusable answers for common client questions." />
           ) : (
@@ -245,7 +311,7 @@ export default function AISettingsScreen() {
                         value={faq.enabled}
                         onValueChange={(value) => handleToggleFaq(faq, value)}
                         trackColor={{ false: colors.border, true: colors.accentDim }}
-                        thumbColor={faq.enabled ? colors.primary : '#ffffff'}
+                        thumbColor={faq.enabled ? colors.primary : colors.surface}
                         accessibilityLabel={`Toggle response: ${faq.trigger}`}
                       />
                       <IconButton icon={Trash2} label="Delete response" tone="danger" onPress={() => handleDeleteFAQ(faq.id)} />

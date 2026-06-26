@@ -228,7 +228,7 @@ export default function ChannelsScreen() {
       ) : null}
 
       {loading ? (
-        <LoadingState />
+        <LoadingState variant="card" rows={2} />
       ) : (
         <>
           <Section title="Web chat">
@@ -241,8 +241,8 @@ export default function ChannelsScreen() {
                       Shareable chat page
                     </Text>
                     <Text fontSize={13} color={colors.textSecondary}>
-                      Zero setup. Clients chat from a link or an embed on your site. AI disclosure
-                      is built in.
+                      Zero setup. Clients chat from a link or an embed on your site. Replies appear
+                      as provider messages.
                     </Text>
                   </YStack>
                   {statusBadge(webchat)}
