@@ -32,6 +32,10 @@ const DEMO_FAQS: FaqItem[] = [
 type ModerationLevel = 'low' | 'medium' | 'strict';
 type AgentMode = 'keep_up' | 'help_respond' | 'talk_for_me';
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 const MODERATION_LABELS: Record<ModerationLevel, string> = {
   low: 'Low',
   medium: 'Medium',
@@ -179,8 +183,8 @@ export default function AISettingsScreen() {
       setNewTrigger('');
       setNewResponse('');
       setShowAddForm(false);
-    } catch (e: any) {
-      setFormError(e?.message ?? 'Could not save the response.');
+    } catch (e: unknown) {
+      setFormError(errorMessage(e, 'Could not save the response.'));
     } finally {
       setSaving(false);
     }
@@ -194,9 +198,9 @@ export default function AISettingsScreen() {
     if (isSupabaseConfigured) {
       try {
         await faqService.remove(id);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setFaqs(previousFaqs);
-        setFormError(e?.message ?? 'Could not delete the response.');
+        setFormError(errorMessage(e, 'Could not delete the response.'));
       }
     }
   };

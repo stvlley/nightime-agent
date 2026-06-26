@@ -3,6 +3,57 @@
 // no-op-safe wrapper that returns empty results when Supabase is not configured
 // (demo mode), so screens can call these unconditionally.
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/database';
+
+type Tables = Database['public']['Tables'];
+type ThreadRow = Tables['threads']['Row'];
+type MessageRow = Tables['messages']['Row'];
+type BookingRow = Tables['bookings']['Row'];
+
+type ThreadPreviewMessage = Pick<MessageRow, 'text' | 'created_at' | 'direction' | 'ai_generated'>;
+type ThreadDetailMessage = Pick<
+  MessageRow,
+  | 'id'
+  | 'text'
+  | 'direction'
+  | 'created_at'
+  | 'ai_generated'
+  | 'approval_status'
+  | 'response_source'
+  | 'ai_label'
+  | 'ai_confidence'
+>;
+type ThreadListRow = Pick<ThreadRow, 'id' | 'channel' | 'client_handle' | 'state' | 'last_activity_at'> & {
+  messages?: ThreadPreviewMessage[] | null;
+};
+type ThreadDetailRow = Pick<ThreadRow, 'id' | 'channel' | 'client_handle' | 'state'> & {
+  messages?: ThreadDetailMessage[] | null;
+};
+type JoinedThread = Pick<ThreadRow, 'client_handle' | 'channel'>;
+type BookingListRow = Pick<BookingRow, 'id' | 'start' | 'end' | 'status'> & {
+  threads?: JoinedThread | JoinedThread[] | null;
+};
+type PendingDraftRow = Pick<
+  MessageRow,
+  | 'id'
+  | 'text'
+  | 'ai_label'
+  | 'ai_confidence'
+  | 'response_source'
+  | 'created_at'
+  | 'thread_id'
+  | 'reply_to_message_id'
+> & {
+  threads?: JoinedThread | JoinedThread[] | null;
+};
+
+function hasFunctionError(value: unknown): value is { error: unknown } {
+  return typeof value === 'object' && value !== null && 'error' in value;
+}
+
+function joinedThread(value: JoinedThread | JoinedThread[] | null | undefined): JoinedThread | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 
 export interface ThreadListItem {
   id: string;
@@ -109,13 +160,8 @@ export const threadService = {
 
     if (error) throw error;
 
-    return (data ?? []).map((thread: any) => {
-      const messages = (thread.messages ?? []) as Array<{
-        text: string | null;
-        created_at: string | null;
-        direction: string | null;
-        ai_generated: boolean | null;
-      }>;
+    return ((data ?? []) as ThreadListRow[]).map((thread) => {
+      const messages = thread.messages ?? [];
       const latest = messages
         .slice()
         .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
@@ -156,11 +202,12 @@ export const threadService = {
     if (error) throw error;
     if (!data) return null;
 
-    const messages = ((data as any).messages ?? [])
+    const thread = data as ThreadDetailRow;
+    const messages = (thread.messages ?? [])
       .slice()
-      .sort((a: any, b: any) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+      .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
       .map(
-        (m: any): ThreadMessageItem => ({
+        (m): ThreadMessageItem => ({
           id: m.id,
           text: m.text ?? '',
           direction: m.direction === 'out' ? 'out' : 'in',
@@ -174,10 +221,10 @@ export const threadService = {
       );
 
     return {
-      id: data.id,
-      clientHandle: (data as any).client_handle ?? 'Unknown',
-      channel: (data as any).channel,
-      state: (data as any).state ?? 'open',
+      id: thread.id,
+      clientHandle: thread.client_handle ?? 'Unknown',
+      channel: thread.channel,
+      state: thread.state ?? 'open',
       messages,
     };
   },
@@ -224,7 +271,8 @@ export const bookingService = {
 
     if (error) throw error;
 
-    return (data ?? []).map((b: any) => {
+    return ((data ?? []) as unknown as BookingListRow[]).map((b) => {
+      const thread = joinedThread(b.threads);
       const start = b.start as string | null;
       const end = b.end as string | null;
       const durationMinutes =
@@ -234,8 +282,8 @@ export const bookingService = {
 
       return {
         id: b.id,
-        clientHandle: b.threads?.client_handle ?? 'Unknown',
-        channel: b.threads?.channel ?? '',
+        clientHandle: thread?.client_handle ?? 'Unknown',
+        channel: thread?.channel ?? '',
         start,
         end,
         durationMinutes,
@@ -314,7 +362,7 @@ export const draftService = {
 
     if (error) throw error;
 
-    const rows = (data ?? []) as any[];
+    const rows = (data ?? []) as unknown as PendingDraftRow[];
 
     // Resolve the inbound text each draft answers in one follow-up query.
     const replyIds = rows.map((r) => r.reply_to_message_id).filter(Boolean) as string[];
@@ -327,18 +375,23 @@ export const draftService = {
       for (const m of inbound ?? []) inboundById.set(m.id, m.text ?? '');
     }
 
-    return rows.map((r) => ({
-      id: r.id,
-      threadId: r.thread_id,
-      clientHandle: r.threads?.client_handle ?? 'Unknown',
-      channel: r.threads?.channel ?? '',
-      inboundText: r.reply_to_message_id ? inboundById.get(r.reply_to_message_id) ?? null : null,
-      draftText: r.text ?? '',
-      intent: r.ai_label ?? null,
-      confidence: r.ai_confidence ?? null,
-      source: r.response_source ?? null,
-      createdAt: r.created_at ?? null,
-    }));
+    return rows
+      .filter((r): r is PendingDraftRow & { thread_id: string } => Boolean(r.thread_id))
+      .map((r) => {
+        const thread = joinedThread(r.threads);
+        return {
+          id: r.id,
+          threadId: r.thread_id,
+          clientHandle: thread?.client_handle ?? 'Unknown',
+          channel: thread?.channel ?? '',
+          inboundText: r.reply_to_message_id ? inboundById.get(r.reply_to_message_id) ?? null : null,
+          draftText: r.text ?? '',
+          intent: r.ai_label ?? null,
+          confidence: r.ai_confidence ?? null,
+          source: r.response_source ?? null,
+          createdAt: r.created_at ?? null,
+        };
+      });
   },
 
   /** Count of drafts awaiting approval (inbox tab badge). */
@@ -361,7 +414,7 @@ export const draftService = {
       body: { messageId },
     });
     if (error) throw error;
-    if (data && (data as any).error) throw new Error(String((data as any).error));
+    if (hasFunctionError(data)) throw new Error(String(data.error));
   },
 
   /** Reject a draft so it leaves the queue and is never sent. */

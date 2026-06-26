@@ -21,6 +21,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { preferencesService } from '@/lib/preferences';
 import { confirmAsync } from '@/utils/confirm';
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function SettingsScreen() {
   const { user, signOut, isSupabaseConfigured } = useAuth();
   const rootNavigationState = useRootNavigationState();
@@ -76,9 +80,9 @@ export default function SettingsScreen() {
       if (rootNavigationState?.key) {
         router.replace('/');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSigningOut(false);
-      const message = error?.message ?? 'Please try again.';
+      const message = errorMessage(error, 'Please try again.');
       if (Platform.OS === 'web') {
         window.alert(`Sign out failed\n\n${message}`);
       } else {

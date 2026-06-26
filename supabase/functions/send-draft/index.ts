@@ -20,6 +20,14 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const SENDABLE = ['pending', 'approved', 'failed'];
+type DraftRow = {
+  id: string;
+  user_id: string | null;
+  thread_id: string | null;
+  text: string | null;
+  approval_status: string | null;
+  threads?: { channel: string | null; external_thread_id: string | null } | null;
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -53,11 +61,12 @@ Deno.serve(async (req) => {
     .eq('id', messageId)
     .maybeSingle();
 
-  if (!draft || draft.user_id !== user.id) return json({ error: 'not_found' }, 404);
-  if (!SENDABLE.includes(draft.approval_status as string)) return json({ error: 'invalid_state' }, 409);
+  const draftRow = draft as DraftRow | null;
+  if (!draftRow || draftRow.user_id !== user.id) return json({ error: 'not_found' }, 404);
+  if (!SENDABLE.includes(draftRow.approval_status as string)) return json({ error: 'invalid_state' }, 409);
 
-  const channelName = (draft as any).threads?.channel as string | undefined;
-  const chatId = (draft as any).threads?.external_thread_id as string | undefined;
+  const channelName = draftRow.threads?.channel ?? undefined;
+  const chatId = draftRow.threads?.external_thread_id ?? undefined;
 
   if (channelName === 'telegram') {
     if (!chatId) return json({ error: 'no_destination' }, 400);
@@ -69,7 +78,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
 
-    const sent = await sendTelegramMessage(channel.bot_token as string, chatId, draft.text as string);
+    const sent = await sendTelegramMessage(channel.bot_token as string, chatId, draftRow.text ?? '');
     if (!sent.ok) {
       await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
       return json({ error: 'send_failed', detail: sent.error }, 502);
@@ -84,7 +93,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!channel?.bot_token || !channel.active) return json({ error: 'channel_unavailable' }, 400);
 
-    const sent = await sendGoogleVoiceReply(channel.bot_token as string, chatId, draft.text as string);
+    const sent = await sendGoogleVoiceReply(channel.bot_token as string, chatId, draftRow.text ?? '');
     if (!sent.ok) {
       await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
       return json({ error: 'send_failed', detail: sent.error }, 502);
@@ -105,7 +114,7 @@ Deno.serve(async (req) => {
       channel.bot_token as string,
       channel.external_account_id as string,
       chatId,
-      draft.text as string,
+      draftRow.text ?? '',
     );
     if (!sent.ok) {
       await admin.from('messages').update({ approval_status: 'failed' }).eq('id', messageId);
@@ -123,7 +132,7 @@ Deno.serve(async (req) => {
     .eq('id', messageId);
   await admin.from('agent_events').insert({
     user_id: user.id,
-    thread_id: draft.thread_id,
+    thread_id: draftRow.thread_id,
     message_id: messageId,
     kind: 'sent',
     source: 'approval',

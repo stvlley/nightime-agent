@@ -16,6 +16,13 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const VISIBLE_OUT = ['auto_sent', 'sent'];
+type PollMessageRow = {
+  id: string;
+  text: string | null;
+  direction: string | null;
+  approval_status: string | null;
+  created_at: string | null;
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -54,8 +61,8 @@ Deno.serve(async (req) => {
   if (body.afterIso) q = q.gt('created_at', body.afterIso);
 
   const { data: rows } = await q;
-  const messages = ((rows ?? []) as any[])
-    .filter((m) => m.direction === 'in' || VISIBLE_OUT.includes(m.approval_status))
+  const messages = ((rows ?? []) as PollMessageRow[])
+    .filter((m) => m.direction === 'in' || (m.approval_status !== null && VISIBLE_OUT.includes(m.approval_status)))
     .map((m) => ({
       id: m.id,
       text: m.text,

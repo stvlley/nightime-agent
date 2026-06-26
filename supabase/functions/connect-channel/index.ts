@@ -12,7 +12,7 @@
 // Web chat needs no creds and is enabled directly by the app via RLS, so it is
 // intentionally not handled here.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { getGoogleAccessToken } from '../_shared/gmail.ts';
 import { json, corsHeaders } from '../_shared/http.ts';
 
@@ -30,7 +30,7 @@ function functionsBase(): string {
   return `${SUPABASE_URL}/functions/v1`;
 }
 
-async function upsertChannel(admin: any, row: Record<string, unknown>) {
+async function upsertChannel(admin: SupabaseClient, row: Record<string, unknown>) {
   // on_conflict (user_id, channel): one row per provider per channel.
   const { error } = await admin
     .from('agent_channels')
@@ -53,9 +53,10 @@ Deno.serve(async (req) => {
   const user = userData?.user;
   if (!user) return json({ error: 'unauthorized' }, 401);
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    body = typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
   } catch {
     return json({ error: 'bad_request' }, 400);
   }

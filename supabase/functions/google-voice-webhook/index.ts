@@ -19,6 +19,15 @@ interface GmailHistoryResponse {
   history?: Array<{ messagesAdded?: Array<{ message?: { id?: string } }> }>;
 }
 
+type ChannelMetadata = { lastHistoryId?: string };
+type GoogleVoiceChannel = {
+  id: string;
+  user_id: string;
+  bot_token: string;
+  active: boolean;
+  metadata: ChannelMetadata | null;
+};
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -38,10 +47,11 @@ Deno.serve(async (req) => {
     .eq('channel', 'gv')
     .eq('external_account_id', notification.emailAddress)
     .maybeSingle();
-  if (!channel || !channel.active || !channel.bot_token) return ack();
+  const gvChannel = channel as GoogleVoiceChannel | null;
+  if (!gvChannel || !gvChannel.active || !gvChannel.bot_token) return ack();
 
-  const userId = channel.user_id as string;
-  const metadata = ((channel as any).metadata ?? {}) as { lastHistoryId?: string };
+  const userId = gvChannel.user_id;
+  const metadata = gvChannel.metadata ?? {};
   const startHistoryId = metadata.lastHistoryId;
 
   // Gmail sends one notification immediately after watch() is created. Treat
@@ -50,13 +60,13 @@ Deno.serve(async (req) => {
     await admin
       .from('agent_channels')
       .update({ metadata: { ...metadata, lastHistoryId: notification.historyId } })
-      .eq('id', channel.id);
+      .eq('id', gvChannel.id);
     return ack();
   }
 
   try {
     const history = await gmailApi<GmailHistoryResponse>(
-      channel.bot_token as string,
+      gvChannel.bot_token,
       `history?startHistoryId=${encodeURIComponent(startHistoryId)}&historyTypes=messageAdded`,
     );
     if (!history.ok) {
@@ -72,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     for (const id of ids) {
-      const msg = await gmailApi<GmailMessage>(channel.bot_token as string, `messages/${encodeURIComponent(id)}?format=full`);
+      const msg = await gmailApi<GmailMessage>(gvChannel.bot_token, `messages/${encodeURIComponent(id)}?format=full`);
       if (!msg.ok || !msg.data) {
         await logEvent(admin, { userId, kind: 'error', source: 'gv', detail: { stage: 'gmail_message', id, error: msg.error } });
         continue;
@@ -85,7 +95,7 @@ Deno.serve(async (req) => {
         userId,
         channel: 'gv',
         inbound,
-        deliver: (text) => sendGoogleVoiceReply(channel.bot_token as string, inbound.replyToEmail, text, inbound.gmailThreadId),
+        deliver: (text) => sendGoogleVoiceReply(gvChannel.bot_token, inbound.replyToEmail, text, inbound.gmailThreadId),
       });
     }
   } catch (e) {
@@ -94,7 +104,7 @@ Deno.serve(async (req) => {
     await admin
       .from('agent_channels')
       .update({ metadata: { ...metadata, lastHistoryId: notification.historyId } })
-      .eq('id', channel.id);
+      .eq('id', gvChannel.id);
   }
 
   return ack();

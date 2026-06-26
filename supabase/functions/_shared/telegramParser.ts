@@ -14,7 +14,32 @@ export interface NormalizedInbound {
   timestamp: string; // ISO 8601
 }
 
-function telegramMessageType(message: any): NormalizedInbound['messageType'] {
+type TelegramUser = {
+  id?: string | number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+};
+type TelegramMessage = {
+  message_id?: string | number;
+  date?: number;
+  text?: string;
+  caption?: string;
+  photo?: unknown;
+  voice?: unknown;
+  audio?: unknown;
+  document?: unknown;
+  location?: unknown;
+  chat?: { id?: string | number };
+  from?: TelegramUser;
+};
+type TelegramUpdate = { message?: TelegramMessage; edited_message?: TelegramMessage };
+
+function isTelegramUpdate(value: unknown): value is TelegramUpdate {
+  return typeof value === 'object' && value !== null;
+}
+
+function telegramMessageType(message: TelegramMessage): NormalizedInbound['messageType'] {
   if (message.photo) return 'image';
   if (message.voice || message.audio) return 'audio';
   if (message.document) return 'file';
@@ -27,7 +52,8 @@ function telegramMessageType(message: any): NormalizedInbound['messageType'] {
  * Normalize a Telegram webhook update into a channel-agnostic inbound message.
  * Returns null for updates we don't handle (no message, missing chat/sender).
  */
-export function parseTelegramUpdate(update: any): NormalizedInbound | null {
+export function parseTelegramUpdate(update: unknown): NormalizedInbound | null {
+  if (!isTelegramUpdate(update)) return null;
   const message = update?.message ?? update?.edited_message;
   if (!message || !message.chat || !message.from) return null;
 

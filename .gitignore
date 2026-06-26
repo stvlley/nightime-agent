@@ -33,6 +33,7 @@ test-results/
 .env
 supabase/.temp/
 .env*
+!scripts/.env.load
 
 # typescript
 *.tsbuildinfo

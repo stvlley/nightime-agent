@@ -81,6 +81,10 @@ function isEmailRateLimitError(error: unknown): boolean {
   return /email.*rate limit|rate limit.*email|email rate limit exceeded/i.test(message);
 }
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function createDemoUser(email: string, businessName: string, id = `demo-${Date.now()}`): AuthUser {
   return {
     id,
@@ -326,7 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (isNetworkError(error) || (shouldAllowDemoAuthFallback() && isEmailRateLimitError(error))) {
         const demoUser = createDemoUser(email, businessName);
         await AsyncStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
@@ -339,7 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : 'Auth service is unreachable, so this account was started locally for now.',
         };
       }
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage(error, 'Unable to create account.') };
     } finally {
       setLoading(false);
     }
@@ -395,8 +399,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       return { success: true, userId: data.user?.id };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: errorMessage(error, 'Unable to log in.') };
     } finally {
       setLoading(false);
     }
@@ -460,8 +464,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         displayName,
         profileCreated,
       };
-    } catch (error: any) {
-      return { success: false, error: error?.message ?? 'Unable to sign in with Google.' };
+    } catch (error: unknown) {
+      return { success: false, error: errorMessage(error, 'Unable to sign in with Google.') };
     } finally {
       setLoading(false);
     }
@@ -497,8 +501,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       setUser({ ...user, profile });
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message ?? 'Could not save the profile.' };
+    } catch (error: unknown) {
+      return { success: false, error: errorMessage(error, 'Could not save the profile.') };
     }
   };
 

@@ -45,7 +45,7 @@ export const sendTrainingData = async (payload: TrainingWebhookPayload): Promise
 };
 
 // Message processing webhook
-export const sendMessageForProcessing = async (payload: MessageWebhookPayload): Promise<any> => {
+export const sendMessageForProcessing = async (payload: MessageWebhookPayload): Promise<unknown> => {
   try {
     const webhookUrl = process.env.EXPO_PUBLIC_MESSAGE_WEBHOOK_URL;
     if (!webhookUrl) {

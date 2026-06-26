@@ -64,7 +64,8 @@ function extractPhone(...values: string[]): string {
 }
 
 export function parseGmailPubSub(body: unknown): GmailPubSubNotification | null {
-  const data = (body as any)?.message?.data;
+  const message = typeof body === 'object' && body !== null && 'message' in body ? body.message : null;
+  const data = typeof message === 'object' && message !== null && 'data' in message ? message.data : null;
   if (typeof data !== 'string' || !data) return null;
 
   try {

@@ -13,6 +13,7 @@ import { type OnboardingAccessState, onboardingUtils } from '@/utils/onboarding'
 
 const PENDING_POLL_MS = 30000;
 const VISIBLE_TABS = ['dashboard', 'inbox', 'calendar', 'settings'] as const;
+type VisibleTab = (typeof VISIBLE_TABS)[number];
 const SECONDARY_PARENT: Record<string, (typeof VISIBLE_TABS)[number]> = {
   'ai-settings': 'settings',
   billing: 'settings',
@@ -32,6 +33,10 @@ const HOME_OPTIONS = { title: 'Home' };
 const CALENDAR_OPTIONS = { title: 'Calendar' };
 const SETTINGS_OPTIONS = { title: 'More' };
 const HIDDEN_ROUTE_OPTIONS = { href: null };
+
+function isVisibleTab(name: string): name is VisibleTab {
+  return (VISIBLE_TABS as readonly string[]).includes(name);
+}
 
 /** Pending approval-queue size, refreshed on an interval, for the Inbox badge. */
 function usePendingDraftCount(): number {
@@ -180,7 +185,7 @@ function ProviderTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const currentName = state.routes[state.index]?.name;
   const activeName = SECONDARY_PARENT[currentName] ?? currentName;
-  const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name as any));
+  const visibleRoutes = state.routes.filter((route) => isVisibleTab(route.name));
 
   return (
     <View pointerEvents="box-none" style={[styles.tabWrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>

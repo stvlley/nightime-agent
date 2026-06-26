@@ -4,7 +4,33 @@ export interface WhatsAppInbound extends NormalizedInbound {
   phoneNumberId: string;
 }
 
-function messageText(message: any): string {
+type WhatsAppMessage = {
+  id?: string;
+  from?: string;
+  timestamp?: string;
+  type?: string;
+  text?: { body?: string };
+  button?: { text?: string };
+  interactive?: {
+    button_reply?: { title?: string };
+    list_reply?: { title?: string };
+  };
+};
+type WhatsAppContact = { wa_id?: string; profile?: { name?: string } };
+type WhatsAppValue = {
+  contacts?: WhatsAppContact[];
+  messages?: WhatsAppMessage[];
+  metadata?: { phone_number_id?: string };
+};
+type WhatsAppChange = { field?: string; value?: WhatsAppValue };
+type WhatsAppEntry = { changes?: WhatsAppChange[] };
+type WhatsAppPayload = { entry?: WhatsAppEntry[] };
+
+function isWhatsAppPayload(value: unknown): value is WhatsAppPayload {
+  return typeof value === 'object' && value !== null;
+}
+
+function messageText(message: WhatsAppMessage): string {
   if (message?.text?.body) return String(message.text.body);
   if (message?.button?.text) return String(message.button.text);
   if (message?.interactive?.button_reply?.title) return String(message.interactive.button_reply.title);
@@ -12,7 +38,7 @@ function messageText(message: any): string {
   return '';
 }
 
-function messageType(message: any): NormalizedInbound['messageType'] {
+function messageType(message: WhatsAppMessage): NormalizedInbound['messageType'] {
   if (message?.type === 'image') return 'image';
   if (message?.type === 'audio' || message?.type === 'voice') return 'audio';
   if (message?.type === 'document') return 'file';
@@ -21,8 +47,8 @@ function messageType(message: any): NormalizedInbound['messageType'] {
   return 'other';
 }
 
-function contactName(value: any, from: string): string {
-  const contact = (value?.contacts ?? []).find((c: any) => c?.wa_id === from) ?? value?.contacts?.[0];
+function contactName(value: WhatsAppValue, from: string): string {
+  const contact = (value.contacts ?? []).find((c) => c.wa_id === from) ?? value.contacts?.[0];
   return String(contact?.profile?.name || contact?.wa_id || from || 'WhatsApp user');
 }
 
@@ -30,8 +56,9 @@ function contactName(value: any, from: string): string {
  * Normalize Meta WhatsApp Cloud API webhook payloads into channel-agnostic
  * inbound messages. Returns an empty list for status-only or unsupported events.
  */
-export function parseWhatsAppWebhook(payload: any): WhatsAppInbound[] {
+export function parseWhatsAppWebhook(payload: unknown): WhatsAppInbound[] {
   const out: WhatsAppInbound[] = [];
+  if (!isWhatsAppPayload(payload)) return out;
   const entries = Array.isArray(payload?.entry) ? payload.entry : [];
 
   for (const entry of entries) {
@@ -39,6 +66,7 @@ export function parseWhatsAppWebhook(payload: any): WhatsAppInbound[] {
     for (const change of changes) {
       if (change?.field !== 'messages') continue;
       const value = change?.value;
+      if (!value) continue;
       const phoneNumberId = String(value?.metadata?.phone_number_id || '');
       const messages = Array.isArray(value?.messages) ? value.messages : [];
       if (!phoneNumberId || messages.length === 0) continue;

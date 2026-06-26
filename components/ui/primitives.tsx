@@ -182,7 +182,7 @@ export function Text({
       style={[
         {
           fontSize,
-          fontWeight: fontWeight as any,
+          fontWeight,
           color,
           textAlign,
           flex,
@@ -650,10 +650,10 @@ export function ToggleRow({
 
 export function ProgressBar({ value, tone = 'primary' }: { value: number; tone?: Tone }) {
   const c = toneMap[tone];
-  const pct = `${Math.max(0, Math.min(value, 100))}%`;
+  const pct = `${Math.max(0, Math.min(value, 100))}%` as ViewStyle['width'];
   return (
     <View style={{ height: 8, backgroundColor: colors.surfaceMuted, borderRadius: 4, overflow: 'hidden' }}>
-      <View style={{ width: pct as any, height: '100%', backgroundColor: c.fg, borderRadius: 4 }} />
+      <View style={{ width: pct, height: '100%', backgroundColor: c.fg, borderRadius: 4 }} />
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { ParsedConversation, extractConversationInsights } from './chatParsers';
-import { sendTrainingData } from './webhooks';
+import { sendTrainingData, type WebhookPayload } from './webhooks';
 
 export interface TrainingData {
   conversationId: string;
@@ -24,6 +24,15 @@ export interface AILearningProgress {
   lastTrainingDate: string;
 }
 
+function webhookSourceForPlatform(platform: string): WebhookPayload['source'] {
+  const normalized = platform.toLowerCase().replace(/[\s-]+/g, '_');
+  if (normalized.includes('whatsapp')) return 'whatsapp';
+  if (normalized.includes('telegram')) return 'telegram';
+  if (normalized.includes('google_voice')) return 'google_voice';
+  if (normalized.includes('imessage')) return 'imessage';
+  return 'email';
+}
+
 // Process conversation for AI training
 export const processConversationForAI = async (
   conversation: ParsedConversation,
@@ -44,13 +53,11 @@ export const processConversationForAI = async (
   try {
     await sendTrainingData({
       userId,
-      source: conversation.platform.toLowerCase() as any,
+      source: webhookSourceForPlatform(conversation.platform),
       data: trainingData,
       fileData: JSON.stringify(trainingData),
       timestamp: new Date().toISOString(),
     });
-    
-    console.log('Training data sent successfully');
   } catch (error) {
     console.error('Failed to send training data:', error);
     throw new Error('Failed to process conversation for AI training');

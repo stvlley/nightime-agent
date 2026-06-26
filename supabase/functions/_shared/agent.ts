@@ -22,6 +22,7 @@ import {
   FALLBACK_REPLY,
   llmReplyPassesAutoSendSafety,
   resolveAgentModeConfig,
+  type AgentMode,
   type FaqEntry,
   type MessageIntent,
   type ResponseSource,
@@ -29,6 +30,26 @@ import {
 import { generateReply } from './llm.ts';
 
 type Admin = SupabaseClient;
+type ApprovalMode = 'manual' | 'auto_eligible';
+type ModerationLevel = 'low' | 'medium' | 'strict';
+type CostRow = { estimated_cost_cents: number | null };
+type ProviderPrefsRow = {
+  approval_mode: ApprovalMode | null;
+  moderation_level: ModerationLevel | null;
+  agent_mode: AgentMode | null;
+  agent_tone: string | null;
+  response_boundaries: string | null;
+  llm_enabled: boolean | null;
+  ai_daily_cap_cents: number | null;
+  ai_monthly_cap_cents: number | null;
+  ai_thread_cap_cents: number | null;
+  ai_daily_call_cap: number | null;
+  ai_monthly_call_cap: number | null;
+  ai_thread_call_cap: number | null;
+  ai_cap_behavior: 'fallback' | null;
+};
+type FaqRow = { id: string; trigger: string | null; reply_text: string | null; enabled: boolean | null };
+type ProfileNameRow = { business_name: string | null };
 
 export interface SendResult {
   ok: boolean;
@@ -89,7 +110,7 @@ function startOfMonthISO(): string {
   return d.toISOString();
 }
 
-function sumEstimatedCost(rows: any[] | null): number {
+function sumEstimatedCost(rows: CostRow[] | null): number {
   return (rows ?? []).reduce((sum, row) => {
     const value = Number(row?.estimated_cost_cents ?? 0);
     return Number.isFinite(value) ? sum + value : sum;
@@ -129,9 +150,9 @@ async function getAgentSpend(
   ]);
 
   return {
-    dailyCents: sumEstimatedCost(dailyRes.data as any[] | null),
-    monthlyCents: sumEstimatedCost(monthlyRes.data as any[] | null),
-    threadCents: sumEstimatedCost(threadRes.data as any[] | null),
+    dailyCents: sumEstimatedCost(dailyRes.data as CostRow[] | null),
+    monthlyCents: sumEstimatedCost(monthlyRes.data as CostRow[] | null),
+    threadCents: sumEstimatedCost(threadRes.data as CostRow[] | null),
   };
 }
 
@@ -275,8 +296,8 @@ export async function runAgentTurn(
     admin.from('profiles').select('business_name').eq('id', userId).maybeSingle(),
   ]);
 
-  const prefs = prefsRes.data as any;
-  const faqs: FaqEntry[] = ((faqRes.data ?? []) as any[]).map((f) => ({
+  const prefs = prefsRes.data as ProviderPrefsRow | null;
+  const faqs: FaqEntry[] = ((faqRes.data ?? []) as FaqRow[]).map((f) => ({
     id: f.id,
     trigger: f.trigger ?? '',
     reply: f.reply_text ?? '',
@@ -287,12 +308,12 @@ export async function runAgentTurn(
     inboundText: inbound.text,
     faqs,
     preferences: {
-      approvalMode: (prefs?.approval_mode as any) ?? 'manual',
-      moderationLevel: (prefs?.moderation_level as any) ?? 'medium',
-      agentMode: (prefs?.agent_mode as any) ?? 'keep_up',
+      approvalMode: prefs?.approval_mode ?? 'manual',
+      moderationLevel: prefs?.moderation_level ?? 'medium',
+      agentMode: prefs?.agent_mode ?? 'keep_up',
     },
   });
-  const modeConfig = resolveAgentModeConfig(prefs?.agent_mode as any, {
+  const modeConfig = resolveAgentModeConfig(prefs?.agent_mode ?? null, {
     AGENT_MODEL_KEEP_UP: Deno.env.get('AGENT_MODEL_KEEP_UP') ?? undefined,
     AGENT_MODEL_HELP_RESPOND: Deno.env.get('AGENT_MODEL_HELP_RESPOND') ?? undefined,
     AGENT_MODEL_TALK_FOR_ME: Deno.env.get('AGENT_MODEL_TALK_FOR_ME') ?? undefined,
@@ -358,7 +379,7 @@ export async function runAgentTurn(
     } else {
       const llm = await generateReply({
         inboundText: inbound.text,
-        businessName: (profileRes.data as any)?.business_name,
+        businessName: (profileRes.data as ProfileNameRow | null)?.business_name,
         agentTone: prefs?.agent_tone,
         responseBoundaries: prefs?.response_boundaries,
         faqs,

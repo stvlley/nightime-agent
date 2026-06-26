@@ -35,6 +35,10 @@ const initialSignupForm: LandingSignupForm = {
   displayName: '',
 };
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 async function getSignedInStartRoute(
   userId: string,
 ): Promise<
@@ -184,10 +188,10 @@ export function LandingPage() {
             ? await getSignedInStartRoute(result.userId)
             : '/(onboarding)/onboarding',
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         setSubmitting(false);
         setAuthRedirectPaused(false);
-        setErrors({ submit: error?.message ?? 'Unable to log in.' });
+        setErrors({ submit: errorMessage(error, 'Unable to log in.') });
       }
       return;
     }
@@ -225,10 +229,10 @@ export function LandingPage() {
       setSignupVisible(false);
       resetSignup();
       router.replace('/(onboarding)/onboarding');
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSubmitting(false);
       setAuthRedirectPaused(false);
-      setErrors({ submit: error?.message ?? 'Unable to create account.' });
+      setErrors({ submit: errorMessage(error, 'Unable to create account.') });
     }
   };
 
@@ -272,11 +276,11 @@ export function LandingPage() {
           ? await getSignedInStartRoute(result.userId)
           : '/(onboarding)/onboarding',
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSubmitting(false);
       setAuthRedirectPaused(false);
       setErrors({
-        submit: error?.message ?? 'Unable to continue with Google.',
+        submit: errorMessage(error, 'Unable to continue with Google.'),
       });
     }
   };
