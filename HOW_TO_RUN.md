@@ -36,6 +36,43 @@ npm run release:audit
 npm run dev
 ```
 
+## Local agent + OpenRouter smoke test
+This path uses the local Supabase stack, so it does not use hosted Supabase
+resources. It may make OpenRouter API calls when `OPENROUTER_API_KEY` is set
+and `AGENT_LLM_DISABLED` is not `true`.
+
+In `.env`, keep the key server-side only:
+
+```bash
+OPENROUTER_API_KEY=sk-or-...
+AGENT_MODEL=openrouter/free
+AGENT_LLM_DISABLED=false
+```
+
+Start and reset the local backend:
+
+```bash
+supabase start
+supabase db reset
+```
+
+Serve the Edge Functions locally with the `.env` file:
+
+```bash
+npm run agent:functions:local
+```
+
+In a second terminal, run the live agent harness:
+
+```bash
+npm run agent:test:local
+```
+
+The harness seeds a local provider, sends FAQ-hit and FAQ-miss messages, and
+expects the FAQ miss to produce a pending draft with `response_source='llm'`
+when OpenRouter is configured. If the function falls back instead, it prints
+the latest `llm_called` event detail from `agent_events`.
+
 ## Web export / run
 ```bash
 npm run build:web

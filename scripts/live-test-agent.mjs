@@ -3,16 +3,19 @@
 // then drives the telegram-webhook + send-draft Edge Functions with simulated
 // Telegram updates and asserts the DB state at each step.
 //
-// Usage: node scripts/live-test-agent.mjs
+// Usage:
+//   eval "$(supabase status -o env)"
+//   node scripts/live-test-agent.mjs
 import { randomBytes } from 'node:crypto';
 
-const API = 'http://127.0.0.1:54321';
-const SERVICE = process.env.SERVICE_ROLE_KEY;
-const ANON = process.env.ANON_KEY;
+const API = process.env.API_URL || process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
+const SERVICE = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON = process.env.ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const FN = `${API}/functions/v1`;
+const openRouterConfigured = !!process.env.OPENROUTER_API_KEY && process.env.AGENT_LLM_DISABLED !== 'true';
 
 if (!SERVICE || !ANON) {
-  console.error('Set SERVICE_ROLE_KEY and ANON_KEY env vars');
+  console.error('Set local Supabase env first: eval "$(supabase status -o env)"');
   process.exit(1);
 }
 
@@ -88,6 +91,13 @@ function check(name, cond, extra = '') {
   else { fail++; log(`  ❌ ${name} ${extra}`); }
 }
 
+async function latestLlmEvent(userId) {
+  const rows = await rest(
+    `agent_events?user_id=eq.${userId}&kind=eq.llm_called&order=created_at.desc&select=model,input_tokens,output_tokens,estimated_cost_cents,detail&limit=1`
+  );
+  return rows[0] || null;
+}
+
 async function main() {
   log('\n=== SEED ===');
   const userId = await getOrCreateUser();
@@ -115,6 +125,8 @@ async function main() {
       common_questions: ['hours', 'pricing'],
       response_boundaries: 'No explicit content. Keep it professional.',
       booking_context_enabled: false,
+      llm_enabled: true,
+      agent_mode: 'keep_up',
     }),
   });
 
@@ -184,11 +196,20 @@ async function main() {
   log('\n=== TEST 3: FAQ miss → LLM/fallback → pending approval queue ===');
   const t3 = await sendInbound('Do you take credit cards or only cash for the deluxe package?');
   check('returns 200 ack', t3.status === 200, `got ${t3.status}`);
-  await new Promise((r) => setTimeout(r, 600));
+  await new Promise((r) => setTimeout(r, 1200));
   const pending = await rest(`messages?user_id=eq.${userId}&approval_status=eq.pending&direction=eq.out&select=id,text,response_source,approval_status&order=created_at.desc`);
   check('a pending draft exists (awaiting human)', pending.length >= 1, `found ${pending.length}`);
   const pendingDraft = pending[0];
-  check('source is llm or fallback (not faq)', ['llm', 'fallback'].includes(pendingDraft?.response_source), pendingDraft?.response_source);
+  const llmEvent = await latestLlmEvent(userId);
+  const llmDetail = llmEvent?.detail ? JSON.stringify(llmEvent.detail) : '';
+  check('llm_called event logged', !!llmEvent, llmDetail);
+  if (openRouterConfigured) {
+    check('source is llm when OpenRouter is configured', pendingDraft?.response_source === 'llm', `${pendingDraft?.response_source || 'none'} ${llmDetail}`);
+    check('llm event has model', !!llmEvent?.model, JSON.stringify(llmEvent));
+  } else {
+    check('source is llm or fallback (OpenRouter not enabled in this process)', ['llm', 'fallback'].includes(pendingDraft?.response_source), pendingDraft?.response_source);
+    if (pendingDraft?.response_source === 'fallback') log('   fallback detail:', llmDetail || 'no detail');
+  }
   log('   pending draft source:', pendingDraft?.response_source, '| text:', JSON.stringify(pendingDraft?.text));
 
   log('\n=== TEST 4: send-draft (JWT) approves the pending draft ===');
@@ -222,7 +243,7 @@ async function main() {
   check('inbound returns 200', w1.status === 200, JSON.stringify(w1.body));
   check('status=answered', w1.body.status === 'answered', JSON.stringify(w1.body));
   check('reply is the FAQ text', (w1.body.reply || '').includes('Tuesday to Saturday'), w1.body.reply);
-  check('flagged aiGenerated', w1.body.aiGenerated === true);
+  check('does not mark public receipt as AI-generated', w1.body.aiGenerated === false);
   const wpoll1 = await webPost('webchat-poll', { slug: SLUG, sessionId: WEB_SESSION });
   check('poll returns visitor + agent message', wpoll1.body.messages?.length >= 2, JSON.stringify(wpoll1.body.messages?.map((m) => m.role)));
 

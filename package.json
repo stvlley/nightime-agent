@@ -47,6 +47,8 @@
     "typecheck": "PATH=/opt/homebrew/opt/node@22/bin:$PATH tsc --noEmit",
     "release:audit": "node scripts/app-store-readiness-audit.mjs",
     "storekit:asc": "node scripts/asc-storekit.mjs",
+    "agent:functions:local": "supabase functions serve --env-file .env",
+    "agent:test:local": "node scripts/.env.load OPENROUTER_API_KEY AGENT_LLM_DISABLED AGENT_MODEL -- sh -c 'eval \"$(supabase status -o env)\" && node scripts/live-test-agent.mjs'",
     "e2e": "node scripts/e2e.mjs",
     "e2e:install": "playwright install chromium",
     "e2e:verify:webchat": "node scripts/e2e.mjs verify:webchat",
