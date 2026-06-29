@@ -184,7 +184,10 @@
       });
       var data = await res.json();
       if (!res.ok) { addError(data.error === 'channel_disabled' ? 'This chat is currently offline.' : 'Could not send. Please try again.'); }
-      else if (data.reply) { addBubble('agent', data.reply, !!data.aiGenerated); }
+      // An 'answered' reply is a real auto-sent record — poll() renders it once,
+      // de-duped by id. Only the transient 'received' receipt (not a DB message,
+      // so poll never returns it) is rendered optimistically here.
+      else if (data.status === 'received' && data.reply) { addBubble('agent', data.reply, !!data.aiGenerated); }
       // Sync server-side records (de-duped) so history is consistent on reload.
       await poll();
     } catch (e) { addError('Network error. Please try again.'); }
