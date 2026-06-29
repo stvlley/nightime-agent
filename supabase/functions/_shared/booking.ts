@@ -29,7 +29,7 @@ import {
   type Lead,
   type ServiceLite,
 } from './qualification.ts';
-import type { MessageIntent } from './agentLogic.ts';
+import { isQuestionLike, type MessageIntent } from './agentLogic.ts';
 
 type Admin = SupabaseClient;
 
@@ -281,8 +281,18 @@ export async function handleBookingTurn(
   const lead = captureDetails(priorLead, inboundText, lite(cfg.services), ctx.expectingName === true);
   lead.contact = lead.contact ?? thread.clientHandle;
 
+  const advancedQualification = lead.name !== priorLead.name || lead.serviceId !== priorLead.serviceId;
   const step = nextQualificationStep(lead, lite(cfg.services));
   if (step.kind !== 'ready') {
+    // If the customer goes off-script with a question we couldn't turn into a
+    // name or service, hand it to the LLM instead of re-asking the same booking
+    // prompt (which reads like a robot). Thread state stays 'qualifying', so the
+    // booking flow resumes on the next relevant reply. We keep handling when we
+    // just asked for their name (a bare reply is the name) or when the message
+    // itself is a fresh booking/availability ask.
+    if (!advancedQualification && ctx.expectingName !== true && !wantsBooking && isQuestionLike(inboundText)) {
+      return NOT_HANDLED;
+    }
     await setBookingContext(admin, thread.id, { lead, expectingName: step.kind === 'ask_name' });
     return { handled: true, replyText: step.prompt, newState: 'qualifying', detail: { action: 'qualify', ask: step.kind, lead } };
   }

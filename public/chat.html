@@ -66,7 +66,6 @@
     box-shadow: 0 8px 20px rgba(157, 123, 255, 0.22);
   }
   button:disabled { opacity: .5; cursor: default; }
-  .system { align-self: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
   .error { align-self: center; font-size: 12px; color: #ff9d9d; padding: 4px 0; }
   @media (max-width: 520px) {
     header { padding: 16px 18px 18px; }
@@ -127,7 +126,7 @@
   function atBottom() { return log.scrollHeight - log.scrollTop - log.clientHeight < 60; }
   function scroll() { log.scrollTop = log.scrollHeight; }
 
-  function addBubble(role, text, aiGenerated) {
+  function addBubble(role, text) {
     var stick = atBottom();
     var row = document.createElement('div'); row.className = 'row ' + role;
     var wrap = document.createElement('div');
@@ -141,7 +140,6 @@
     wrap.appendChild(b); row.appendChild(wrap); log.appendChild(row);
     if (stick) scroll();
   }
-  function addSystem(text) { var d = document.createElement('div'); d.className = 'system'; d.textContent = text; log.appendChild(d); scroll(); }
   function addError(text) { var d = document.createElement('div'); d.className = 'error'; d.textContent = text; log.appendChild(d); scroll(); }
 
   function renderServerMessages(messages) {
@@ -155,7 +153,7 @@
           return;
         }
       }
-      addBubble(m.role, m.text, m.aiGenerated);
+      addBubble(m.role, m.text);
       if (m.createdAt) lastIso = m.createdAt;
     });
   }
@@ -176,7 +174,7 @@
     if (!text) return;
     input.value = ''; sendBtn.disabled = true;
     optimisticVisitorTexts.push(text);
-    addBubble('visitor', text, false); // optimistic echo
+    addBubble('visitor', text); // optimistic echo
     try {
       var res = await fetch(base + '/webchat-inbound', {
         method: 'POST', headers: headers(),
@@ -184,11 +182,10 @@
       });
       var data = await res.json();
       if (!res.ok) { addError(data.error === 'channel_disabled' ? 'This chat is currently offline.' : 'Could not send. Please try again.'); }
-      // An 'answered' reply is a real auto-sent record — poll() renders it once,
-      // de-duped by id. Only the transient 'received' receipt (not a DB message,
-      // so poll never returns it) is rendered optimistically here.
-      else if (data.status === 'received' && data.reply) { addBubble('agent', data.reply, !!data.aiGenerated); }
-      // Sync server-side records (de-duped) so history is consistent on reload.
+      // Replies — whether auto-sent or sent after the provider approves them —
+      // arrive as real records via poll(), de-duped by id. We never render an
+      // optimistic receipt, so the conversation always reads like a real person
+      // on the other end (no "message received" / auto-reply tell).
       await poll();
     } catch (e) { addError('Network error. Please try again.'); }
     finally { sendBtn.disabled = false; input.focus(); }

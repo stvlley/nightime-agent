@@ -168,9 +168,10 @@ describe('agent mode routing defaults', () => {
     expect(AGENT_MODE_DEFAULTS.talk_for_me).toMatchObject({
       model: 'openai/gpt-4.1-mini',
       maxTokens: 220,
-      dailyCallCap: 300,
-      monthlyCallCap: 5000,
-      threadCallCap: 6,
+      // Full automation: 0 = unlimited (no response cap).
+      dailyCallCap: 0,
+      monthlyCallCap: 0,
+      threadCallCap: 0,
     });
   });
 
@@ -315,6 +316,23 @@ describe('decideResponse', () => {
   });
 });
 
+describe('llmReplyPassesAutoSendSafety phrasing', () => {
+  it.each([
+    // Real commitments the agent may not make on its own → held.
+    ["You're all booked for Tuesday at 3pm.", false],
+    ["I've booked you in for tomorrow.", false],
+    ["It's confirmed for 2pm.", false],
+    ['That costs $40.', false],
+    ['I am available at 5pm.', false],
+    // Natural offers / questions that merely contain a trigger word → allowed.
+    ['What can I get you booked?', true],
+    ['Happy to help — want me to get you booked?', true],
+    ['Let me know what you had in mind and I can help.', true],
+  ])('%s → passes=%s', (text, passes) => {
+    expect(llmReplyPassesAutoSendSafety(text as string)).toBe(passes);
+  });
+});
+
 describe('matchFaq confidence tiers', () => {
   it('scores an alias-only booking match at ~0.78', () => {
     const m = matchFaq('can I schedule an appointment?', [
@@ -387,6 +405,10 @@ describe('classifyIntent extras', () => {
     ['I need to cancel my booking', 'cancel'],
     ['can we rebook for friday', 'reschedule'],
     ['can you reserve a slot', 'booking'],
+    ['can i come over this week', 'booking'],
+    ['can i come over again?', 'booking'],
+    ['can i stop by tomorrow', 'booking'],
+    ['could I swing by sometime', 'booking'],
   ])('classifies %s as %s', (text, expected) => {
     expect(classifyIntent(text)).toBe(expected);
   });
@@ -399,9 +421,14 @@ describe('decideResponse routing matrix (FAQ miss, no saved responses)', () => {
     ["what's the cost?", 'keep_up', 'llm', false], // routine_miss pricing → answers, no auto-send
     ['can I book?', 'keep_up', 'fallback', false], // keep_up does not LLM routine booking misses
     ['can I book?', 'help_respond', 'llm', false],
-    ['can I book?', 'talk_for_me', 'llm', false],
+    ['can I book?', 'talk_for_me', 'llm', false], // booking is high-stakes → held even in full automation
     ['go ahead and book it', 'talk_for_me', 'fallback', false], // firm commitment never LLMs
     ['I need to cancel', 'talk_for_me', 'fallback', false], // cancel intent never LLMs
+    // Full automation: talk_for_me auto-sends clean, non-transactional replies.
+    ['what are you doing', 'talk_for_me', 'llm', true],
+    ['do you have parking?', 'talk_for_me', 'llm', true],
+    ["what's the cost?", 'talk_for_me', 'llm', false], // pricing stays held even in full automation
+    ['do you have parking?', 'help_respond', 'llm', false], // help_respond stays conservative
   ])('%s under %s → source %s, autoSend %s', (text, mode, source, autoSend) => {
     const d = decideResponse({
       inboundText: text,

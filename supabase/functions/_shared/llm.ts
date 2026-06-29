@@ -8,12 +8,19 @@
 
 import type { FaqEntry } from './agentLogic.ts';
 
+export interface LlmTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface LlmContext {
   inboundText: string;
   businessName?: string | null;
   agentTone?: string | null;
   responseBoundaries?: string | null;
   faqs: FaqEntry[];
+  /** Prior turns in this conversation (oldest first), so replies stay in context. */
+  history?: LlmTurn[];
   model?: string | null;
   maxTokens?: number | null;
 }
@@ -35,18 +42,19 @@ function maxTokens(value?: number | null): number {
 
 function buildSystemPrompt(ctx: LlmContext): string {
   const lines: string[] = [
-    `You are a messaging assistant replying on behalf of ${ctx.businessName || 'an independent service provider'}.`,
-    'You are drafting a reply to an inbound client message. The provider reviews every draft before it is sent, so never promise a specific time, price, or booking that is not already confirmed below.',
-    'Keep replies short, warm, and professional. One or two sentences. Do not invent services, prices, or availability.',
-    'If the message needs the provider personally (sensitive, ambiguous, or a firm commitment), write a brief holding reply that says you will get back to them shortly.',
+    `You are texting customers for ${ctx.businessName || 'an independent service provider'}. Reply as the business in the first person, the way a real person texts back — never say or imply you are an AI, a bot, an assistant, or automated.`,
+    'Sound human: warm, relaxed, and brief. Usually one or two short sentences, like a real text message. Vary your wording and skip corporate filler ("we are here to assist you", "thank you for reaching out", "how may I help you today").',
+    'Use the conversation so far for context — do not re-introduce yourself or repeat what was already said.',
+    'Stay grounded: never invent or promise a specific time, price, service, or booking that is not given to you here. If you are unsure, say you will check and get right back to them.',
+    'If a message is sensitive, ambiguous, or wants to lock in a firm commitment, give a short friendly holding reply saying you will follow up shortly.',
   ];
-  if (ctx.agentTone) lines.push(`Tone to use: ${ctx.agentTone}.`);
-  if (ctx.responseBoundaries) lines.push(`Boundaries you must respect: ${ctx.responseBoundaries}.`);
+  if (ctx.agentTone) lines.push(`Match this tone: ${ctx.agentTone}.`);
+  if (ctx.responseBoundaries) lines.push(`Always respect these boundaries: ${ctx.responseBoundaries}.`);
   const enabledFaqs = ctx.faqs.filter((f) => f.enabled !== false && f.trigger && f.reply);
   if (enabledFaqs.length) {
-    lines.push('Known answers you may use when relevant:');
+    lines.push('Facts you can use when relevant (rephrase naturally, do not quote verbatim):');
     for (const f of enabledFaqs.slice(0, 5)) {
-      lines.push(`- Q: ${f.trigger} | A: ${f.reply}`);
+      lines.push(`- ${f.trigger} → ${f.reply}`);
     }
   }
   return lines.join('\n');
@@ -87,6 +95,7 @@ export async function generateReply(ctx: LlmContext): Promise<LlmResult> {
         max_tokens: maxTokens(ctx.maxTokens),
         messages: [
           { role: 'system', content: buildSystemPrompt(ctx) },
+          ...(ctx.history ?? []),
           { role: 'user', content: ctx.inboundText },
         ],
       }),

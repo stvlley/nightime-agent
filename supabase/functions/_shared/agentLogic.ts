@@ -122,9 +122,12 @@ export const AGENT_MODE_DEFAULTS: Record<AgentMode, AgentModeConfig> = {
     mode: 'talk_for_me',
     model: 'openai/gpt-4.1-mini',
     maxTokens: 220,
-    dailyCallCap: 300,
-    monthlyCallCap: 5000,
-    threadCallCap: 6,
+    // Full automation has no response cap — 0 disables the daily/monthly/thread
+    // call limits (positiveCap treats any non-positive value as "no cap").
+    // Provider cost caps (ai_*_cap_cents) still apply if the provider sets them.
+    dailyCallCap: 0,
+    monthlyCallCap: 0,
+    threadCallCap: 0,
     allowLlmAutoSend: true,
   },
 };
@@ -178,7 +181,7 @@ const INTENT_ALIASES: Record<Exclude<MessageIntent, 'other'>, string[]> = {
   cancel: ['cancel', 'cancelled', 'cancelling', 'call off'],
   reschedule: ['reschedule', 'rebook', 'move', 'push back', 'different time', 'change my'],
   pricing: ['price', 'pricing', 'cost', 'rate', 'rates', 'how much', 'fee', 'charge'],
-  booking: ['book', 'booking', 'appointment', 'schedule', 'reserve', 'slot', 'session'],
+  booking: ['book', 'booking', 'appointment', 'schedule', 'reserve', 'slot', 'session', 'come over', 'come in', 'come by', 'come on over', 'stop by', 'swing by', 'drop by', 'come see'],
   availability: ['available', 'availability', 'free', 'open', 'today', 'tonight', 'tomorrow', 'this week'],
   greeting: ['hi', 'hey', 'hello', 'good morning', 'good evening'],
 };
@@ -424,7 +427,7 @@ const SENSITIVE_PHRASES = [
   'bareback',
 ];
 
-function isQuestionLike(text: string): boolean {
+export function isQuestionLike(text: string): boolean {
   const raw = (text || '').trim();
   return raw.includes('?') || /^(what|when|where|who|why|how|can|could|do|does|is|are|will|would)\b/i.test(raw);
 }
@@ -456,28 +459,58 @@ function modeAllowsLlm(mode: AgentMode, reason: ClassifierReason, intent: Messag
   return reason === 'routine_miss' && ['greeting', 'pricing', 'availability'].includes(intent);
 }
 
+// Transactional intents always wait for a human in every mode: bookings and
+// availability are handled by the deterministic booking flow, and pricing /
+// cancel / reschedule need provider judgement before anything is promised.
+const HIGH_STAKES_INTENTS: MessageIntent[] = ['booking', 'availability', 'pricing', 'cancel', 'reschedule'];
+
 function llmAutoSendRiskAllowed(
+  mode: AgentMode,
   reason: ClassifierReason,
   intent: MessageIntent,
   inboundText: string,
 ): boolean {
+  if (HIGH_STAKES_INTENTS.includes(intent)) return false;
+
+  // Talk-for-me = full automation: any remaining mode-allowed reply can
+  // auto-send. sensitive / firm_commitment never reach here (modeAllowsLlm
+  // routes them to a held fallback), and the draft still clears moderation and
+  // the output-safety guard before it goes out.
+  if (mode === 'talk_for_me') return true;
+
+  // keep_up / help_respond keep the conservative gate: only greetings and
+  // explicit "tell me more"-style conversation openers auto-send.
   if (reason === 'routine_miss') return intent === 'greeting';
   if (reason !== 'conversation_requested') return false;
-  if (!hasAnyPhrase(inboundText, CONVERSATION_PHRASES)) return false;
-  return !['booking', 'availability', 'pricing', 'cancel', 'reschedule'].includes(intent);
+  return hasAnyPhrase(inboundText, CONVERSATION_PHRASES);
 }
+
+// Phrasings that assert a commitment the agent may not make on its own — the
+// booking engine owns real confirmations, times, and prices. Tuned to catch
+// declarations ("you're booked", "confirmed for 3pm", "costs $40") without
+// tripping on natural offers or questions ("what can I get you booked?").
+const OVER_PROMISE_PATTERNS: RegExp[] = [
+  /\b(?:you(?:'?re| are)|i(?:'?ve| have|'?m)|we(?:'?ve| have)|it'?s|that'?s)\s+(?:\w+\s+){0,2}(?:booked|confirmed|cancelled|canceled|refunded)\b/i,
+  /\b(?:booked|confirmed|cancelled|canceled|refunded)\s+(?:for|at|on)\s+(?:\d|mon|tue|wed|thu|fri|sat|sun|today|tomorrow|tonight|next|this)/i,
+  /\bavailable at\b/i,
+  /\bopen at\b/i,
+  /\bcosts?\s+\$?\d+/i,
+];
 
 export function llmReplyPassesAutoSendSafety(text: string): boolean {
   if (!text || hasAnyPhrase(text, [...SENSITIVE_PHRASES, ...HARD_COMMITMENT_PHRASES])) return false;
-  return !/\b(booked|confirmed|cancelled|refunded|available at|open at|costs?\s+\$?\d+)/i.test(text);
+  return !OVER_PROMISE_PATTERNS.some((re) => re.test(text));
 }
 
 /**
  * Decide how to respond to one inbound message.
  *
  * Policy: a confident FAQ match can auto-send when the provider opted into
- * `auto_eligible` and the message passed moderation. Anything else (LLM-drafted
- * or fallback) always routes to the approval queue in v1.
+ * `auto_eligible` and the message passed moderation. LLM drafts auto-send only
+ * for low-risk, mode-allowed misses — `talk_for_me` (full automation) sends any
+ * clean non-transactional reply, while `keep_up`/`help_respond` stay
+ * conservative (greetings + explicit conversation openers). Transactional,
+ * sensitive, firm-commitment, and fallback replies always route to approval.
  */
 export function decideResponse(params: {
   inboundText: string;
@@ -538,6 +571,6 @@ export function decideResponse(params: {
       !flaggedForReview &&
       preferences.approvalMode === 'auto_eligible' &&
       modeConfig.allowLlmAutoSend &&
-      llmAutoSendRiskAllowed(reason, intent, inboundText),
+      llmAutoSendRiskAllowed(mode, reason, intent, inboundText),
   };
 }

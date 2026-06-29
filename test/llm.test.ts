@@ -190,6 +190,28 @@ describe('generateReply — system prompt', () => {
   });
 });
 
+describe('generateReply — conversation history', () => {
+  it('inserts prior turns between the system prompt and the latest message', async () => {
+    stubEnv({ OPENROUTER_API_KEY: 'sk-test' });
+    stubFetch({ json: successPayload() });
+
+    await generateReply({
+      inboundText: 'what time works?',
+      faqs: FAQS,
+      history: [
+        { role: 'user', content: 'hi' },
+        { role: 'assistant', content: 'Hey! What can I do for you?' },
+      ],
+    });
+
+    const messages = sentMessages();
+    expect(messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(messages[1].content).toBe('hi');
+    expect(messages[2].content).toBe('Hey! What can I do for you?');
+    expect(messages[3]).toEqual({ role: 'user', content: 'what time works?' });
+  });
+});
+
 describe('generateReply — max_tokens', () => {
   async function maxTokensFor(opts: { ctx?: number | null; env?: string }): Promise<number> {
     stubEnv({ OPENROUTER_API_KEY: 'sk-test', AGENT_LLM_MAX_TOKENS: opts.env });

@@ -67,7 +67,6 @@ Deno.serve(async (req) => {
       id: m.id,
       text: m.text,
       role: m.direction === 'in' ? 'visitor' : 'agent',
-      aiGenerated: false,
       createdAt: m.created_at,
     }));
 

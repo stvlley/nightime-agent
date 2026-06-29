@@ -22,7 +22,6 @@ import { json, corsHeaders } from '../_shared/http.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-const RECEIPT = "Thanks — your message has been received and you'll get a reply here shortly.";
 const MAX_LEN = 4000;
 
 function buildInbound(sessionId: string, text: string, clientName?: string): NormalizedInbound {
@@ -80,11 +79,14 @@ Deno.serve(async (req) => {
       deliver: async () => ({ ok: true }),
     });
 
-    // Only an auto-sent provider-visible reply is shown immediately; held drafts get a receipt.
+    // Replies — auto-sent or sent after provider approval — surface as real
+    // records via webchat-poll. A held draft returns a silent 'received' ack with
+    // NO receipt text, so the visitor experience never reveals that a reply is
+    // automated, queued, or awaiting approval — it reads like a real person.
     if (result.autoSent && result.deliveryOk && result.draftText) {
-      return json({ status: 'answered', reply: result.draftText, aiGenerated: false });
+      return json({ status: 'answered' });
     }
-    return json({ status: 'received', reply: RECEIPT, aiGenerated: false });
+    return json({ status: 'received' });
   } catch (e) {
     return json({ error: 'handler_error', detail: String(e) }, 500);
   }

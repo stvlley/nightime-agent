@@ -27,7 +27,7 @@ import {
   type MessageIntent,
   type ResponseSource,
 } from './agentLogic.ts';
-import { generateReply } from './llm.ts';
+import { generateReply, type LlmTurn } from './llm.ts';
 import { handleBookingTurn } from './booking.ts';
 
 type Admin = SupabaseClient;
@@ -196,6 +196,37 @@ async function getAgentCallUsage(
   return { dailyCalls, monthlyCalls, threadCalls };
 }
 
+// Recent turns in this thread, oldest first, so the model replies in context.
+// Inbound client messages become 'user'; only replies that were actually sent
+// (auto-sent or provider-approved) become 'assistant' — pending/rejected drafts
+// are excluded so the model never treats an unsent draft as something it said.
+const HISTORY_LIMIT = 10;
+const SENT_STATUSES = new Set(['auto_sent', 'sent']);
+
+async function fetchConversationHistory(
+  admin: Admin,
+  threadId: string,
+  excludeMessageId: string | null,
+): Promise<LlmTurn[]> {
+  const { data } = await admin
+    .from('messages')
+    .select('id, text, direction, approval_status, created_at')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT + 1);
+
+  const rows = ((data ?? []) as Array<{ id: string; text: string | null; direction: string | null; approval_status: string | null }>)
+    .filter((m) => m.id !== excludeMessageId && m.text)
+    .filter((m) => m.direction === 'in' || (m.direction === 'out' && SENT_STATUSES.has(m.approval_status ?? '')))
+    .slice(0, HISTORY_LIMIT)
+    .reverse();
+
+  return rows.map((m) => ({
+    role: m.direction === 'in' ? 'user' : 'assistant',
+    content: m.text as string,
+  }));
+}
+
 function nullablePositiveNumber(value: unknown): number | null {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
@@ -247,9 +278,11 @@ async function upsertThread(
 
 function nextState(current: string | null, intent: string): string {
   if (intent === 'cancel') return 'cancelled';
-  if ((!current || current === 'open') && (intent === 'booking' || intent === 'availability')) {
-    return 'qualifying';
-  }
+  // Booking sub-states (qualifying / offering / tentative) are owned by the
+  // booking handler, which returns them via newState only when it actually
+  // engages. We must NOT advance to 'qualifying' here on a booking/availability
+  // intent alone — otherwise a turn that never reached the booking flow (e.g. no
+  // schedule configured) leaves the thread stuck mid-qualification.
   return current ?? 'open';
 }
 
@@ -424,12 +457,14 @@ export async function runAgentTurn(
         },
       });
     } else {
+      const history = await fetchConversationHistory(admin, thread.id, inMsg?.id ?? null);
       const llm = await generateReply({
         inboundText: inbound.text,
         businessName: (profileRes.data as ProfileNameRow | null)?.business_name,
         agentTone: prefs?.agent_tone,
         responseBoundaries: prefs?.response_boundaries,
         faqs,
+        history,
         model: modeConfig.model,
         maxTokens: modeConfig.maxTokens,
       });
