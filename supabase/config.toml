@@ -457,3 +457,19 @@ verify_jwt = false
 # is by watched Gmail address, and mailbox access still requires the stored
 # provider OAuth refresh token.
 verify_jwt = false
+
+[functions.sim-inbound]
+# Testing/dev channel simulator — injects an inbound message on any channel and
+# runs the agent loop. Does its own auth (service-role key in x-sim-key), so no
+# Supabase JWT is required.
+verify_jwt = false
+
+[functions.issue-sms-number]
+# Called by the provider app to provision a dedicated business SMS number.
+# Requires a valid provider session JWT.
+verify_jwt = true
+
+[functions.connect-calendar]
+# Called by the provider app to connect a calendar for booking sync.
+# Requires a valid provider session JWT.
+verify_jwt = true

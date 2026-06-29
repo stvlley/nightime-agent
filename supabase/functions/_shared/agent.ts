@@ -28,6 +28,7 @@ import {
   type ResponseSource,
 } from './agentLogic.ts';
 import { generateReply } from './llm.ts';
+import { handleBookingTurn } from './booking.ts';
 
 type Admin = SupabaseClient;
 type ApprovalMode = 'manual' | 'auto_eligible';
@@ -49,7 +50,10 @@ type ProviderPrefsRow = {
   ai_cap_behavior: 'fallback' | null;
 };
 type FaqRow = { id: string; trigger: string | null; reply_text: string | null; enabled: boolean | null };
-type ProfileNameRow = { business_name: string | null };
+type ProfileNameRow = { business_name: string | null; timezone: string | null };
+
+/** Draft sources include the deterministic booking flow on top of the pure-logic sources. */
+type DraftSource = ResponseSource | 'booking';
 
 export interface SendResult {
   ok: boolean;
@@ -203,21 +207,28 @@ function capOrDefault(value: unknown, fallback: number): number {
   return explicit ?? fallback;
 }
 
+type ThreadRow = {
+  id: string;
+  state: string | null;
+  client_handle: string | null;
+  booking_context: { offered?: unknown[]; serviceId?: string | null; durationMinutes?: number } | null;
+};
+
 async function upsertThread(
   admin: Admin,
   userId: string,
   channel: string,
   inbound: NormalizedInbound,
-): Promise<{ id: string; state: string | null }> {
+): Promise<ThreadRow> {
   const { data: existing } = await admin
     .from('threads')
-    .select('id, state')
+    .select('id, state, client_handle, booking_context')
     .eq('user_id', userId)
     .eq('channel', channel)
     .eq('external_thread_id', inbound.externalThreadId)
     .maybeSingle();
 
-  if (existing) return existing as { id: string; state: string | null };
+  if (existing) return existing as ThreadRow;
 
   const { data: created, error } = await admin
     .from('threads')
@@ -228,10 +239,10 @@ async function upsertThread(
       client_handle: inbound.clientHandle,
       state: 'open',
     })
-    .select('id, state')
+    .select('id, state, client_handle, booking_context')
     .single();
   if (error) throw error;
-  return created as { id: string; state: string | null };
+  return created as ThreadRow;
 }
 
 function nextState(current: string | null, intent: string): string {
@@ -247,7 +258,7 @@ export interface TurnResult {
   inboundMessageId: string | null;
   draftMessageId: string | null;
   draftText: string | null;
-  source: ResponseSource;
+  source: DraftSource;
   intent: MessageIntent;
   confidence: number;
   /** Delivered immediately without human approval (confident FAQ, eligible, unflagged). */
@@ -293,7 +304,7 @@ export async function runAgentTurn(
       .eq('user_id', userId)
       .maybeSingle(),
     admin.from('faq').select('id, trigger, reply_text, enabled').eq('user_id', userId).eq('enabled', true),
-    admin.from('profiles').select('business_name').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('business_name, timezone').eq('id', userId).maybeSingle(),
   ]);
 
   const prefs = prefsRes.data as ProviderPrefsRow | null;
@@ -320,12 +331,48 @@ export async function runAgentTurn(
     AGENT_MODEL: Deno.env.get('AGENT_MODEL') ?? undefined,
   });
 
+  const profile = profileRes.data as ProfileNameRow | null;
+
+  // Deterministic booking flow runs in front of the FAQ/LLM pipeline: it offers
+  // concrete times for booking/availability turns and books a chosen slot. It
+  // only ever offers/books slots it computed, so booking drafts are safe to
+  // auto-send under auto_eligible just like a confident FAQ hit.
+  const booking = await handleBookingTurn(admin, {
+    userId,
+    thread: {
+      id: thread.id,
+      state: thread.state,
+      clientHandle: thread.client_handle,
+      bookingContext: thread.booking_context,
+    },
+    inboundText: inbound.text,
+    intent: decision.intent,
+    businessName: profile?.business_name,
+    timezone: profile?.timezone,
+  });
+
   let draftText = decision.draftText;
-  let source: ResponseSource = decision.source;
+  let source: DraftSource = decision.source;
   let model: string | null = null;
   let llmAutoSendCandidate = false;
+  let bookingNewState: string | null = null;
+  let bookingAutoSend = false;
 
-  if (decision.needsLlm) {
+  if (booking.handled) {
+    draftText = booking.replyText ?? FALLBACK_REPLY;
+    source = 'booking';
+    bookingNewState = booking.newState ?? null;
+    bookingAutoSend = !decision.flaggedForReview && (prefs?.approval_mode ?? 'manual') === 'auto_eligible';
+    await logEvent(admin, {
+      userId,
+      threadId: thread.id,
+      kind: 'booking',
+      source: 'booking',
+      intent: decision.intent,
+      channel,
+      detail: booking.detail ?? null,
+    });
+  } else if (decision.needsLlm) {
     const llmEnabled = prefs?.llm_enabled !== false;
     const [spend, usage] = await Promise.all([
       getAgentSpend(admin, userId, thread.id),
@@ -431,7 +478,8 @@ export async function runAgentTurn(
 
   const autoSend =
     (source === 'faq' && decision.autoSendEligible) ||
-    (source === 'llm' && llmAutoSendCandidate);
+    (source === 'llm' && llmAutoSendCandidate) ||
+    (source === 'booking' && bookingAutoSend);
   const approvalStatus = autoSend ? 'auto_sent' : 'pending';
 
   const { data: draftMsg } = await admin
@@ -490,7 +538,10 @@ export async function runAgentTurn(
 
   await admin
     .from('threads')
-    .update({ last_activity_at: new Date().toISOString(), state: nextState(thread.state, decision.intent) })
+    .update({
+      last_activity_at: new Date().toISOString(),
+      state: bookingNewState ?? nextState(thread.state, decision.intent),
+    })
     .eq('id', thread.id);
 
   return {

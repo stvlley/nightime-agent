@@ -140,6 +140,35 @@ async function main() {
     ]),
   });
 
+  // Availability (all week, wide window so there is always a future slot) + one
+  // service, so the deterministic booking flow has concrete times to offer.
+  await rest(`availability?provider_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  await rest('availability', {
+    method: 'POST',
+    body: JSON.stringify(
+      [0, 1, 2, 3, 4, 5, 6].map((d) => ({
+        provider_id: userId,
+        day_of_week: d,
+        start_time: '00:00',
+        end_time: '23:30',
+        timezone: 'UTC',
+        active: true,
+      })),
+    ),
+  });
+  await rest(`services?provider_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  await rest('services', {
+    method: 'POST',
+    body: JSON.stringify({ provider_id: userId, name: 'Standard session', duration_minutes: 60, price_cents: 8000, currency: 'USD', active: true }),
+  });
+
+  // Connect a (simulated) calendar so confirmed bookings sync to it.
+  await rest('calendar_connections?on_conflict=user_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ user_id: userId, provider: 'simulated', external_calendar_id: 'primary', status: 'connected' }),
+  });
+
   await rest('agent_channels?on_conflict=user_id,channel', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
@@ -165,9 +194,11 @@ async function main() {
   });
   log('seeded profile, preferences, 2 FAQ, telegram + webchat channels');
 
-  // Clean threads/messages/events from prior runs for this user.
+  // Clean threads/messages/events/bookings from prior runs for this user.
+  // Bookings reference threads, so delete them before threads.
   await rest(`messages?user_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   await rest(`agent_events?user_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  await rest(`bookings?user_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   await rest(`threads?user_id=eq.${userId}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
 
   log('\n=== TEST 1: bad secret is rejected (no rows written) ===');
@@ -280,6 +311,53 @@ async function main() {
   const disabled = await webPost('webchat-inbound', { slug: SLUG, sessionId: 'y', text: 'hi' });
   check('disabled channel → 403', disabled.status === 403, JSON.stringify(disabled.body));
   await rest(`agent_channels?user_id=eq.${userId}&channel=eq.webchat`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ active: true }) });
+
+  // ---- Appointment booking flow (web chat) -----------------------------------
+  const BOOK_SESSION = `uat-book-${randomBytes(8).toString('hex')}`;
+
+  log('\n=== TEST 10: booking intent → agent qualifies (collects the customer name) ===');
+  const b1 = await webPost('webchat-inbound', { slug: SLUG, sessionId: BOOK_SESSION, text: 'Hi, can I book an appointment?' });
+  check('qualify returns 200', b1.status === 200, JSON.stringify(b1.body));
+  // One seeded service → no service question; the agent asks for a name.
+  check('agent asks for the customer name', b1.body.status === 'answered' && /name/i.test(b1.body.reply || ''), JSON.stringify(b1.body));
+  let bookThread = await rest(`threads?user_id=eq.${userId}&channel=eq.webchat&external_thread_id=eq.${BOOK_SESSION}&select=id,state,booking_context`);
+  check('thread moved to qualifying', bookThread[0]?.state === 'qualifying', JSON.stringify(bookThread[0]?.state));
+
+  log('\n=== TEST 11: customer gives name → agent offers concrete times ===');
+  const b2 = await webPost('webchat-inbound', { slug: SLUG, sessionId: BOOK_SESSION, text: 'my name is Uma' });
+  check('offer returns 200', b2.status === 200, JSON.stringify(b2.body));
+  check('agent offers times', b2.body.status === 'answered' && /opening|works best/i.test(b2.body.reply || ''), JSON.stringify(b2.body));
+  bookThread = await rest(`threads?user_id=eq.${userId}&channel=eq.webchat&external_thread_id=eq.${BOOK_SESSION}&select=id,state,booking_context`);
+  check('thread moved to offering', bookThread[0]?.state === 'offering', JSON.stringify(bookThread[0]?.state));
+  check('captured the customer name on the lead', bookThread[0]?.booking_context?.lead?.name === 'Uma', JSON.stringify(bookThread[0]?.booking_context?.lead));
+  const offered = bookThread[0]?.booking_context?.offered || [];
+  check('offered slots stored on thread', offered.length >= 1, `offered ${offered.length}`);
+  const offerMsg = await rest(`messages?thread_id=eq.${bookThread[0].id}&direction=eq.out&order=created_at.desc&select=response_source&limit=1`);
+  check('offer draft tagged response_source=booking', offerMsg[0]?.response_source === 'booking', offerMsg[0]?.response_source);
+
+  log('\n=== TEST 12: client picks a time → tentative booking created + confirmed ===');
+  const b3 = await webPost('webchat-inbound', { slug: SLUG, sessionId: BOOK_SESSION, text: 'the first one please' });
+  check('confirm returns 200', b3.status === 200, JSON.stringify(b3.body));
+  check('agent confirms the booking', b3.body.status === 'answered' && /all set|see you/i.test(b3.body.reply || ''), JSON.stringify(b3.body));
+  await new Promise((r) => setTimeout(r, 200));
+  const bookings = await rest(`bookings?user_id=eq.${userId}&thread_id=eq.${bookThread[0].id}&select=id,start,status,source,client_name,calendar_event_id&order=created_at.desc`);
+  check('a booking row was created', bookings.length >= 1, `found ${bookings.length}`);
+  check('booking is tentative + ai-sourced', bookings[0]?.status === 'tentative' && bookings[0]?.source === 'ai', JSON.stringify(bookings[0]));
+  check('booking carries the qualified customer name', bookings[0]?.client_name === 'Uma', bookings[0]?.client_name);
+  check(
+    'booking start matches the first offered slot',
+    !!bookings[0]?.start && !!offered[0]?.startIso && new Date(bookings[0].start).toISOString() === new Date(offered[0].startIso).toISOString(),
+    `${bookings[0]?.start} vs ${offered[0]?.startIso}`,
+  );
+  const afterBook = await rest(`threads?id=eq.${bookThread[0].id}&select=state`);
+  check('thread state advanced to tentative', afterBook[0]?.state === 'tentative', afterBook[0]?.state);
+
+  log('\n=== TEST 13: booking synced to the connected calendar ===');
+  check('booking stamped with a calendar event id', !!bookings[0]?.calendar_event_id, bookings[0]?.calendar_event_id);
+  const calEvents = await rest(`calendar_events?user_id=eq.${userId}&select=external_event_id,booking_id,title,start`);
+  const calEvent = calEvents.find((e) => e.booking_id === bookings[0]?.id);
+  check('appointment appears on the connected calendar', !!calEvent, JSON.stringify(calEvents));
+  check('calendar event id matches the booking', calEvent?.external_event_id === bookings[0]?.calendar_event_id, `${calEvent?.external_event_id} vs ${bookings[0]?.calendar_event_id}`);
 
   log(`\n=== RESULT: ${pass} passed, ${fail} failed ===`);
   process.exit(fail > 0 ? 1 : 0);

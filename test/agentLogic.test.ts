@@ -314,3 +314,119 @@ describe('decideResponse', () => {
     expect(llmReplyPassesAutoSendSafety('Sure, I can share a little more about that.')).toBe(true);
   });
 });
+
+describe('matchFaq confidence tiers', () => {
+  it('scores an alias-only booking match at ~0.78', () => {
+    const m = matchFaq('can I schedule an appointment?', [
+      { id: 'b', trigger: 'How do I make a booking?', reply: 'Use the link to book.', enabled: true },
+    ]);
+    expect(m?.faq.id).toBe('b');
+    expect(m!.confidence).toBe(0.78);
+  });
+
+  it('scores an alias-only availability match at ~0.78', () => {
+    const m = matchFaq('are you free this weekend?', [
+      { id: 'a', trigger: 'What is your availability?', reply: 'I have openings.', enabled: true },
+    ]);
+    expect(m?.faq.id).toBe('a');
+    expect(m!.confidence).toBe(0.78);
+  });
+
+  it('falls back to an intent-only match (~0.72) when the message has no textual alias', () => {
+    // "$" classifies the message as pricing, but it has no pricing alias word,
+    // so the alias tier (0.78) is skipped and only the intent tier (0.72) applies.
+    const m = matchFaq('is it $80?', FAQS);
+    expect(m?.faq.id).toBe('1');
+    expect(m!.confidence).toBe(0.72);
+  });
+
+  it('picks the highest-confidence FAQ when several overlap', () => {
+    const m = matchFaq('what are your rates please', [
+      { id: 'weak', trigger: 'pricing', reply: 'weak', enabled: true },
+      { id: 'strong', trigger: 'what are your rates', reply: 'strong', enabled: true },
+    ]);
+    expect(m?.faq.id).toBe('strong'); // full token overlap (1.0) beats the weak alias match (0.78)
+    expect(m!.confidence).toBe(1);
+  });
+
+  it('returns a sub-threshold match on weak token overlap (caller falls through to LLM)', () => {
+    const faqs: FaqEntry[] = [{ id: 'p', trigger: 'parking garage', reply: 'Street parking only.', enabled: true }];
+    const m = matchFaq('is there parking nearby', faqs);
+    expect(m?.faq.id).toBe('p');
+    expect(m!.confidence).toBe(0.5);
+    expect(m!.confidence).toBeLessThan(FAQ_AUTO_THRESHOLD);
+
+    const d = decideResponse({
+      inboundText: 'is there parking nearby',
+      faqs,
+      preferences: { approvalMode: 'auto_eligible', moderationLevel: 'medium', agentMode: 'help_respond' },
+    });
+    expect(d.source).not.toBe('faq');
+  });
+});
+
+describe('matchFaq typo boundaries', () => {
+  it('disables typo tolerance once the message exceeds 6 words', () => {
+    // "pricng" is one edit from "pricing", but the 8-word message trips the
+    // message-length cap in hasShortTypoMatch, so no typo bonus is applied.
+    const m = matchFaq('can you tell me the pricng for this', [
+      { trigger: 'pricing', reply: 'rates here', enabled: true },
+    ]);
+    expect(m).toBeNull();
+  });
+
+  it('does not typo-match tokens beyond the edit-distance cutoff', () => {
+    const m = matchFaq('garage', [{ trigger: 'pricing', reply: 'rates here', enabled: true }]);
+    expect(m).toBeNull();
+  });
+});
+
+describe('classifyIntent extras', () => {
+  it.each([
+    ['is it $80?', 'pricing'],
+    ['I need to cancel my booking', 'cancel'],
+    ['can we rebook for friday', 'reschedule'],
+    ['can you reserve a slot', 'booking'],
+  ])('classifies %s as %s', (text, expected) => {
+    expect(classifyIntent(text)).toBe(expected);
+  });
+});
+
+describe('decideResponse routing matrix (FAQ miss, no saved responses)', () => {
+  it.each([
+    // text, mode, expected source, expected autoSendEligible (approvalMode=auto_eligible)
+    ['good morning', 'keep_up', 'llm', true], // routine_miss greeting → keep_up answers + may auto-send
+    ["what's the cost?", 'keep_up', 'llm', false], // routine_miss pricing → answers, no auto-send
+    ['can I book?', 'keep_up', 'fallback', false], // keep_up does not LLM routine booking misses
+    ['can I book?', 'help_respond', 'llm', false],
+    ['can I book?', 'talk_for_me', 'llm', false],
+    ['go ahead and book it', 'talk_for_me', 'fallback', false], // firm commitment never LLMs
+    ['I need to cancel', 'talk_for_me', 'fallback', false], // cancel intent never LLMs
+  ])('%s under %s → source %s, autoSend %s', (text, mode, source, autoSend) => {
+    const d = decideResponse({
+      inboundText: text,
+      faqs: [],
+      preferences: {
+        approvalMode: 'auto_eligible',
+        moderationLevel: 'medium',
+        agentMode: mode as 'keep_up' | 'help_respond' | 'talk_for_me',
+      },
+    });
+    expect(d.source).toBe(source);
+    expect(d.autoSendEligible).toBe(autoSend);
+  });
+});
+
+describe('llmReplyPassesAutoSendSafety extras', () => {
+  it.each([
+    ['You are all booked.', false],
+    ['That is now confirmed.', false],
+    ['We are available at 5pm.', false],
+    ['It costs $40.', false],
+    ['Your refund is processed.', false],
+    ['Happy to share a bit more about that.', true],
+    ['I will get back to you shortly.', true],
+  ])('%s → %s', (text, expected) => {
+    expect(llmReplyPassesAutoSendSafety(text)).toBe(expected);
+  });
+});

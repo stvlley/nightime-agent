@@ -49,6 +49,7 @@
     "storekit:asc": "node scripts/asc-storekit.mjs",
     "agent:functions:local": "supabase functions serve --env-file .env",
     "agent:test:local": "node scripts/.env.load OPENROUTER_API_KEY AGENT_LLM_DISABLED AGENT_MODEL -- sh -c 'eval \"$(supabase status -o env)\" && node scripts/live-test-agent.mjs'",
+    "agent:eval:local": "node scripts/.env.load OPENROUTER_API_KEY AGENT_MODEL -- sh -c 'eval \"$(supabase status -o env)\" && node scripts/eval-agent-replies.mjs'",
     "e2e": "node scripts/e2e.mjs",
     "e2e:install": "playwright install chromium",
     "e2e:verify:webchat": "node scripts/e2e.mjs verify:webchat",

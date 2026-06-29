@@ -2,9 +2,12 @@
 import { spawnSync } from 'node:child_process';
 
 const entrypoints = [
+  'supabase/functions/connect-calendar/index.ts',
   'supabase/functions/connect-channel/index.ts',
   'supabase/functions/google-voice-webhook/index.ts',
+  'supabase/functions/issue-sms-number/index.ts',
   'supabase/functions/send-draft/index.ts',
+  'supabase/functions/sim-inbound/index.ts',
   'supabase/functions/telegram-webhook/index.ts',
   'supabase/functions/webchat-inbound/index.ts',
   'supabase/functions/webchat-poll/index.ts',
