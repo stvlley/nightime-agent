@@ -29,6 +29,7 @@ import {
 } from './agentLogic.ts';
 import { generateReply, type LlmTurn } from './llm.ts';
 import { handleBookingTurn } from './booking.ts';
+import { summarizeHours, summarizeServices } from './providerContext.ts';
 
 type Admin = SupabaseClient;
 type ApprovalMode = 'manual' | 'auto_eligible';
@@ -50,7 +51,7 @@ type ProviderPrefsRow = {
   ai_cap_behavior: 'fallback' | null;
 };
 type FaqRow = { id: string; trigger: string | null; reply_text: string | null; enabled: boolean | null };
-type ProfileNameRow = { business_name: string | null; timezone: string | null };
+type ProfileNameRow = { business_name: string | null; timezone: string | null; bio: string | null };
 
 /** Draft sources include the deterministic booking flow on top of the pure-logic sources. */
 type DraftSource = ResponseSource | 'booking';
@@ -227,6 +228,37 @@ async function fetchConversationHistory(
   }));
 }
 
+// Active services + weekly hours rendered as short strings for the LLM, so the
+// agent can answer "what do you offer / how much / when are you open?" from the
+// provider's real config instead of deflecting or guessing.
+async function fetchProviderContext(
+  admin: Admin,
+  userId: string,
+): Promise<{ servicesSummary: string; hoursSummary: string }> {
+  const [svcRes, availRes] = await Promise.all([
+    admin
+      .from('services')
+      .select('name, duration_minutes, price_cents, currency, sort_order')
+      .eq('provider_id', userId)
+      .eq('active', true)
+      .order('sort_order', { ascending: true }),
+    admin
+      .from('availability')
+      .select('day_of_week, start_time, end_time')
+      .eq('provider_id', userId)
+      .eq('active', true),
+  ]);
+
+  const services = ((svcRes.data ?? []) as Array<{ name: string; duration_minutes: number | null; price_cents: number | null; currency: string | null }>).map(
+    (s) => ({ name: s.name, durationMinutes: s.duration_minutes, priceCents: s.price_cents, currency: s.currency }),
+  );
+  const hours = ((availRes.data ?? []) as Array<{ day_of_week: number; start_time: string; end_time: string }>).map(
+    (a) => ({ dayOfWeek: a.day_of_week, startTime: a.start_time, endTime: a.end_time }),
+  );
+
+  return { servicesSummary: summarizeServices(services), hoursSummary: summarizeHours(hours) };
+}
+
 function nullablePositiveNumber(value: unknown): number | null {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
@@ -337,7 +369,7 @@ export async function runAgentTurn(
       .eq('user_id', userId)
       .maybeSingle(),
     admin.from('faq').select('id, trigger, reply_text, enabled').eq('user_id', userId).eq('enabled', true),
-    admin.from('profiles').select('business_name, timezone').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('business_name, timezone, bio').eq('id', userId).maybeSingle(),
   ]);
 
   const prefs = prefsRes.data as ProviderPrefsRow | null;
@@ -457,10 +489,16 @@ export async function runAgentTurn(
         },
       });
     } else {
-      const history = await fetchConversationHistory(admin, thread.id, inMsg?.id ?? null);
+      const [history, providerContext] = await Promise.all([
+        fetchConversationHistory(admin, thread.id, inMsg?.id ?? null),
+        fetchProviderContext(admin, userId),
+      ]);
       const llm = await generateReply({
         inboundText: inbound.text,
-        businessName: (profileRes.data as ProfileNameRow | null)?.business_name,
+        businessName: profile?.business_name,
+        providerBio: profile?.bio,
+        servicesSummary: providerContext.servicesSummary,
+        hoursSummary: providerContext.hoursSummary,
         agentTone: prefs?.agent_tone,
         responseBoundaries: prefs?.response_boundaries,
         faqs,

@@ -16,6 +16,12 @@ export interface LlmTurn {
 export interface LlmContext {
   inboundText: string;
   businessName?: string | null;
+  /** One-line description of who the provider is / what they do. */
+  providerBio?: string | null;
+  /** Services the provider offers, e.g. "Massage (60 min, $250)". */
+  servicesSummary?: string | null;
+  /** General weekly hours, e.g. "Mon–Fri 9 AM–5 PM". */
+  hoursSummary?: string | null;
   agentTone?: string | null;
   responseBoundaries?: string | null;
   faqs: FaqEntry[];
@@ -48,6 +54,13 @@ function buildSystemPrompt(ctx: LlmContext): string {
     'Stay grounded: never invent or promise a specific time, price, service, or booking that is not given to you here. If you are unsure, say you will check and get right back to them.',
     'If a message is sensitive, ambiguous, or wants to lock in a firm commitment, give a short friendly holding reply saying you will follow up shortly.',
   ];
+  if (ctx.providerBio) lines.push(`Who you are: ${ctx.providerBio}.`);
+  if (ctx.servicesSummary) lines.push(`Services you offer: ${ctx.servicesSummary}.`);
+  if (ctx.hoursSummary) {
+    lines.push(
+      `Your general hours: ${ctx.hoursSummary}. You can share these, but for exact open appointment times let the booking step offer specific slots — never promise a particular time yourself.`,
+    );
+  }
   if (ctx.agentTone) lines.push(`Match this tone: ${ctx.agentTone}.`);
   if (ctx.responseBoundaries) lines.push(`Always respect these boundaries: ${ctx.responseBoundaries}.`);
   const enabledFaqs = ctx.faqs.filter((f) => f.enabled !== false && f.trigger && f.reply);

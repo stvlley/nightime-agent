@@ -164,6 +164,24 @@ describe('generateReply — system prompt', () => {
     expect(messages[1]).toEqual({ role: 'user', content: 'do you have parking?' });
   });
 
+  it('embeds provider bio, services, and hours when supplied', async () => {
+    stubEnv({ OPENROUTER_API_KEY: 'sk-test' });
+    stubFetch({ json: successPayload() });
+
+    await generateReply({
+      inboundText: 'how much is a massage?',
+      providerBio: 'a licensed massage therapist',
+      servicesSummary: 'Massage (60 min, $250)',
+      hoursSummary: 'Mon–Fri 9 AM–5 PM',
+      faqs: [],
+    });
+
+    const prompt = sentMessages()[0].content;
+    expect(prompt).toContain('a licensed massage therapist');
+    expect(prompt).toContain('Massage (60 min, $250)');
+    expect(prompt).toContain('Mon–Fri 9 AM–5 PM');
+  });
+
   it('includes only enabled, complete FAQs and caps them at 5', async () => {
     stubEnv({ OPENROUTER_API_KEY: 'sk-test' });
     stubFetch({ json: successPayload() });
