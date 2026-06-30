@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildEventTitle, makeSimulatedEventId } from '../supabase/functions/_shared/calendarLogic';
+import { buildEventTitle, makeLocalEventId } from '../supabase/functions/_shared/calendarLogic';
 
-describe('makeSimulatedEventId', () => {
-  it('produces a sim-evt id of hex chars', () => {
-    const id = makeSimulatedEventId(() => 0.5);
-    expect(id).toMatch(/^sim-evt-[0-9a-f]{16}$/);
+describe('makeLocalEventId', () => {
+  it('produces a local evt id of hex chars', () => {
+    const id = makeLocalEventId(() => 0.5);
+    expect(id).toMatch(/^evt-[0-9a-f]{16}$/);
   });
   it('varies with the random source', () => {
-    expect(makeSimulatedEventId(() => 0)).not.toBe(makeSimulatedEventId(() => 0.99));
+    expect(makeLocalEventId(() => 0)).not.toBe(makeLocalEventId(() => 0.99));
   });
 });
 

@@ -1,15 +1,14 @@
-// Connected-calendar sync (Deno IO).
+// Calendar sync (Deno IO).
 //
-// Pushes a confirmed booking to the provider's connected calendar and stamps the
-// booking with the external event id. The 'google' provider calls the Calendar
-// API with the stored OAuth tokens (refreshing the access token when needed);
-// the 'simulated' provider writes to a local calendar_events table so the flow
-// is verifiable without external OAuth. A local mirror row is written for both
-// so the in-app calendar view is consistent. Best-effort: a sync failure never
-// blocks the booking itself.
+// The app keeps its OWN internal calendar: every confirmed booking is recorded
+// in calendar_events and stamped on the booking, with NO external account
+// required. If the provider has additionally connected Google Calendar, the
+// booking is also pushed there (refreshing the OAuth access token when needed)
+// and the Google event id is used. Best-effort: an external push failure never
+// blocks the booking or the internal calendar record.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.55.0';
-import { buildEventTitle, makeSimulatedEventId } from './calendarLogic.ts';
+import { buildEventTitle, makeLocalEventId } from './calendarLogic.ts';
 import {
   GOOGLE_TOKEN_ENDPOINT,
   buildGoogleEventBody,
@@ -20,8 +19,15 @@ import {
 type Admin = SupabaseClient;
 
 export interface CalendarSyncResult {
+  /** The internal calendar record was written (the booking is on our calendar). */
   synced: boolean;
+  /** Event id stamped on the booking — the Google event id, or a local id. */
   externalEventId?: string;
+  /** True when the booking was also pushed to a connected external calendar. */
+  externalSynced?: boolean;
+  /** 'google' when an external calendar is connected, else 'internal'. */
+  externalProvider?: string;
+  /** Reason an external push failed (the internal record still succeeds). */
   reason?: string;
 }
 
@@ -126,28 +132,31 @@ export async function syncBookingToCalendar(
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (!connection || connection.status !== 'connected') {
-    return { synced: false, reason: 'no_calendar_connected' };
-  }
-
-  // 'google' pushes to the real calendar; 'simulated' uses a generated id.
-  let externalEventId: string;
-  if (connection.provider === 'google') {
+  // Optional external mirror: push to Google when it's connected. If it fails we
+  // still record the booking internally and fall back to a local event id.
+  let externalEventId: string | null = null;
+  let externalSynced = false;
+  let externalReason: string | undefined;
+  const hasGoogle = connection?.provider === 'google' && connection.status === 'connected';
+  if (hasGoogle) {
     const pushed = await pushToGoogle(admin, userId, connection as ConnectionRow, { startIso, endIso, serviceName, clientName });
-    if (!pushed.synced || !pushed.externalEventId) return pushed;
-    externalEventId = pushed.externalEventId;
-  } else {
-    externalEventId = makeSimulatedEventId();
+    if (pushed.synced && pushed.externalEventId) {
+      externalEventId = pushed.externalEventId;
+      externalSynced = true;
+    } else {
+      externalReason = pushed.reason;
+    }
   }
 
-  // Mirror the event locally (in-app calendar view) and stamp the booking.
-  const title = buildEventTitle(serviceName, clientName);
+  // Internal calendar is always on: record the booking on the app's own calendar
+  // and stamp it, using the external event id when we have one.
+  const eventId = externalEventId ?? makeLocalEventId();
   const { error: evtError } = await admin.from('calendar_events').upsert(
     {
       user_id: userId,
       booking_id: bookingId,
-      external_event_id: externalEventId,
-      title,
+      external_event_id: eventId,
+      title: buildEventTitle(serviceName, clientName),
       start: startIso,
       end: endIso,
       status: 'confirmed',
@@ -156,6 +165,12 @@ export async function syncBookingToCalendar(
   );
   if (evtError) return { synced: false, reason: evtError.message };
 
-  await admin.from('bookings').update({ calendar_event_id: externalEventId }).eq('id', bookingId);
-  return { synced: true, externalEventId };
+  await admin.from('bookings').update({ calendar_event_id: eventId }).eq('id', bookingId);
+  return {
+    synced: true,
+    externalEventId: eventId,
+    externalSynced,
+    externalProvider: hasGoogle ? 'google' : 'internal',
+    reason: externalReason,
+  };
 }

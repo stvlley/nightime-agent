@@ -194,37 +194,49 @@ export default function CalendarScreen() {
 
       {isSupabaseConfigured ? (
         <Section title="Calendar sync">
-          <Surface tone={googleConnected ? 'success' : 'neutral'}>
-            <XStack alignItems="center" justifyContent="space-between" gap={12} flexWrap="wrap">
-              <YStack flex={1} minWidth={180} gap={2}>
-                <XStack alignItems="center" gap={8}>
-                  {googleConnected ? <Check size={16} color={colors.success} /> : <Link2 size={16} color={colors.textMuted} />}
+          <YStack gap={10}>
+            <Surface tone="success">
+              <XStack alignItems="center" gap={8}>
+                <Check size={16} color={colors.success} />
+                <YStack flex={1} gap={2}>
                   <Text fontSize={14} fontWeight="700" color={colors.text}>
-                    {googleConnected
-                      ? 'Google Calendar connected'
-                      : connection?.status === 'connected'
-                        ? 'Test calendar connected'
-                        : 'No calendar connected'}
+                    Internal calendar — always on
                   </Text>
-                </XStack>
-                <Text fontSize={12} color={colors.textMuted}>
-                  {googleConnected
-                    ? 'Confirmed bookings are added to your Google Calendar.'
-                    : 'Connect Google Calendar so confirmed bookings land on it automatically.'}
+                  <Text fontSize={12} color={colors.textMuted}>
+                    Every confirmed booking is saved here automatically. No external account needed.
+                  </Text>
+                </YStack>
+              </XStack>
+            </Surface>
+
+            <Surface tone={googleConnected ? 'success' : 'neutral'}>
+              <XStack alignItems="center" justifyContent="space-between" gap={12} flexWrap="wrap">
+                <YStack flex={1} minWidth={180} gap={2}>
+                  <XStack alignItems="center" gap={8}>
+                    {googleConnected ? <Check size={16} color={colors.success} /> : <Link2 size={16} color={colors.textMuted} />}
+                    <Text fontSize={14} fontWeight="700" color={colors.text}>
+                      {googleConnected ? 'Google Calendar connected' : 'Google Calendar (optional)'}
+                    </Text>
+                  </XStack>
+                  <Text fontSize={12} color={colors.textMuted}>
+                    {googleConnected
+                      ? 'Bookings are also mirrored to your Google Calendar.'
+                      : 'Connect Google to mirror bookings onto your personal calendar too.'}
+                  </Text>
+                </YStack>
+                {!googleConnected ? (
+                  <Button icon={Link2} onPress={connectGoogleCalendar} disabled={connecting}>
+                    {connecting ? 'Opening Google…' : 'Connect Google Calendar'}
+                  </Button>
+                ) : null}
+              </XStack>
+              {connectError ? (
+                <Text fontSize={12} color={colors.danger} style={{ marginTop: 8 }}>
+                  {connectError}
                 </Text>
-              </YStack>
-              {!googleConnected ? (
-                <Button icon={Link2} onPress={connectGoogleCalendar} disabled={connecting}>
-                  {connecting ? 'Opening Google…' : 'Connect Google Calendar'}
-                </Button>
               ) : null}
-            </XStack>
-            {connectError ? (
-              <Text fontSize={12} color={colors.danger} style={{ marginTop: 8 }}>
-                {connectError}
-              </Text>
-            ) : null}
-          </Surface>
+            </Surface>
+          </YStack>
         </Section>
       ) : null}
 
