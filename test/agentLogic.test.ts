@@ -5,6 +5,7 @@ import {
   decideResponse,
   exceededAgentCallCaps,
   exceededAgentCaps,
+  isHoursQuestion,
   llmReplyPassesAutoSendSafety,
   matchFaq,
   normalizeText,
@@ -322,12 +323,13 @@ describe('llmReplyPassesAutoSendSafety phrasing', () => {
     ["You're all booked for Tuesday at 3pm.", false],
     ["I've booked you in for tomorrow.", false],
     ["It's confirmed for 2pm.", false],
-    ['That costs $40.', false],
     ['I am available at 5pm.', false],
     // Natural offers / questions that merely contain a trigger word → allowed.
     ['What can I get you booked?', true],
     ['Happy to help — want me to get you booked?', true],
     ['Let me know what you had in mind and I can help.', true],
+    // Stating a (grounded) price is allowed — prices are no longer blocked.
+    ['A massage is $250 for 60 minutes.', true],
   ])('%s → passes=%s', (text, passes) => {
     expect(llmReplyPassesAutoSendSafety(text as string)).toBe(passes);
   });
@@ -414,6 +416,27 @@ describe('classifyIntent extras', () => {
   });
 });
 
+describe('isHoursQuestion', () => {
+  it.each([
+    'what are your hours?',
+    'are you open on saturdays?',
+    'are you open this weekend?',
+    'what days are you open',
+    'when do you close?',
+  ])('treats %s as an hours question', (text) => {
+    expect(isHoursQuestion(text)).toBe(true);
+  });
+
+  it.each([
+    'can i come over this week',
+    'do you have any openings?',
+    'can i book a massage for a couple hours',
+    'how much is it?',
+  ])('does not treat %s as an hours question', (text) => {
+    expect(isHoursQuestion(text)).toBe(false);
+  });
+});
+
 describe('decideResponse routing matrix (FAQ miss, no saved responses)', () => {
   it.each([
     // text, mode, expected source, expected autoSendEligible (approvalMode=auto_eligible)
@@ -424,10 +447,12 @@ describe('decideResponse routing matrix (FAQ miss, no saved responses)', () => {
     ['can I book?', 'talk_for_me', 'llm', false], // booking is high-stakes → held even in full automation
     ['go ahead and book it', 'talk_for_me', 'fallback', false], // firm commitment never LLMs
     ['I need to cancel', 'talk_for_me', 'fallback', false], // cancel intent never LLMs
-    // Full automation: talk_for_me auto-sends clean, non-transactional replies.
+    // Full automation: talk_for_me auto-sends clean replies, including grounded
+    // pricing and availability (the agent knows the real prices and hours).
     ['what are you doing', 'talk_for_me', 'llm', true],
     ['do you have parking?', 'talk_for_me', 'llm', true],
-    ["what's the cost?", 'talk_for_me', 'llm', false], // pricing stays held even in full automation
+    ["what's the cost?", 'talk_for_me', 'llm', true], // grounded pricing now auto-sends
+    ['are you open saturday?', 'talk_for_me', 'llm', true], // grounded hours now auto-sends
     ['do you have parking?', 'help_respond', 'llm', false], // help_respond stays conservative
   ])('%s under %s → source %s, autoSend %s', (text, mode, source, autoSend) => {
     const d = decideResponse({
@@ -449,7 +474,7 @@ describe('llmReplyPassesAutoSendSafety extras', () => {
     ['You are all booked.', false],
     ['That is now confirmed.', false],
     ['We are available at 5pm.', false],
-    ['It costs $40.', false],
+    ['It costs $40.', true], // prices are grounded now, so quoting one is allowed
     ['Your refund is processed.', false],
     ['Happy to share a bit more about that.', true],
     ['I will get back to you shortly.', true],

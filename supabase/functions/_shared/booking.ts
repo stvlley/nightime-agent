@@ -29,7 +29,7 @@ import {
   type Lead,
   type ServiceLite,
 } from './qualification.ts';
-import { isQuestionLike, type MessageIntent } from './agentLogic.ts';
+import { isHoursQuestion, isQuestionLike, type MessageIntent } from './agentLogic.ts';
 
 type Admin = SupabaseClient;
 
@@ -212,6 +212,10 @@ export async function handleBookingTurn(
   const inOffering = thread.state === 'offering' && offered.length > 0;
   const inQualifying = thread.state === 'qualifying';
   const wantsBooking = intent === 'booking' || intent === 'availability';
+  // An hours/days-of-operation question is informational — when we're not already
+  // mid-booking, let the LLM answer it from the provider's hours instead of
+  // starting a booking ("are you open Saturday?" should not ask for a name).
+  if (!inOffering && !inQualifying && isHoursQuestion(inboundText)) return NOT_HANDLED;
   if (!inOffering && !inQualifying && !wantsBooking) return NOT_HANDLED;
 
   const cfg = await loadSchedulingConfig(admin, userId, timezone || 'UTC');

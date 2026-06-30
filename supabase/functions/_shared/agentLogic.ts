@@ -432,6 +432,24 @@ export function isQuestionLike(text: string): boolean {
   return raw.includes('?') || /^(what|when|where|who|why|how|can|could|do|does|is|are|will|would)\b/i.test(raw);
 }
 
+// Asking about hours / days of operation (vs. asking to book). These are
+// informational, so the agent answers them from the provider's configured hours
+// instead of starting the booking flow.
+const HOURS_QUESTION_PATTERNS: RegExp[] = [
+  /\byour hours\b/i,
+  /\bhours of operation\b/i,
+  /\bwhat days\b/i,
+  /\bare you open\b/i,
+  /\bwhen (?:are|do) you (?:open|close)\b/i,
+  /\bwhat time do you (?:open|close)\b/i,
+  /\bopen (?:on |this )?(?:weekend|saturdays?|sundays?|mondays?|tuesdays?|wednesdays?|thursdays?|fridays?)\b/i,
+];
+
+/** True when the message asks about hours/days of operation rather than to book. */
+export function isHoursQuestion(text: string): boolean {
+  return HOURS_QUESTION_PATTERNS.some((re) => re.test(text || ''));
+}
+
 export function classifyAgentReason(params: {
   inboundText: string;
   intent: MessageIntent;
@@ -459,10 +477,12 @@ function modeAllowsLlm(mode: AgentMode, reason: ClassifierReason, intent: Messag
   return reason === 'routine_miss' && ['greeting', 'pricing', 'availability'].includes(intent);
 }
 
-// Transactional intents always wait for a human in every mode: bookings and
-// availability are handled by the deterministic booking flow, and pricing /
-// cancel / reschedule need provider judgement before anything is promised.
-const HIGH_STAKES_INTENTS: MessageIntent[] = ['booking', 'availability', 'pricing', 'cancel', 'reschedule'];
+// Intents that must never be auto-handled by the model: bookings are owned by
+// the deterministic flow, and cancel/reschedule need provider judgement. Pricing
+// and availability are NOT here — the agent is grounded in the provider's real
+// prices and hours, so it can state those facts; it still can't promise a
+// specific appointment time (the output-safety guard blocks "available at X").
+const HIGH_STAKES_INTENTS: MessageIntent[] = ['booking', 'cancel', 'reschedule'];
 
 function llmAutoSendRiskAllowed(
   mode: AgentMode,
@@ -486,15 +506,16 @@ function llmAutoSendRiskAllowed(
 }
 
 // Phrasings that assert a commitment the agent may not make on its own — the
-// booking engine owns real confirmations, times, and prices. Tuned to catch
-// declarations ("you're booked", "confirmed for 3pm", "costs $40") without
-// tripping on natural offers or questions ("what can I get you booked?").
+// booking engine owns confirmations and specific appointment times. Tuned to
+// catch declarations ("you're booked", "confirmed for 3pm", "available at 5pm")
+// without tripping on natural offers or questions ("what can I get you booked?").
+// Stating a configured price ("$250") is allowed — the agent is grounded in the
+// provider's real prices, so price mentions aren't blocked here.
 const OVER_PROMISE_PATTERNS: RegExp[] = [
   /\b(?:you(?:'?re| are)|i(?:'?ve| have|'?m)|we(?:'?ve| have)|it'?s|that'?s)\s+(?:\w+\s+){0,2}(?:booked|confirmed|cancelled|canceled|refunded)\b/i,
   /\b(?:booked|confirmed|cancelled|canceled|refunded)\s+(?:for|at|on)\s+(?:\d|mon|tue|wed|thu|fri|sat|sun|today|tomorrow|tonight|next|this)/i,
   /\bavailable at\b/i,
   /\bopen at\b/i,
-  /\bcosts?\s+\$?\d+/i,
 ];
 
 export function llmReplyPassesAutoSendSafety(text: string): boolean {
@@ -508,9 +529,11 @@ export function llmReplyPassesAutoSendSafety(text: string): boolean {
  * Policy: a confident FAQ match can auto-send when the provider opted into
  * `auto_eligible` and the message passed moderation. LLM drafts auto-send only
  * for low-risk, mode-allowed misses — `talk_for_me` (full automation) sends any
- * clean non-transactional reply, while `keep_up`/`help_respond` stay
- * conservative (greetings + explicit conversation openers). Transactional,
- * sensitive, firm-commitment, and fallback replies always route to approval.
+ * clean reply except booking/cancel/reschedule, while `keep_up`/`help_respond`
+ * stay conservative (greetings + explicit conversation openers). Booking,
+ * cancel, reschedule, sensitive, firm-commitment, and fallback replies always
+ * route to approval; pricing and availability auto-send because the agent is
+ * grounded in the provider's real prices and hours.
  */
 export function decideResponse(params: {
   inboundText: string;
