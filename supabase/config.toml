@@ -473,3 +473,8 @@ verify_jwt = true
 # Called by the provider app to connect a calendar for booking sync.
 # Requires a valid provider session JWT.
 verify_jwt = true
+
+[functions.calendar-callback]
+# Google OAuth redirect target. Public (no provider JWT — the browser arrives
+# straight from Google); authenticity is enforced via the signed `state` param.
+verify_jwt = false

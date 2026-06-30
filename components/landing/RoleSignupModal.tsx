@@ -22,6 +22,7 @@ type RoleSignupModalProps = {
   onClose: () => void;
   onFormChange: (field: keyof LandingSignupForm, value: string) => void;
   onGoogleAuth: () => void;
+  onAppleAuth: () => void;
   onModeChange: (mode: LandingAuthMode) => void;
   onRoleChange: (role: LandingSignupRole) => void;
   onSubmit: () => void;
@@ -39,6 +40,7 @@ export function RoleSignupModal({
   onClose,
   onFormChange,
   onGoogleAuth,
+  onAppleAuth,
   onModeChange,
   onSubmit,
 }: RoleSignupModalProps) {
@@ -136,6 +138,22 @@ export function RoleSignupModal({
                       {submitting
                         ? 'Opening Google...'
                         : 'Continue with Google'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.appleAuthButton,
+                      submitting && styles.disabledButton,
+                    ]}
+                    disabled={submitting}
+                    onPress={onAppleAuth}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue with Apple"
+                    accessibilityState={{ disabled: submitting }}
+                  >
+                    <Text style={styles.appleAuthIcon}></Text>
+                    <Text style={styles.appleAuthLabel}>
+                      {submitting ? 'Opening Apple...' : 'Continue with Apple'}
                     </Text>
                   </Pressable>
                   <View style={styles.authDivider}>

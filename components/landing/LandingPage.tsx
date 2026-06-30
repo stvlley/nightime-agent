@@ -54,7 +54,7 @@ async function getSignedInStartRoute(
 export function LandingPage() {
   const { width } = useWindowDimensions();
   const isNarrow = width < 760;
-  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
   const userId = user?.id;
   const {
     preference,
@@ -236,18 +236,20 @@ export function LandingPage() {
     }
   };
 
-  const submitGoogleAuth = async () => {
+  const submitOAuth = async (provider: 'google' | 'apple') => {
+    const label = provider === 'apple' ? 'Apple' : 'Google';
+    const signIn = provider === 'apple' ? signInWithApple : signInWithGoogle;
     setSubmitting(true);
     setAuthRedirectPaused(true);
     setErrors({});
 
     try {
-      const result = await signInWithGoogle();
+      const result = await signIn();
       if (!result.success) {
         setSubmitting(false);
         setAuthRedirectPaused(false);
         setErrors({
-          submit: result.error ?? 'Unable to continue with Google.',
+          submit: result.error ?? `Unable to continue with ${label}.`,
         });
         return;
       }
@@ -280,10 +282,13 @@ export function LandingPage() {
       setSubmitting(false);
       setAuthRedirectPaused(false);
       setErrors({
-        submit: errorMessage(error, 'Unable to continue with Google.'),
+        submit: errorMessage(error, `Unable to continue with ${label}.`),
       });
     }
   };
+
+  const submitGoogleAuth = () => submitOAuth('google');
+  const submitAppleAuth = () => submitOAuth('apple');
 
   return (
     <>
@@ -334,6 +339,7 @@ export function LandingPage() {
           onModeChange={changeAuthMode}
           onRoleChange={changeSignupRole}
           onGoogleAuth={submitGoogleAuth}
+          onAppleAuth={submitAppleAuth}
           onSubmit={submitSignup}
         />
       </SafeAreaView>

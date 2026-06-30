@@ -1,18 +1,22 @@
 // Connect a calendar (Phase 2).
 //
-// Called by the provider app to connect a calendar so confirmed bookings sync to
-// it. Today it establishes a 'simulated' connection (no external OAuth) so the
-// end-to-end booking→calendar flow is testable; the real Google OAuth callback
-// would upsert a 'google' connection with tokens here. Idempotent.
+// Two modes, chosen by the request body's `provider`:
+//   - 'google'    → returns a Google consent URL the app opens; the actual
+//                   connection is created by calendar-callback after consent.
+//   - 'simulated' → (default) establishes a local 'simulated' connection so the
+//                   booking→calendar flow is testable without external OAuth.
 //
 // JWT-verified (provider session); configure with verify_jwt = true.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.55.0';
 import { json, corsHeaders } from '../_shared/http.ts';
+import { buildGoogleAuthUrl } from '../_shared/googleCalendar.ts';
+import { signState } from '../_shared/oauthState.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID') ?? '';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -29,8 +33,20 @@ Deno.serve(async (req) => {
   const user = userData?.user;
   if (!user) return json({ error: 'unauthorized' }, 401);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const body = await req.json().catch(() => ({}));
+  const provider = body?.provider === 'google' ? 'google' : 'simulated';
 
+  // --- Google: hand back a consent URL; calendar-callback finishes the connect.
+  if (provider === 'google') {
+    if (!GOOGLE_CLIENT_ID) return json({ error: 'google_oauth_not_configured' }, 500);
+    const redirectUri = `${SUPABASE_URL}/functions/v1/calendar-callback`;
+    const state = await signState(SERVICE_ROLE, user.id);
+    const authUrl = buildGoogleAuthUrl({ clientId: GOOGLE_CLIENT_ID, redirectUri, state });
+    return json({ ok: true, provider: 'google', authUrl });
+  }
+
+  // --- Simulated: connect immediately (testable end-to-end, no OAuth).
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   const { data, error } = await admin
     .from('calendar_connections')
     .upsert(
@@ -39,6 +55,8 @@ Deno.serve(async (req) => {
         provider: 'simulated',
         external_calendar_id: 'primary',
         status: 'connected',
+        access_token: null,
+        refresh_token: null,
         metadata: { connected_at: new Date().toISOString() },
         updated_at: new Date().toISOString(),
       },

@@ -36,7 +36,7 @@ interface SignInResult {
   error?: string;
 }
 
-interface GoogleSignInResult {
+interface OAuthSignInResult {
   success: boolean;
   userId?: string;
   email?: string;
@@ -58,14 +58,15 @@ interface AuthContextValue {
   isSupabaseConfigured: boolean;
   signUp: (email: string, password: string, businessName: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
-  signInWithGoogle: () => Promise<GoogleSignInResult>;
+  signInWithGoogle: () => Promise<OAuthSignInResult>;
+  signInWithApple: () => Promise<OAuthSignInResult>;
   signOut: () => Promise<void>;
   updateProfile: (patch: ProfilePatch) => Promise<UpdateProfileResult>;
 }
 
 const DEMO_USER_KEY = '@demo_user';
 const AUTH_TIMEOUT_MS = 15000;
-const GOOGLE_OAUTH_NATIVE_REDIRECT_URL = 'nightime-agent://auth/callback';
+const OAUTH_NATIVE_REDIRECT_URL = 'nightime-agent://auth/callback';
 
 function shouldAllowDemoAuthFallback(): boolean {
   return process.env.NODE_ENV !== 'production';
@@ -114,12 +115,12 @@ function createDemoUser(email: string, businessName: string, id = `demo-${Date.n
   };
 }
 
-function getGoogleOAuthRedirectUrl(): string {
+function getOAuthRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
 
-  return GOOGLE_OAUTH_NATIVE_REDIRECT_URL;
+  return OAUTH_NATIVE_REDIRECT_URL;
 }
 
 function getStringMetadata(user: SupabaseUser, keys: string[]): string | null {
@@ -158,7 +159,7 @@ function getOAuthCodeFromUrl(url: string): string {
 
   const code = getOAuthParam(url, 'code');
   if (!code) {
-    throw new Error('Google sign-in did not return an authorization code.');
+    throw new Error('Sign-in did not return an authorization code.');
   }
 
   return code;
@@ -406,44 +407,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
+  // Shared OAuth flow (Google, Apple). Opens the provider's hosted login via the
+  // system browser, exchanges the returned code for a Supabase session, and
+  // ensures a provider profile exists. Each provider is configured in the
+  // Supabase Auth dashboard; the client flow is identical.
+  const signInWithOAuthProvider = async (
+    provider: 'google' | 'apple',
+    label: string,
+  ): Promise<OAuthSignInResult> => {
     setLoading(true);
     try {
       if (!supabase) {
         return { success: false, error: missingSupabaseConfigMessage };
       }
 
-      const redirectTo = getGoogleOAuthRedirectUrl();
+      const redirectTo = getOAuthRedirectUrl();
       const { data, error } = await withAuthTimeout(
         supabase.auth.signInWithOAuth({
-          provider: 'google',
+          provider,
           options: {
             redirectTo,
             skipBrowserRedirect: true,
           },
         }),
-        'Google sign-in setup'
+        `${label} sign-in setup`
       );
 
       if (error) throw error;
       if (!data.url) {
-        throw new Error('Google sign-in could not start.');
+        throw new Error(`${label} sign-in could not start.`);
       }
 
       const browserResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
       if (browserResult.type !== 'success' || !('url' in browserResult)) {
-        return { success: false, error: 'Google sign-in was canceled.' };
+        return { success: false, error: `${label} sign-in was canceled.` };
       }
 
       const code = getOAuthCodeFromUrl(browserResult.url);
       const { data: sessionData, error: sessionError } = await withAuthTimeout(
         supabase.auth.exchangeCodeForSession(code),
-        'Google sign-in'
+        `${label} sign-in`
       );
 
       if (sessionError) throw sessionError;
       if (!sessionData.user) {
-        throw new Error('Google sign-in did not return a user.');
+        throw new Error(`${label} sign-in did not return a user.`);
       }
 
       const { profile, profileCreated, displayName } = await ensureOAuthProfile(sessionData.user);
@@ -465,11 +473,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileCreated,
       };
     } catch (error: unknown) {
-      return { success: false, error: errorMessage(error, 'Unable to sign in with Google.') };
+      return { success: false, error: errorMessage(error, `Unable to sign in with ${label}.`) };
     } finally {
       setLoading(false);
     }
   };
+
+  const signInWithGoogle = (): Promise<OAuthSignInResult> => signInWithOAuthProvider('google', 'Google');
+  const signInWithApple = (): Promise<OAuthSignInResult> => signInWithOAuthProvider('apple', 'Apple');
 
   const signOut = async () => {
     if (supabase) {
@@ -513,6 +524,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signIn,
     signInWithGoogle,
+    signInWithApple,
     signOut,
     updateProfile,
   };
